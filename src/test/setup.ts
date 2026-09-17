@@ -13,3 +13,12 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+/*
+ * jsdom não implementa scrollIntoView. Sem este remendo, qualquer tela que
+ * acompanha o fim de uma lista — a conversa do atendimento, por exemplo —
+ * derruba o teste por uma lacuna do ambiente, não por defeito do produto.
+ */
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}

@@ -39,6 +39,8 @@ você descreveu, com uma peça a menos.
 | `supabase/functions/whatsapp-webhook/index.ts` | Recebe, grava, decide, chama a IA, responde |
 | `supabase/functions/whatsapp-enviar/index.ts` | Envio a partir do sistema (atendimento humano, avisos) |
 | `src/test/whatsappWebhook.test.ts` | Testes das partes que não dependem de rede |
+| `src/pages/comercial/Atendimento.tsx` | A tela: conversas, histórico, assumir do robô e responder |
+| `src/lib/whatsappDados.ts` / `src/lib/janelaWhatsapp.ts` | Acesso às tabelas e a regra das 24h no lado da tela |
 
 A IA é a que o projeto já usa: `_shared/provedorIa.ts` — OpenAI quando a
 `OPENAI_API_KEY` existe, Gemini como reserva. Não há chave nova de IA para
@@ -121,9 +123,23 @@ values (
 );
 ```
 
+Esse INSERT é a única parte que ainda pede SQL, e é de propósito: o
+`phone_number_id` é único no banco inteiro, então deixar qualquer empresa
+cadastrar o seu deixaria uma tomar a linha da outra. Depois dele, **tudo o mais
+se faz pela tela** — ligar e desligar a automação, a saudação e as instruções da
+IA ficam em *Comercial → Atendimento WhatsApp → Configuração*.
+
 O `prompt_extra` é o que transforma o atendente genérico no atendente da sua
 operação. Vale escrever com calma: serviços, região, o que responder sobre
 prazo, o que nunca prometer.
+
+### 5.1. Liberar o acesso
+
+O atendimento é um módulo de permissão próprio (`atendimento`). Quem já tinha
+acesso ao Comercial **não** ganha a tela automaticamente: libere em *Cadastro →
+Usuários Liberados*, marcando "Atendimento WhatsApp". Conversa de cliente é dado
+sensível — é melhor liberar para quem precisa do que para todo mundo por
+descuido.
 
 ### 6. Testar
 
@@ -204,12 +220,37 @@ await supabase.functions.invoke("whatsapp-enviar", {
 - **Supabase**: Edge Function e as três tabelas cabem no plano que o projeto já
   usa.
 
+## A tela de atendimento
+
+*Comercial → Atendimento WhatsApp* (`/comercial/atendimento`).
+
+À esquerda, as conversas, da mais recente para a mais antiga, com busca por nome
+ou número. À direita, o histórico e o campo de resposta. As mensagens chegam
+sozinhas enquanto a tela estiver aberta — Realtime, o mesmo canal por tabela que
+o resto do sistema usa.
+
+Três coisas que a tela deixa explícitas, porque errar nelas é caro:
+
+- **Quem está respondendo.** Cada conversa mostra `IA respondendo` ou
+  `Você responde`. O botão ao lado assume a conversa, e assumir **desliga a IA
+  naquele contato** — senão os dois responderiam a mesma mensagem, e o cliente
+  veria duas respostas diferentes. A IA não volta sozinha: quem assumiu devolve
+  no mesmo botão.
+- **Quem escreveu cada mensagem.** Cada balão enviado diz `IA`, `Automático` ou
+  `Você`. Sem isso ninguém sabe o que já foi prometido antes de continuar.
+- **A janela de 24h.** Dentro dela, o rodapé mostra quanto falta. Fora dela, o
+  campo de escrita **não aparece** — no lugar dele, a explicação de que a Meta
+  exige template. Deixar escrever para recusar no envio seria pior: o texto se
+  perde e a tentativa já foi contada.
+
+Mensagem que falhou no envio aparece em vermelho, com o motivo que a Meta
+devolveu.
+
 ## O que ainda não existe
 
-- **Tela de atendimento.** As conversas ficam no banco e as políticas de RLS já
-  deixam a empresa ler as suas; falta a página que mostra e responde. Até lá, o
-  atendimento humano acontece pelo WhatsApp mesmo, depois que a automação se
-  desliga.
+- **Envio de template pela tela.** A `whatsapp-enviar` já aceita template (é
+  assim que se reabre conversa fora da janela de 24h), mas escolher e preencher
+  um template ainda não tem interface — por enquanto é chamada de função.
 - **Disparo automático de aviso de vencimento por WhatsApp.** A
   `alertas-vencimento-sst` continua mandando e-mail; passar a mandar WhatsApp é
   chamar a `whatsapp-enviar` com um template aprovado.

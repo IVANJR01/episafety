@@ -53,6 +53,7 @@ import Orcamentos from "@/pages/comercial/Orcamentos";
 import OrcamentoEditor from "@/pages/comercial/OrcamentoEditor";
 import Clientes from "@/pages/comercial/Clientes";
 import Catalogo from "@/pages/comercial/Catalogo";
+import Atendimento from "@/pages/comercial/Atendimento";
 
 import Faturas from "@/pages/Faturas";
 import AsoModule from "@/pages/aso/AsoModule";
@@ -326,6 +327,7 @@ function ProtectedRoute() {
         <Route path="/comercial/orcamentos/:id" element={<OrcamentoEditor />} />
         <Route path="/comercial/clientes" element={<Clientes />} />
         <Route path="/comercial/catalogo" element={<Catalogo />} />
+        <Route path="/comercial/atendimento" element={<Atendimento />} />
         <Route path="/cat" element={<CatModule />} />
         <Route path="/cat/novo" element={<CatNovo />} />
         <Route path="/cat/:id" element={<CatDetalhe />} />

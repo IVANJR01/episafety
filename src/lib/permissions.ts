@@ -82,6 +82,7 @@ export const MODULOS = [
   { key: "portal_rh", label: "Portal RH", path: "/rh/asos" },
   { key: "video_treinamentos", label: "Treinamentos em Vídeo", path: "/video-treinamentos" },
   { key: "comercial", label: "Comercial — Orçamentos e Cotações", path: "/comercial/orcamentos" },
+  { key: "atendimento", label: "Atendimento WhatsApp", path: "/comercial/atendimento" },
   { key: "arquivo_digital", label: "Arquivo Digital — Vencimentos", path: "/arquivo-digital/vencimentos" },
 ] as const;
 
@@ -119,7 +120,7 @@ export const GRUPOS_MODULOS: { titulo: string; modulos: string[] }[] = [
     titulo: "Treinamentos e inspeções",
     modulos: ["treinamentos", "dds", "video_treinamentos", "inspecoes_se"],
   },
-  { titulo: "Comercial", modulos: ["comercial"] },
+  { titulo: "Comercial", modulos: ["comercial", "atendimento"] },
 ];
 
 /**
