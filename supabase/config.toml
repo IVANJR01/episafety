@@ -5,3 +5,10 @@ project_id = "estmuducawmftvpbeutm"
 # x-cron-secret, checado dentro da própria function.
 [functions.alertas-vencimento-sst]
 verify_jwt = false
+
+# Quem chama é a Meta, pelo webhook do WhatsApp Cloud API — não tem JWT do
+# Supabase por trás. A autorização real é a assinatura HMAC do corpo
+# (x-hub-signature-256), conferida dentro da própria function com o
+# WHATSAPP_APP_SECRET; sem esse secret ela recusa todos os POSTs.
+[functions.whatsapp-webhook]
+verify_jwt = false
