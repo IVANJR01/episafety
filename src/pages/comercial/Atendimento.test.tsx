@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Atendimento from "./Atendimento";
 import type { ConfigLinha, Contato, Mensagem } from "@/lib/whatsappDados";
+import type { TemplateWhatsapp } from "@/lib/templatesWhatsapp";
 
 /**
  * O que este teste protege são as duas regras que custam dinheiro quando
@@ -21,6 +22,7 @@ const config: ConfigLinha = {
   empresa_id: "emp-1",
   phone_number_id: "LINHA1",
   numero_exibicao: "+55 85 99999-9999",
+  waba_id: "WABA1",
   automacao_ativa: true,
   prompt_extra: null,
   saudacao: null,
@@ -51,11 +53,19 @@ const contatoAntigo: Contato = {
 const contatoComIa: Contato = { ...contatoRecente, id: "c-3", nome: "Pedro Novo", automacao_ativa: true };
 
 const mensagens: Mensagem[] = [
-  { id: "m1", direcao: "entrada", texto: "Quanto custa um PGR?", origem: null, status: null, erro: null, created_at: horas(2) },
-  { id: "m2", direcao: "saida", texto: "Depende do porte da empresa.", origem: "ia", status: "enviado", erro: null, created_at: horas(2) },
+  { id: "m1", direcao: "entrada", tipo: "text", texto: "Quanto custa um PGR?", origem: null, status: null, erro: null, created_at: horas(2) },
+  { id: "m2", direcao: "saida", tipo: "text", texto: "Depende do porte da empresa.", origem: "ia", status: "enviado", erro: null, created_at: horas(2) },
 ];
 
 const enviarMensagem = vi.fn().mockResolvedValue(undefined);
+const enviarTemplate = vi.fn().mockResolvedValue(undefined);
+
+const template: TemplateWhatsapp = {
+  nome: "aviso_vencimento",
+  idioma: "pt_BR",
+  categoria: "UTILITY",
+  componentes: [{ tipo: "BODY", texto: "O treinamento {{1}} vence em {{2}}. Quer renovar?" }],
+};
 let configAtual: ConfigLinha | null = config;
 let contatos: Contato[] = [];
 
@@ -66,6 +76,8 @@ vi.mock("@/lib/whatsappDados", () => ({
   definirAutomacaoDoContato: vi.fn().mockResolvedValue(undefined),
   salvarConfigWhatsapp: vi.fn().mockResolvedValue(undefined),
   enviarMensagem: (...args: unknown[]) => enviarMensagem(...args),
+  listarTemplatesAprovados: () => Promise.resolve([template]),
+  enviarTemplate: (...args: unknown[]) => enviarTemplate(...args),
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
@@ -91,6 +103,7 @@ beforeEach(() => {
   configAtual = config;
   contatos = [contatoRecente, contatoAntigo, contatoComIa];
   enviarMensagem.mockClear();
+  enviarTemplate.mockClear();
 });
 
 describe("tela de atendimento", () => {
@@ -134,6 +147,47 @@ describe("tela de atendimento", () => {
 
     expect(await screen.findByText("IA respondendo")).toBeInTheDocument();
     expect(screen.getByText(/assuma no botão acima/i)).toBeInTheDocument();
+  });
+
+  it("oferece o template como saída quando a janela fechou", async () => {
+    montar();
+    fireEvent.click(await screen.findByText("João do Canteiro"));
+
+    fireEvent.click(await screen.findByText("Escolher template"));
+
+    // O diálogo abre já dizendo para quem vai e que o texto é o aprovado —
+    // o nome também está na lista de conversas atrás, então a busca é dentro dele.
+    const dialogo = await screen.findByRole("dialog");
+    expect(within(dialogo).getByText("Enviar template")).toBeInTheDocument();
+    expect(within(dialogo).getByText(/Para João do Canteiro/)).toBeInTheDocument();
+    expect(within(dialogo).getByText(/aprovado pela Meta/)).toBeInTheDocument();
+  });
+
+  it("preenche os campos do template e envia com os valores na ordem", async () => {
+    montar();
+    fireEvent.click(await screen.findByText("João do Canteiro"));
+    fireEvent.click(await screen.findByText("Escolher template"));
+
+    // Radix Select não abre com click puro no jsdom; a tecla é o caminho que
+    // ele mesmo documenta para teclado.
+    const gatilho = await screen.findByRole("combobox");
+    fireEvent.keyDown(gatilho, { key: "Enter" });
+    fireEvent.click(await screen.findByText("aviso_vencimento (pt_BR)"));
+
+    fireEvent.change(await screen.findByLabelText("Campo 1"), { target: { value: "NR-35" } });
+    fireEvent.change(screen.getByLabelText("Campo 2"), { target: { value: "12/10/2026" } });
+
+    // A prévia mostra o texto final: é o que impede alguém de enviar no escuro.
+    expect(screen.getByText(/O treinamento NR-35 vence em 12\/10\/2026/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Enviar$/ }));
+
+    await waitFor(() => {
+      expect(enviarTemplate).toHaveBeenCalledWith("c-2", template, {
+        cabecalho: {},
+        corpo: { "1": "NR-35", "2": "12/10/2026" },
+      });
+    });
   });
 
   it("explica o que fazer quando a linha nem foi configurada", async () => {

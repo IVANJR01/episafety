@@ -14,6 +14,7 @@ import {
 } from "@/lib/whatsappDados";
 import { assinarTabela } from "@/lib/realtimeTabelas";
 import { horaDaMensagem, janelaAberta, telefoneLegivel, tempoRestanteJanela } from "@/lib/janelaWhatsapp";
+import EnviarTemplateDialog from "@/components/comercial/EnviarTemplateDialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Bot, MessageCircle, Search, Send, Settings, User } from "lucide-react";
+import { ArrowLeft, Bot, FileText, MessageCircle, Search, Send, Settings, User } from "lucide-react";
 import { toast } from "sonner";
 
 /**
@@ -60,6 +61,7 @@ export default function Atendimento() {
   const [contatoId, setContatoId] = useState<string | null>(null);
   const [rascunho, setRascunho] = useState("");
   const [configAberta, setConfigAberta] = useState(false);
+  const [templateAberto, setTemplateAberto] = useState(false);
   const fimDaLista = useRef<HTMLDivElement>(null);
 
   // ---- configuração da linha ----
@@ -295,6 +297,15 @@ export default function Atendimento() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="hidden sm:inline-flex"
+                      onClick={() => setTemplateAberto(true)}
+                    >
+                      <FileText className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Template</span>
+                    </Button>
                     <Badge variant={contato.automacao_ativa ? "secondary" : "default"}>
                       {contato.automacao_ativa ? "IA respondendo" : "Você responde"}
                     </Badge>
@@ -331,6 +342,7 @@ export default function Atendimento() {
                             {m.texto}
                             <div className="text-[11px] mt-1 opacity-80">
                               <QuemRespondeu mensagem={m} />
+                              {m.tipo === "template" && "template · "}
                               {horaDaMensagem(m.created_at)}
                               {m.status === "falhou" && ` · não enviada${m.erro ? `: ${m.erro}` : ""}`}
                             </div>
@@ -346,11 +358,16 @@ export default function Atendimento() {
                   {!aberta ? (
                     /* Não é limite do sistema: é regra da Meta, e o texto diz
                        qual é a saída, senão vira "o WhatsApp não funciona". */
-                    <div className="text-sm text-muted-foreground">
-                      Passaram mais de 24 horas desde a última mensagem deste contato. A Meta só aceita
-                      texto livre dentro dessa janela — para reabrir a conversa é preciso um{" "}
-                      <strong>template aprovado</strong>. Enquanto não houver um cadastrado, quem precisa
-                      falar primeiro é o cliente.
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Passaram mais de 24 horas desde a última mensagem deste contato. A Meta só aceita
+                        texto livre dentro dessa janela — para reabrir a conversa é preciso um{" "}
+                        <strong>template aprovado</strong>.
+                      </p>
+                      <Button className="w-full sm:w-auto" onClick={() => setTemplateAberto(true)}>
+                        <FileText className="w-4 h-4 mr-2" />
+                        Escolher template
+                      </Button>
                     </div>
                   ) : (
                     <>
@@ -394,6 +411,13 @@ export default function Atendimento() {
         </Card>
       </div>
 
+      <EnviarTemplateDialog
+        aberto={templateAberto}
+        aoFechar={() => setTemplateAberto(false)}
+        contatoId={contatoId}
+        nomeDoContato={contato ? contato.nome || telefoneLegivel(contato.wa_id) : ""}
+      />
+
       {/* ---------- configuração ---------- */}
       <Dialog open={configAberta} onOpenChange={setConfigAberta}>
         <DialogContent className="max-w-lg">
@@ -433,6 +457,24 @@ export default function Atendimento() {
                   }}
                   placeholder="+55 85 99999-9999"
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="waba">Conta do WhatsApp Business (WABA ID)</Label>
+                <Input
+                  id="waba"
+                  defaultValue={config.waba_id ?? ""}
+                  onBlur={(e) => {
+                    if (e.target.value !== (config.waba_id ?? "")) {
+                      salvarConfig.mutate({ waba_id: e.target.value || null });
+                    }
+                  }}
+                  placeholder="102290129340398"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Sem ele não dá para listar os templates aprovados. Aparece no painel da Meta, em
+                  WhatsApp → Configuração da API.
+                </p>
               </div>
 
               <div>

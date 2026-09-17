@@ -1,4 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
+import {
+  camposDoTemplate,
+  parametrosParaEnvio,
+  previaDoTemplate,
+  type TemplateWhatsapp,
+  type ValoresTemplate,
+} from "@/lib/templatesWhatsapp";
 
 /**
  * Acesso às tabelas do atendimento por WhatsApp.
@@ -18,6 +25,8 @@ export interface ConfigLinha {
   id: string;
   empresa_id: string;
   phone_number_id: string;
+  /** Conta do WhatsApp Business na Meta — é dela que vem a lista de templates. */
+  waba_id: string | null;
   numero_exibicao: string | null;
   automacao_ativa: boolean;
   prompt_extra: string | null;
@@ -38,6 +47,7 @@ export interface Contato {
 export interface Mensagem {
   id: string;
   direcao: "entrada" | "saida";
+  tipo: string | null;
   texto: string | null;
   origem: "ia" | "humano" | "sistema" | null;
   status: string | null;
@@ -52,7 +62,7 @@ const tabela = supabase.from as unknown as (nome: string) => ConsultaSemTipo;
 
 const COLUNAS_CONTATO =
   "id, wa_id, nome, cliente_comercial_id, automacao_ativa, ultima_entrada_em, ultima_mensagem_em";
-const COLUNAS_MENSAGEM = "id, direcao, texto, origem, status, erro, created_at";
+const COLUNAS_MENSAGEM = "id, direcao, tipo, texto, origem, status, erro, created_at";
 
 /** A linha da empresa do usuário. O RLS já limita ao tenant dele. */
 export async function lerConfigWhatsapp(): Promise<ConfigLinha | null> {
@@ -119,6 +129,42 @@ async function motivoDoErro(erro: unknown): Promise<string> {
 export async function enviarMensagem(contatoId: string, texto: string): Promise<void> {
   const { error } = await supabase.functions.invoke("whatsapp-enviar", {
     body: { contato_id: contatoId, texto },
+  });
+  if (error) throw new Error(await motivoDoErro(error));
+}
+
+/** Os templates que a Meta aprovou para esta conta. Vêm dela, não do banco. */
+export async function listarTemplatesAprovados(): Promise<TemplateWhatsapp[]> {
+  const { data, error } = await supabase.functions.invoke("whatsapp-templates", { body: {} });
+  if (error) throw new Error(await motivoDoErro(error));
+  return ((data as { templates?: TemplateWhatsapp[] })?.templates ?? []);
+}
+
+/**
+ * Envia um template já preenchido.
+ *
+ * Vai junto o texto com os valores no lugar: é o que o cliente vai ler, e é o
+ * que fica no histórico. Sem ele, a mensagem que reabriu a conversa apareceria
+ * na tela como "[template aviso_vencimento]", ilegível justamente na hora em
+ * que alguém precisa entender o que foi dito.
+ */
+export async function enviarTemplate(
+  contatoId: string,
+  template: TemplateWhatsapp,
+  valores: ValoresTemplate,
+): Promise<void> {
+  const campos = camposDoTemplate(template);
+  const { error } = await supabase.functions.invoke("whatsapp-enviar", {
+    body: {
+      contato_id: contatoId,
+      texto: previaDoTemplate(template, valores),
+      template: {
+        nome: template.nome,
+        idioma: template.idioma,
+        cabecalho: parametrosParaEnvio(campos.cabecalho, valores.cabecalho),
+        corpo: parametrosParaEnvio(campos.corpo, valores.corpo),
+      },
+    },
   });
   if (error) throw new Error(await motivoDoErro(error));
 }

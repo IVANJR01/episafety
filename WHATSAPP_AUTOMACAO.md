@@ -37,10 +37,12 @@ você descreveu, com uma peça a menos.
 | `supabase/migrations/20260917120000_whatsapp_automacao.sql` | `whatsapp_config`, `whatsapp_contatos`, `whatsapp_mensagens` + a busca de cliente por telefone |
 | `supabase/functions/_shared/whatsapp.ts` | Leitura do payload da Meta, conferência de assinatura, envio (texto e template) |
 | `supabase/functions/whatsapp-webhook/index.ts` | Recebe, grava, decide, chama a IA, responde |
-| `supabase/functions/whatsapp-enviar/index.ts` | Envio a partir do sistema (atendimento humano, avisos) |
+| `supabase/functions/whatsapp-enviar/index.ts` | Envio a partir do sistema (texto livre e template) |
+| `supabase/functions/whatsapp-templates/index.ts` | Lista na tela os templates que a Meta aprovou |
 | `src/test/whatsappWebhook.test.ts` | Testes das partes que não dependem de rede |
 | `src/pages/comercial/Atendimento.tsx` | A tela: conversas, histórico, assumir do robô e responder |
-| `src/lib/whatsappDados.ts` / `src/lib/janelaWhatsapp.ts` | Acesso às tabelas e a regra das 24h no lado da tela |
+| `src/components/comercial/EnviarTemplateDialog.tsx` | Escolher, preencher e enviar um template, com prévia |
+| `src/lib/whatsappDados.ts` / `src/lib/janelaWhatsapp.ts` / `src/lib/templatesWhatsapp.ts` | Acesso às tabelas, a regra das 24h e a leitura dos templates |
 
 A IA é a que o projeto já usa: `_shared/provedorIa.ts` — OpenAI quando a
 `OPENAI_API_KEY` existe, Gemini como reserva. Não há chave nova de IA para
@@ -58,8 +60,10 @@ configurar.
 3. Em *WhatsApp → Introdução*, a Meta já dá um **número de teste** e um
    **token temporário (24h)**. Dá para testar tudo com ele antes de cadastrar o
    número da empresa.
-4. Anote o **Identificação do número de telefone** (`phone_number_id`). É um
-   número longo — **não** é o telefone.
+4. Anote dois identificadores da mesma tela — nenhum dos dois é o telefone:
+   - **Identificação do número de telefone** (`phone_number_id`): a linha.
+   - **Identificação da conta do WhatsApp Business** (`waba_id`): a conta. É por
+     ela que se pergunta quais templates estão aprovados.
 
 ### 2. Os três segredos
 
@@ -88,8 +92,9 @@ supabase secrets set \
 
 ```sh
 supabase db push --project-ref estmuducawmftvpbeutm
-supabase functions deploy whatsapp-webhook --project-ref estmuducawmftvpbeutm
-supabase functions deploy whatsapp-enviar  --project-ref estmuducawmftvpbeutm
+supabase functions deploy whatsapp-webhook   --project-ref estmuducawmftvpbeutm
+supabase functions deploy whatsapp-enviar    --project-ref estmuducawmftvpbeutm
+supabase functions deploy whatsapp-templates --project-ref estmuducawmftvpbeutm
 ```
 
 O `verify_jwt = false` do webhook já está no `supabase/config.toml` — a Meta não
@@ -112,10 +117,11 @@ O webhook descobre de quem é a conversa pelo `phone_number_id`. Enquanto não h
 tela para isso, é um INSERT (SQL Editor do Supabase):
 
 ```sql
-insert into public.whatsapp_config (empresa_id, phone_number_id, numero_exibicao, automacao_ativa, prompt_extra, saudacao)
+insert into public.whatsapp_config (empresa_id, phone_number_id, waba_id, numero_exibicao, automacao_ativa, prompt_extra, saudacao)
 values (
   (select id from public.empresa_config order by created_at limit 1),
   '123456789012345',            -- o phone_number_id do passo 1
+  '102290129340398',            -- o waba_id do passo 1 (para os templates)
   '+55 85 99999-9999',
   true,                         -- a automação começa desligada; true liga
   'Vendemos PGR, PCMSO, LTCAT, treinamentos de NR-35, NR-33 e NR-10, e gestão de EPI pelo EPISafety. Atendemos o Ceará. Orçamento sai em até 24h úteis. Nunca informe preço fechado: diga que a equipe confirma.',
@@ -189,8 +195,9 @@ Passou disso, só **template aprovado** por ela. Não é detalhe: é o motivo de
 campanhas de WhatsApp precisarem de template, e a resposta automática, não.
 
 A `whatsapp-enviar` confere a janela antes de gastar a chamada e devolve
-`409 janela_24h_fechada` quando é o caso. Para enviar fora da janela, crie o
-template em *WhatsApp → Modelos de mensagem*, espere a aprovação, e chame:
+`409 janela_24h_fechada` quando é o caso. **Na tela isso já está resolvido**: com
+a janela fechada, no lugar do campo de escrita aparece o botão *Escolher
+template* (ver abaixo). Por código, a chamada é esta:
 
 ```ts
 await supabase.functions.invoke("whatsapp-enviar", {
@@ -246,11 +253,39 @@ Três coisas que a tela deixa explícitas, porque errar nelas é caro:
 Mensagem que falhou no envio aparece em vermelho, com o motivo que a Meta
 devolveu.
 
+### Enviar template pela tela
+
+O botão *Template* fica no alto da conversa, e vira o botão principal quando a
+janela de 24h fecha. O diálogo:
+
+1. Lista os templates **aprovados**, consultados na Meta na hora (cache de cinco
+   minutos). Template em análise ou pausado não aparece — oferecer um que a Meta
+   vai recusar seria descobrir o problema no envio, sem segunda chance, porque a
+   conversa está fechada.
+2. Cria um campo para cada marcador do texto (`{{1}}`, `{{2}}`, ou `{{nome}}` nos
+   templates de parâmetro nomeado). Cabeçalho e corpo têm numeração própria: o
+   `{{1}}` de um não é o `{{1}}` do outro, e a tela trata os dois separados.
+3. Mostra a **prévia** com os valores no lugar — exatamente o que o cliente vai
+   ler. Sem ela, enviar template é enviar no escuro: o texto foi aprovado dentro
+   do painel da Meta, não aqui.
+4. Só libera o envio com todos os campos preenchidos, porque a Meta recusa
+   parâmetro vazio.
+
+O que fica gravado no histórico é o texto já preenchido, não `[template
+aviso_vencimento]` — a mensagem que reabriu a conversa precisa ser legível para
+quem for continuar o atendimento. O balão vem marcado como `template`.
+
+Se faltar o `waba_id` da empresa, o diálogo diz isso e onde preencher
+(*Configuração* da própria tela). Como alternativa para quem tem uma empresa só,
+a function aceita o secret `WHATSAPP_WABA_ID`.
+
+**Enviar template não reabre a janela de 24h.** Só a resposta do cliente reabre.
+
 ## O que ainda não existe
 
-- **Envio de template pela tela.** A `whatsapp-enviar` já aceita template (é
-  assim que se reabre conversa fora da janela de 24h), mas escolher e preencher
-  um template ainda não tem interface — por enquanto é chamada de função.
+- **Template com cabeçalho de mídia.** Imagem, vídeo ou documento no cabeçalho
+  exigem enviar um arquivo como parâmetro; a tela oferece só os de texto, e
+  ignora os outros em vez de montar um envio que a Meta recusaria.
 - **Disparo automático de aviso de vencimento por WhatsApp.** A
   `alertas-vencimento-sst` continua mandando e-mail; passar a mandar WhatsApp é
   chamar a `whatsapp-enviar` com um template aprovado.

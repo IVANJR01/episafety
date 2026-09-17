@@ -290,22 +290,111 @@ export function enviarTexto(phoneNumberId: string, para: string, texto: string):
   });
 }
 
+/**
+ * Um valor que entra no lugar de `{{1}}` (ou de `{{nome}}`) no template.
+ *
+ * A Meta aceita as duas formas de marcador, e elas não se misturam na mesma
+ * mensagem: template criado com marcador numerado recebe parâmetros na ordem;
+ * template com marcador nomeado exige `parameter_name` em cada um. Mandar a
+ * forma errada devolve erro em vez de mensagem.
+ */
+export interface ParametroTemplate {
+  valor: string;
+  /** Preenchido só quando o template usa marcador nomeado. */
+  nome?: string;
+}
+
+export interface ParametrosTemplate {
+  /** Valores do corpo, na ordem em que aparecem. */
+  corpo?: ParametroTemplate[];
+  /** Valores do cabeçalho, quando ele é de texto e tem marcador. */
+  cabecalho?: ParametroTemplate[];
+}
+
+function parametrosGraph(lista: ParametroTemplate[]): Array<Record<string, string>> {
+  return lista.map((p) => (
+    p.nome
+      ? { type: "text", parameter_name: p.nome, text: p.valor }
+      : { type: "text", text: p.valor }
+  ));
+}
+
 /** Fora da janela de 24h, só template aprovado pela Meta. */
 export function enviarTemplate(
   phoneNumberId: string,
   para: string,
   nomeTemplate: string,
   idioma: string,
-  parametros: string[],
+  parametros: ParametrosTemplate,
 ): Promise<RespostaEnvio> {
-  const componentes = parametros.length > 0
-    ? [{ type: "body", parameters: parametros.map((p) => ({ type: "text", text: p })) }]
-    : [];
+  const componentes: Array<Record<string, unknown>> = [];
+  if (parametros.cabecalho?.length) {
+    componentes.push({ type: "header", parameters: parametrosGraph(parametros.cabecalho) });
+  }
+  if (parametros.corpo?.length) {
+    componentes.push({ type: "body", parameters: parametrosGraph(parametros.corpo) });
+  }
   return chamarGraph(phoneNumberId, {
     to: apenasDigitos(para),
     type: "template",
     template: { name: nomeTemplate, language: { code: idioma }, components: componentes },
   });
+}
+
+export interface ComponenteTemplate {
+  tipo: string;
+  formato?: string;
+  texto?: string;
+}
+
+export interface TemplateAprovado {
+  nome: string;
+  idioma: string;
+  categoria: string | null;
+  componentes: ComponenteTemplate[];
+}
+
+/**
+ * Os templates que a Meta já aprovou para esta conta.
+ *
+ * Vem da Meta a cada consulta, e não de uma cópia no banco, porque template é
+ * aprovado, pausado e reprovado lá — uma cópia daqui envelheceria sem avisar, e
+ * o primeiro sintoma seria a mensagem recusada na hora de enviar.
+ *
+ * Só os APPROVED voltam: oferecer na tela um template em análise é oferecer um
+ * envio que vai falhar.
+ */
+export async function listarTemplatesAprovados(wabaId: string): Promise<TemplateAprovado[]> {
+  const token = Deno.env.get("WHATSAPP_TOKEN");
+  if (!token) throw new Error("WHATSAPP_TOKEN não configurado");
+
+  const resposta = await fetch(
+    `https://graph.facebook.com/${VERSAO_GRAPH}/${wabaId}/message_templates?limit=200`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  const dados = await resposta.json().catch(() => ({}));
+  if (!resposta.ok) {
+    const erro = obj(dados).error;
+    throw new Error(comoTexto(obj(erro).message) || `HTTP ${resposta.status}`);
+  }
+
+  return lista(obj(dados).data)
+    .map((item) => obj(item))
+    .filter((t) => comoTexto(t.status).toUpperCase() === "APPROVED")
+    .map((t) => ({
+      nome: comoTexto(t.name),
+      idioma: comoTexto(t.language),
+      categoria: comoTexto(t.category) || null,
+      componentes: lista(t.components).map((c) => {
+        const comp = obj(c);
+        return {
+          tipo: comoTexto(comp.type).toUpperCase(),
+          formato: comoTexto(comp.format).toUpperCase() || undefined,
+          texto: comoTexto(comp.text) || undefined,
+        };
+      }),
+    }))
+    .filter((t) => t.nome);
 }
 
 /** Marca como lida — o tique azul enquanto a IA pensa evita a segunda mensagem impaciente. */

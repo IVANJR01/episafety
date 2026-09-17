@@ -9,6 +9,7 @@ import {
   enviarTemplate,
   enviarTexto,
   variantesBrasil,
+  type ParametroTemplate,
 } from "../_shared/whatsapp.ts";
 
 /**
@@ -34,8 +35,20 @@ interface Corpo {
   telefone?: string;
   contato_id?: string;
   texto?: string;
-  /** Fora da janela de 24h, o template é obrigatório. */
-  template?: { nome: string; idioma?: string; parametros?: string[] };
+  /**
+   * Fora da janela de 24h, o template é obrigatório.
+   *
+   * `corpo` e `cabecalho` são a forma completa, que aceita marcador nomeado.
+   * `parametros` continua aceito para o corpo com marcador numerado — é o que
+   * uma chamada antiga manda, e quebrá-la não traria nada.
+   */
+  template?: {
+    nome: string;
+    idioma?: string;
+    parametros?: string[];
+    corpo?: ParametroTemplate[];
+    cabecalho?: ParametroTemplate[];
+  };
 }
 
 const admin = createClient(
@@ -177,7 +190,10 @@ serve(async (req) => {
         contato!.wa_id,
         corpo.template.nome,
         corpo.template.idioma ?? "pt_BR",
-        corpo.template.parametros ?? [],
+        {
+          corpo: corpo.template.corpo ?? (corpo.template.parametros ?? []).map((valor) => ({ valor })),
+          cabecalho: corpo.template.cabecalho,
+        },
       )
     : await enviarTexto(cfg.phone_number_id, contato!.wa_id, texto);
 
@@ -187,7 +203,10 @@ serve(async (req) => {
     direcao: "saida",
     wa_message_id: envio.waMessageId,
     tipo: corpo.template ? "template" : "text",
-    texto: corpo.template ? `[template ${corpo.template.nome}] ${texto}`.trim() : texto,
+    // Com template, o que se grava é o texto JÁ com os valores no lugar — é o
+    // que o cliente leu. Guardar "[template aviso_vencimento]" deixaria o
+    // histórico ilegível justamente na mensagem que abriu a conversa.
+    texto: corpo.template ? (texto || `[template ${corpo.template.nome}]`) : texto,
     origem: "humano",
     status: envio.ok ? "enviado" : "falhou",
     erro: envio.erro,
