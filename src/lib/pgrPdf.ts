@@ -528,27 +528,31 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     ]);
 
     // Ordena por GHE para manter os itens do mesmo grupo próximos
-    const itensOrdenados = [...ctx.inventario].sort((a, b) => 
-      (ctx.ghes[a.ghe_id || ""] || "").localeCompare(ctx.ghes[b.ghe_id || ""] || "")
+    const mapaGes: Record<string, string> = (ctx.ghes as any) || {};
+    const nomeGes = (id?: string | null) => (id && mapaGes[id]) || "";
+    const nomeSetor = (id?: string | null) =>
+      (id && ((ctx.setores as any[]) || []).find((s: any) => s.id === id)?.nome) || "";
+    const itensOrdenados = [...ctx.inventario].sort((a, b) =>
+      nomeGes(a.ghe_id).localeCompare(nomeGes(b.ghe_id)),
     );
 
     itensOrdenados.forEach((i) => {
-      const ges = ctx.ghes[i.ghe_id || ""] || "Sem GES";
-      const setor = ctx.setores[i.setor_id || ""] || "Sem setor";
+      const ges = nomeGes(i.ghe_id) || "Sem GES";
+      const setor = nomeSetor((i as any).setor_id);
       const expostos = i.trabalhadores_expostos != null ? `${i.trabalhadores_expostos} expostos` : "";
-      
-      const colGes = [ges, expostos, setor].filter(Boolean).join("\\n");
-      const colPerigo = [`[${i.grupo}] ${i.perigo_descricao}`, i.fonte_geradora ? `Fonte: ${i.fonte_geradora}` : ""].filter(Boolean).join("\\n");
-      const colLesoes = i.lesoes || "—";
-      
-      const controlesStr = Array.isArray(i.controles_existentes) 
-        ? i.controles_existentes.join("; ") 
+
+      const colGes = [ges, expostos, setor].filter(Boolean).join("\n");
+      const colPerigo = [`[${i.grupo}] ${i.perigo_descricao}`, i.fonte_geradora ? `Fonte: ${i.fonte_geradora}` : ""].filter(Boolean).join("\n");
+      const colLesoes = (i as any).lesoes || "—";
+
+      const controlesStr = Array.isArray(i.controles_existentes)
+        ? i.controles_existentes.join("; ")
         : (i.controles_existentes || "—");
 
       const cls = classeLabel(i.classificacao);
       const temAval = i.severidade != null && i.probabilidade != null;
       const avalStr = temAval
-        ? `S${i.severidade} x P${i.probabilidade} = ${i.severidade * i.probabilidade}\\n${cls}`
+        ? `S${i.severidade} x P${i.probabilidade} = ${i.severidade * i.probabilidade}\n${cls}`
         : "Sem avaliação";
 
       addLinha([
