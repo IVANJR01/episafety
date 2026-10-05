@@ -29,7 +29,7 @@ const adminNav: NavItem[] = [
   { path: "/admin", label: "Visão Geral", icon: LayoutDashboard, description: "Resumo do ambiente" },
   { path: "/admin/empresas", label: "Empresas (Matriz)", icon: Building2, description: "Gerenciar matrizes e filiais" },
   { path: "/admin/usuarios", label: "Usuários Liberados", icon: Shield, description: "Whitelist e permissões" },
-  { path: "/admin/faturas", label: "Faturamento", icon: Receipt, description: "Cobrança e situação" },
+  // { path: "/admin/faturas", label: "Faturamento", icon: Receipt, description: "Cobrança e situação" },
   { path: "/admin/backups", label: "Backups", icon: HardDrive, description: "JSON / SQL semanal" },
   { path: "/admin/emissor", label: "Emissor dos Documentos", icon: Stamp, description: "Marca no rodapé das capas" },
   { path: "/admin/cloud", label: "Infraestrutura", icon: Database, description: "Banco, edge functions, storage" },

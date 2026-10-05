@@ -154,6 +154,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [empresaId, empresasInfo, isSuperAdmin, isPrincipal, setActiveEmpresaId]);
 
   // Busca contagem de faturas pendentes/vencidas para o badge no sidebar
+  // Ocultado temporariamente a pedido do cliente (módulo não está sendo usado/cobrado).
+  /*
   useEffect(() => {
     if (!isSuperAdmin && !isPrincipal) return;
     async function checkFaturas() {
@@ -166,6 +168,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
     checkFaturas();
   }, [isSuperAdmin, isPrincipal]);
+  */
 
   const canAccess = (moduleKey: string) => {
     if (isSuperAdmin || isPrincipal) return true;
@@ -677,6 +680,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
+          {/* Ocultado temporariamente
           {(isSuperAdmin || isPrincipal) && (
             <Link
               to="/faturas"
@@ -699,6 +703,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             </Link>
           )}
+          */}
 
           {isSuperAdmin && (
             <div className="pt-2 mt-2 border-t border-sidebar-border">
