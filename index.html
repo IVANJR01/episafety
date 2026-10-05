@@ -60,6 +60,36 @@
     <div id="root"></div>
 
     <!--
+      Instalação do aplicativo (Android/Chrome).
+
+      O navegador dispara `beforeinstallprompt` UMA vez, logo ao carregar. As
+      telas só registravam o ouvinte depois que o React montava — tarde demais:
+      o evento já tinha passado, o botão "Instalar" ficava desabilitado em
+      "Preparando instalação..." e o aplicativo nunca baixava no celular.
+
+      Aqui o evento é guardado cedo e entregue na hora a qualquer ouvinte que
+      se registrar depois.
+    -->
+    <script>
+      (function () {
+        var guardado = null;
+        window.addEventListener("beforeinstallprompt", function (e) {
+          e.preventDefault();
+          guardado = e;
+        });
+        window.addEventListener("appinstalled", function () { guardado = null; });
+        var original = window.addEventListener.bind(window);
+        window.addEventListener = function (tipo, ouvinte, opcoes) {
+          original(tipo, ouvinte, opcoes);
+          if (tipo === "beforeinstallprompt" && guardado && typeof ouvinte === "function") {
+            var ev = guardado;
+            setTimeout(function () { try { ouvinte(ev); } catch (err) {} }, 0);
+          }
+        };
+      })();
+    </script>
+
+    <!--
       Rede de segurança contra a página em branco.
 
       Os arquivos em /assets levam hash no nome e cache de um ano. Se o

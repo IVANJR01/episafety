@@ -1,9 +1,13 @@
 {
-  "name": "SafetySoluções",
-  "short_name": "SafetySoluções",
-  "description": "Sistema de gestão de EPIs e segurança do trabalho",
+  "id": "/",
+  "name": "SafetySolu\u00e7\u00f5es",
+  "short_name": "SafetySolu\u00e7\u00f5es",
+  "description": "Sistema de gest\u00e3o de EPIs e seguran\u00e7a do trabalho",
+  "lang": "pt-BR",
   "start_url": "/?v=1.3.8",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#ffffff",
   "theme_color": "#1A1A1A",
   "icons": [
