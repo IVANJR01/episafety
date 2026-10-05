@@ -29,18 +29,22 @@ export default function DocumentacaoSst() {
       do `tela-larga`, o mesmo que Funcionários e Inspeções já usam.
     */
     <div className="tela-larga p-4 md:p-6 space-y-6 pb-10">
-      {/* HEADER PRINCIPAL */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-            <Database className="w-6 h-6 text-indigo-600" />
-            Central de Documentação e Base Técnica
-          </h1>
-          <p className="text-sm text-slate-500 mt-1 max-w-3xl">
-            Cadastre a estrutura ocupacional e os riscos uma única vez. Estes dados alimentam
-            automaticamente PGR, PCMSO, LTCAT, Laudos e PPP.
-          </p>
-        </div>
+      {/*
+        Cabeçalho, cor e tipografia saíram de `slate` e `indigo` fixos para os
+        tokens do tema. O sistema inteiro é laranja; esta tela era a única
+        roxa, e produto com duas cores de destaque parece dois produtos
+        costurados. Junto disso, `slate` fixo ignora o tema: mudar a cor de
+        fundo do sistema deixaria esta tela para trás.
+      */}
+      <div className="border-b pb-4">
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
+          <Database className="h-6 w-6 text-primary" />
+          Central de Documentação e Base Técnica
+        </h1>
+        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+          Cadastre a estrutura ocupacional e os riscos uma única vez. Estes dados alimentam
+          automaticamente PGR, PCMSO, LTCAT, Laudos e PPP.
+        </p>
       </div>
 
       {/* NAVEGAÇÃO PRINCIPAL (HUB eSST) */}
@@ -53,17 +57,17 @@ export default function DocumentacaoSst() {
             barra virava um bloco centralizado, com sobra dos dois lados. O
             tailwind-merge não funde as duas porque estão em grupos diferentes.
           */}
-          <TabsList className="grid grid-cols-2 sm:grid sm:grid-cols-4 w-full bg-slate-100/80 p-1.5 rounded-xl gap-1.5 h-auto">
-            <TabsTrigger value="basetecnica" className="w-full justify-center text-sm font-semibold px-3 py-2.5 flex items-center gap-2 text-slate-600 data-[state=active]:shadow-sm data-[state=active]:bg-white data-[state=active]:text-indigo-700">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1.5 rounded-xl bg-muted p-1.5 sm:grid sm:grid-cols-4">
+            <TabsTrigger value="basetecnica" className="flex w-full items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
               <Database className="w-4 h-4" /> Base Técnica
             </TabsTrigger>
-            <TabsTrigger value="elaborar" className="w-full justify-center text-sm font-semibold px-3 py-2.5 flex items-center gap-2 text-slate-600 data-[state=active]:shadow-sm data-[state=active]:bg-white data-[state=active]:text-indigo-700">
+            <TabsTrigger value="elaborar" className="flex w-full items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
               <FileText className="w-4 h-4" /> Elaborar Documentos
             </TabsTrigger>
-            <TabsTrigger value="emitidos" className="w-full justify-center text-sm font-semibold px-3 py-2.5 flex items-center gap-2 text-slate-600 data-[state=active]:shadow-sm data-[state=active]:bg-white data-[state=active]:text-indigo-700">
+            <TabsTrigger value="emitidos" className="flex w-full items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
               <CheckCircle2 className="w-4 h-4" /> Documentos Emitidos
             </TabsTrigger>
-            <TabsTrigger value="vencimentos" className="w-full justify-center text-sm font-semibold px-3 py-2.5 flex items-center gap-2 text-slate-600 data-[state=active]:shadow-sm data-[state=active]:bg-white data-[state=active]:text-indigo-700">
+            <TabsTrigger value="vencimentos" className="flex w-full items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
               <Clock className="w-4 h-4" /> Vencimentos
             </TabsTrigger>
           </TabsList>
@@ -101,7 +105,7 @@ export default function DocumentacaoSst() {
 
         {/* ABA 4: VENCIMENTOS */}
         <TabsContent value="vencimentos" className="mt-2">
-          <div className="bg-white rounded-xl overflow-hidden min-h-[600px] ring-1 ring-slate-200 shadow-sm p-1">
+          <div className="min-h-[600px] overflow-hidden rounded-xl bg-background p-1 shadow-sm ring-1 ring-border">
              <PainelVencimentos />
           </div>
         </TabsContent>

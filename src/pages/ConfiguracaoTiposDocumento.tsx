@@ -214,12 +214,66 @@ export default function ConfiguracaoTiposDocumento() {
     } finally { setSalvando(false); }
   };
 
-  const descreverExigencia = (t: Tipo) => {
+  /**
+   * Como a exigência aparece na lista.
+   *
+   * Antes toda linha trazia um selo, inclusive as vinte que dizem "Ninguém
+   * (não aplicável)" — vinte selos disputando atenção para informar que não
+   * há nada a ver ali. O que precisa saltar é onde HÁ exigência; a ausência
+   * dela é um traço discreto.
+   */
+  const exigencia = (t: Tipo): { texto: string; destaque: boolean; dica: string } => {
     const atuais = reqsPorTipo.get(t.id) || [];
-    if (atuais.some((r) => !r.cargo)) return "Todos os colaboradores";
-    if (atuais.length === 0) return "Ninguém (não aplicável)";
-    return `${atuais.length} função(ões)`;
+    if (atuais.some((r) => !r.cargo)) {
+      return { texto: "Todos os colaboradores", destaque: true, dica: "Exigido de todo o quadro" };
+    }
+    if (atuais.length === 0) {
+      return { texto: "—", destaque: false, dica: "Nenhuma função exige este documento" };
+    }
+    return {
+      texto: `${atuais.length} ${atuais.length === 1 ? "função" : "funções"}`,
+      destaque: true,
+      dica: "Exigido apenas das funções configuradas",
+    };
   };
+
+  const rotuloCategoria = (t: Tipo) =>
+    CATEGORIAS.find((c) => c.valor === t.categoria)?.rotulo || t.categoria;
+
+  /** "Permanente" não é prazo: fica discreto, para o prazo real saltar. */
+  const rotuloValidade = (t: Tipo) => {
+    if (t.validade_dias) return <span className="tabular-nums">{t.validade_dias} dias</span>;
+    if (t.validade_meses) return <span className="tabular-nums">{t.validade_meses} meses</span>;
+    return <span className="text-muted-foreground">Permanente</span>;
+  };
+
+  /*
+   * Ações com a mesma largura em toda linha.
+   *
+   * Tipo do catálogo compartilhado não tem editar nem excluir, e a fila
+   * encolhia: "Requisitos" saltava para a direita numa linha e para a
+   * esquerda na outra, o que fazia a coluna inteira parecer desalinhada.
+   * Aqui os dois espaços continuam reservados quando não há botão.
+   */
+  const Acoes = ({ tipo }: { tipo: Tipo }) => (
+    <div className="flex items-center justify-end gap-1">
+      <Button size="sm" variant="outline" className="h-8" onClick={() => abrirRequisitos(tipo)}>
+        <Settings2 className="mr-1.5 h-3.5 w-3.5" />Requisitos
+      </Button>
+      {tipo.empresa_id ? (
+        <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Editar" title="Editar"
+          onClick={() => abrirEdicao(tipo)}>
+          <Pencil className="h-4 w-4 text-muted-foreground" />
+        </Button>
+      ) : <span className="h-8 w-8" aria-hidden />}
+      {tipo.empresa_id ? (
+        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          aria-label="Excluir" title="Excluir" onClick={() => excluirTipo(tipo.id)}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      ) : <span className="h-8 w-8" aria-hidden />}
+    </div>
+  );
 
   if (!perms.canView) return null;
 
@@ -234,12 +288,43 @@ export default function ConfiguracaoTiposDocumento() {
         </Card>
       )}
 
-      <p className="text-xs text-muted-foreground flex items-start gap-1.5">
-        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-        Tipo marcado com <Globe className="w-3 h-3 inline" /> é do catálogo compartilhado (vale para
-        todas as empresas e não pode ser editado aqui). Os requisitos por função, porém, são sempre
-        da sua empresa — configure-os mesmo nos tipos compartilhados.
-      </p>
+      {/*
+        A legenda saiu do meio da frase.
+        O ícone do globo era desenhado dentro do texto corrido — "Tipo marcado
+        com [globo] é do catálogo" —, e a quebra de linha separava "com" do
+        símbolo, deixando a frase truncada na tela. Legenda é lista, não
+        parágrafo.
+      */}
+      <div className="rounded-lg border bg-muted/40 p-4 text-sm">
+        <p className="flex items-center gap-2 font-medium text-foreground">
+          <Info className="h-4 w-4 shrink-0 text-muted-foreground" />
+          Como ler esta lista
+        </p>
+        <ul className="mt-2 space-y-1.5 text-muted-foreground">
+          <li className="flex items-start gap-2">
+            <Globe className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <b className="font-medium text-foreground">Catálogo compartilhado.</b> Vale para todas
+              as empresas e não pode ser editado aqui.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Building2 className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <b className="font-medium text-foreground">Tipo da sua empresa.</b> Só existe aqui, e
+              você edita ou exclui.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Settings2 className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <b className="font-medium text-foreground">Requisitos são sempre seus.</b> Quem precisa
+              entregar cada documento é configuração da sua empresa, inclusive nos tipos
+              compartilhados.
+            </span>
+          </li>
+        </ul>
+      </div>
 
       <Card>
         <CardContent className="p-4 space-y-3">
@@ -254,73 +339,104 @@ export default function ConfiguracaoTiposDocumento() {
             )}
           </div>
 
-          <div className="rounded-lg border overflow-x-auto">
+          {/*
+            Uma linha por tipo, e a mesma informação em cartão no celular — a
+            tabela de cinco colunas não cabe em 390 px sem rolagem lateral,
+            e rolagem lateral em tela de configuração faz perder a coluna de
+            ações justamente quem só tem o celular à mão.
+          */}
+          <div className="hidden rounded-lg border sm:block">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[220px]">Tipo</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Validade</TableHead>
-                  <TableHead>Exigido de</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+              <TableHeader className="bg-muted/50">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-11 min-w-[260px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Tipo
+                  </TableHead>
+                  <TableHead className="h-11 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Categoria
+                  </TableHead>
+                  <TableHead className="h-11 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Validade
+                  </TableHead>
+                  <TableHead className="h-11 min-w-[160px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Exigido de
+                  </TableHead>
+                  <TableHead className="h-11 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Ações
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {carregando && (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Carregando…</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">Carregando…</TableCell></TableRow>
                 )}
                 {!carregando && listados.length === 0 && (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
                     Nenhum tipo cadastrado.
                   </TableCell></TableRow>
                 )}
-                {listados.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell>
-                      <div className="font-medium text-sm flex items-center gap-1.5">
-                        {t.empresa_id
-                          ? <Building2 className="w-3.5 h-3.5 text-muted-foreground" aria-label="Da empresa" />
-                          : <Globe className="w-3.5 h-3.5 text-muted-foreground" aria-label="Catálogo compartilhado" />}
-                        {t.nome}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {CATEGORIAS.find((c) => c.valor === t.categoria)?.rotulo || t.categoria}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {t.validade_dias
-                        ? `${t.validade_dias} dias`
-                        : t.validade_meses ? `${t.validade_meses} meses` : "Permanente"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs font-normal">{descreverExigencia(t)}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {perms.canEdit && (
-                        <div className="flex justify-end items-center gap-2">
-                          <Button size="sm" variant="outline" className="h-8 text-xs"
-                            onClick={() => abrirRequisitos(t)}>
-                            <Settings2 className="w-3.5 h-3.5 mr-1" />Requisitos
-                          </Button>
-                          {t.empresa_id && (
-                            <Button size="sm" variant="outline" className="h-8 text-xs"
-                              onClick={() => abrirEdicao(t)}>
-                              <Pencil className="w-3.5 h-3.5 mr-1" />Editar
-                            </Button>
-                          )}
-                          {t.empresa_id && (
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => excluirTipo(t.id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
+                {listados.map((t) => {
+                  const ex = exigencia(t);
+                  return (
+                    <TableRow key={t.id} className="hover:bg-muted/40">
+                      <TableCell className="py-3">
+                        <div className="flex items-start gap-2">
+                          {t.empresa_id
+                            ? <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Tipo da sua empresa" />
+                            : <Globe className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Catálogo compartilhado" />}
+                          <span className="font-medium leading-snug text-foreground">{t.nome}</span>
                         </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap py-3 text-muted-foreground">{rotuloCategoria(t)}</TableCell>
+                      <TableCell className="py-3">{rotuloValidade(t)}</TableCell>
+                      <TableCell className="py-3">
+                        {ex.destaque
+                          ? <Badge variant="outline" className="whitespace-nowrap font-normal" title={ex.dica}>{ex.texto}</Badge>
+                          : <span className="text-muted-foreground" title={ex.dica}>{ex.texto}</span>}
+                      </TableCell>
+                      <TableCell className="py-3 text-right">
+                        {perms.canEdit && <Acoes tipo={t} />}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
+          </div>
+
+          <div className="space-y-2 sm:hidden">
+            {carregando && <p className="py-8 text-center text-muted-foreground">Carregando…</p>}
+            {!carregando && listados.length === 0 && (
+              <p className="py-8 text-center text-muted-foreground">Nenhum tipo cadastrado.</p>
+            )}
+            {listados.map((t) => {
+              const ex = exigencia(t);
+              return (
+                <div key={t.id} className="rounded-lg border p-3">
+                  <div className="flex items-start gap-2">
+                    {t.empresa_id
+                      ? <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Tipo da sua empresa" />
+                      : <Globe className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Catálogo compartilhado" />}
+                    <span className="font-medium leading-snug">{t.nome}</span>
+                  </div>
+                  <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                    <div>
+                      <dt className="text-muted-foreground">Categoria</dt>
+                      <dd>{rotuloCategoria(t)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Validade</dt>
+                      <dd>{rotuloValidade(t)}</dd>
+                    </div>
+                    <div className="col-span-2">
+                      <dt className="text-muted-foreground">Exigido de</dt>
+                      <dd>{ex.destaque ? ex.texto : "Nenhuma função"}</dd>
+                    </div>
+                  </dl>
+                  {perms.canEdit && <div className="mt-3 flex justify-end"><Acoes tipo={t} /></div>}
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

@@ -107,8 +107,10 @@ describe("capa do PGR", () => {
       qrUrl: "https://safetysolucoes.com/pgr/validar/x", pdfVersao: 1, comMarca: true,
     });
     const p2 = trechosDaCapa2(pdf as any, 2);
-    expect(p2.some((s) => s.includes("QR Code de validação"))).toBe(true);
-    expect(p2.some((s) => s.includes("Assinatura ICP-Brasil não implementada"))).toBe(true);
+    expect(p2.some((s) => s.includes("Validação interna"))).toBe(true);
+    expect(p2.some((s) => s.includes("assinatura ICP-Brasil não aplicada"))).toBe(true);
+    // A numeração de página saiu do meio da frase e virou campo próprio.
+    expect(p2.some((s) => s.includes("Página 2 de"))).toBe(true);
   });
 
   it("sai inteira sem emissor cadastrado", async () => {

@@ -9,6 +9,13 @@
     <meta name="description" content="Sistema de gestão de EPIs e segurança do trabalho">
     <meta name="author" content="SafetySoluções" />
     <meta name="theme-color" content="#1A1A1A" />
+    <!--
+      Sem isto, o navegador transforma em link de telefone o que ele acha que
+      é número discável: CNPJ, CNAE e CEP saíam azuis e sublinháveis no meio
+      das tabelas, como se fossem links quebrados. É o comportamento padrão do
+      Safari e do Edge em telas de cadastro.
+    -->
+    <meta name="format-detection" content="telephone=no" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SafetySoluções" />

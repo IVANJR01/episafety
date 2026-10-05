@@ -41,7 +41,12 @@ function contexto(): PgrPdfContext {
       fonte_geradora: "Serra circular", severidade: 3, probabilidade: 3,
       classificacao: "moderado", trabalhadores_expostos: 4, controles_existentes: "Protetor auricular",
     }] as any,
-    acoes: [{ id: "a1", descricao: "Enclausurar a serra", status: "pendente", prazo: "2026-12-01" }] as any,
+    acoes: [{
+      id: "a1", descricao: "Enclausurar a serra", status: "pendente", prazo: "2026-12-01",
+      what: "Enclausurar", why: "Ruído acima do limite", who: "Manutenção",
+      where_local: "Marcenaria", how: "Cabine acústica", how_much: 12000,
+      classe_risco: "moderado",
+    }] as any,
     evidencias: [], revisoes: [], assinaturas: [],
     ghes: { g1: "Marcenaria" }, textos: {}, unidades: [], responsaveis: [],
     ambientes: [{ id: "am1", nome: "Galpão de produção" }],
@@ -89,5 +94,26 @@ describe("seções do PGR", () => {
       "Apêndice A",
       "Apêndice B",
     ].forEach((secao) => expect(texto, `"${secao}" voltou ao documento`).not.toContain(secao));
+  });
+});
+
+describe("defeitos que já saíram impressos", () => {
+  it("não imprime a barra-n literal no inventário", async () => {
+    const texto = await gerar();
+    // `join("\\n")` em TypeScript é barra invertida + n: o PDF saiu com
+    // "01\n0 expostos\nSem setor" escrito assim, em vez de quebrar linha.
+    expect(texto).not.toContain("\\n");
+  });
+
+  it("usa os rótulos do 5W2H em português", async () => {
+    const texto = await gerar();
+    ["Why:", "Who:", "Where:", "When:", "How much:"].forEach((ingles) =>
+      expect(texto, `"${ingles}" voltou ao plano de ação`).not.toContain(ingles));
+  });
+
+  it("numera as seções, para o documento poder ser citado", async () => {
+    const texto = await gerar();
+    expect(texto).toContain("1. Controle de Revisões");
+    expect(texto).toContain("Inventário de Riscos Ocupacionais");
   });
 });

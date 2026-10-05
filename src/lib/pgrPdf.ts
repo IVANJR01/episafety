@@ -9,6 +9,7 @@ import {
   B, MARGEM, LARGURA, capaTimbrada, ensure, fmtDT, fmtDate, kv, para,
   rodapePaginas, sub, sumario, tabela, title,
 } from "@/lib/pdfTimbrado";
+import { caracteristicasNaoRepetidas } from "@/lib/pgrCaracteristicas";
 import {
   CLASSE_LABEL as CLASSIF_LABEL,
   CLASSE_HEX,
@@ -32,6 +33,10 @@ export interface PgrInventarioItem {
   necessita_acao: boolean;
   trabalhadores_expostos: number | null;
   controles_existentes: string | null;
+  /* Vieram com a tabela do inventário e não estavam declarados: o `any`
+     implícito escondia erro de digitação em nome de coluna. */
+  setor_id?: string | null;
+  lesoes?: string | null;
 }
 export interface PgrAcaoItem {
   id: string;
@@ -285,12 +290,22 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
      * capa saía com "Emitido em: —". A alternativa é testar o dado, não o
      * texto dele.
      */
+    /*
+     * Campo sem dado não vai para a capa.
+     *
+     * Saía "Vigência: — a —" e "Registro Profissional: —" na primeira página
+     * de um documento que vai para fiscalização: travessão ali não informa
+     * nada e faz o documento parecer abandonado no meio do preenchimento. O
+     * que falta aparece nas pendências, antes de publicar.
+     */
     dados: [
       `Emitido em: ${fmtDate(pgr.data_emissao || new Date().toISOString())}`,
-      `Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`,
-      `Responsável Técnico: ${pgr.resp_tec_nome || "—"}`,
-      `Registro Profissional: ${pgr.resp_tec_registro || "—"}`,
-    ],
+      pgr.data_vigencia_inicio && pgr.data_vigencia_fim
+        ? `Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`
+        : null,
+      pgr.resp_tec_nome ? `Responsável Técnico: ${pgr.resp_tec_nome}` : null,
+      pgr.resp_tec_registro ? `Registro Profissional: ${pgr.resp_tec_registro}` : null,
+    ].filter(Boolean) as string[],
   });
 
   pdf.addPage(); b.y = 15;
@@ -398,23 +413,49 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   // ── Caracterização da estrutura ────────────────────────────────────────────
   if (ctx.ambientes && ctx.ambientes.length > 0) {
     title(b, "Caracterização dos Ambientes de Trabalho");
+    /*
+     * Tabela, e não uma ficha por ambiente.
+     *
+     * Em prosa, cada ambiente gastava título, linha de características, uma
+     * linha em branco e um parágrafo: perto de 30 mm por ambiente. Com 22
+     * ambientes, a seção sozinha ocupava três páginas e meia do PGR, e quem
+     * precisa comparar dois ambientes tinha que folhear. Aqui a mesma
+     * informação — toda ela, nada resumido — entra numa linha por ambiente,
+     * com o cabeçalho repetido a cada quebra de página.
+     */
+    /*
+     * Duas colunas, e a segunda larga.
+     *
+     * A primeira tentativa foi três colunas — nome, características,
+     * descrição — e medindo o resultado ela ocupava exatamente o mesmo
+     * espaço da prosa: 7 ambientes por página nos dois casos. O que gasta
+     * altura não é o formato, é a largura: o mesmo parágrafo quebrado em 86
+     * mm ocupa o dobro de linhas que em 164 mm. Juntar as duas colunas de
+     * texto foi o que de fato encolheu a seção.
+     */
+    const linhaAmb = tabela(b, [
+      { rotulo: "Ambiente", x: 12, w: 32 },
+      { rotulo: "Características e descrição", x: 46, w: 152 },
+    ]);
     ctx.ambientes.forEach((a: any) => {
-      sub(b, a.codigo ? `${a.codigo} — ${a.nome}` : a.nome);
       const campos: [string, any][] = [
         ["Tipo", a.tipo_ambiente], ["Localização", a.localizacao],
-        ["Área aproximada", a.area_m2 ? `${a.area_m2} m²` : null],
+        ["Área", a.area_m2 ? `${a.area_m2} m²` : null],
         ["Pé-direito", a.pe_direito], ["Piso", a.piso], ["Paredes", a.paredes],
         ["Cobertura", a.cobertura], ["Ventilação", a.ventilacao],
         ["Iluminação", a.iluminacao], ["Climatização", a.climatizacao],
         ["Máquinas e instalações", a.maquinas_instalacoes],
         ["Trabalhadores", a.qtd_trabalhadores],
       ];
-      const linha = campos.filter(([, v]) => v != null && String(v).trim())
-        .map(([r, v]) => `${r}: ${v}`).join("  ·  ");
-      if (linha) para(b, linha, 8);
-      if (a.descricao) para(b, a.descricao, 8);
-      b.y += 1;
+      // Só o que a descrição já não disse — senão cada ambiente sai com o
+      // mesmo conteúdo escrito duas vezes, uma em campo e outra em texto.
+      const caracteristicas = caracteristicasNaoRepetidas(campos, a.descricao).join("  ·  ");
+      linhaAmb([
+        a.codigo ? `${a.codigo} — ${a.nome}` : a.nome,
+        [caracteristicas, a.descricao].filter(Boolean).join("\n") || "—",
+      ]);
     });
+    b.y += 3;
   }
 
   if (ctx.processos && ctx.processos.length > 0) {
@@ -441,18 +482,34 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     title(b, "Setores e Grupos de Exposição Semelhante");
     if (ctx.setores && ctx.setores.length > 0) {
       sub(b, "Setores");
-      const linha = tabela(b, [
-        { rotulo: "Setor", x: 12, w: 45 },
-        { rotulo: "Responsável", x: 60, w: 40 },
-        { rotulo: "Trabalhadores", x: 103, w: 22 },
-        { rotulo: "Jornada / turnos", x: 128, w: 68 },
-      ]);
-      ctx.setores.forEach((s: any) => linha([
-        s.codigo ? `${s.codigo} — ${s.nome}` : s.nome,
-        s.responsavel_setor || "—",
-        s.qtd_trabalhadores != null ? String(s.qtd_trabalhadores) : "—",
-        [s.jornada_turnos, s.turnos].filter(Boolean).join(" · ") || "—",
-      ]));
+      /*
+       * Coluna inteiramente vazia não é impressa.
+       *
+       * Responsável, trabalhadores e jornada raramente estão preenchidos, e a
+       * tabela saía com três colunas de travessão de ponta a ponta —
+       * ocupando metade da largura para informar que não há informação. O
+       * nome do setor sempre existe; o resto entra só se algum setor tiver.
+       */
+      const colunasSetor: Array<{
+        rotulo: string; largura: number; valor: (s: any) => string;
+      }> = [
+        { rotulo: "Setor", largura: 60,
+          valor: (s) => (s.codigo ? `${s.codigo} — ${s.nome}` : s.nome) },
+        { rotulo: "Responsável", largura: 45, valor: (s) => s.responsavel_setor || "" },
+        { rotulo: "Trabalhadores", largura: 25,
+          valor: (s) => (s.qtd_trabalhadores != null ? String(s.qtd_trabalhadores) : "") },
+        { rotulo: "Jornada / turnos", largura: 60,
+          valor: (s) => [s.jornada_turnos, s.turnos].filter(Boolean).join(" · ") },
+      ].filter((c, i) => i === 0 || ctx.setores!.some((s: any) => c.valor(s).trim() !== ""));
+
+      let xSetor = 12;
+      const linha = tabela(b, colunasSetor.map((c) => {
+        const col = { rotulo: c.rotulo, x: xSetor, w: c.largura - 3 };
+        xSetor += c.largura;
+        return col;
+      }));
+      ctx.setores.forEach((s: any) =>
+        linha(colunasSetor.map((c) => c.valor(s) || "—")));
       b.y += 3;
     }
     if (ctx.gesDetalhes && ctx.gesDetalhes.length > 0) {
@@ -481,30 +538,42 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     title(b, "Funções e Atividades");
     const setorNome = (id: string) =>
       (ctx.setores || []).find((s: any) => s.id === id)?.nome || "—";
+    /*
+     * Mesmo tratamento dos ambientes, pelo mesmo motivo: em prosa, 40 funções
+     * viravam cinco páginas em que cada função repetia o mesmo formato de
+     * "nome / setor / parágrafo". Em tabela, a lista de funções é o que ela
+     * é — uma lista.
+     */
+    const linhaFun = tabela(b, [
+      { rotulo: "Função", x: 12, w: 32 },
+      { rotulo: "Setor, jornada e atividades", x: 46, w: 152 },
+    ]);
     ctx.funcoes.forEach((f: any) => {
-      ensure(b, 12);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5);
-      pdf.text(`${f.nome}${f.cbo ? `  (CBO ${f.cbo})` : ""}`, 12, b.y + 3);
-      b.y += 5;
-      const meta = [
-        `Setor: ${setorNome(f.setor_id)}`,
-        f.qtd_trabalhadores != null ? `${f.qtd_trabalhadores} trabalhador(es)` : null,
-        f.jornada, f.turnos,
-        [f.exige_nr10 && "NR-10", f.exige_nr33 && "NR-33", f.exige_nr35 && "NR-35"]
-          .filter(Boolean).join(", ") || null,
-      ].filter(Boolean).join("  ·  ");
-      para(b, meta, 8);
-      if (f.descricao_atividades) para(b, f.descricao_atividades, 8);
+      const meta = caracteristicasNaoRepetidas(
+        [
+          ["Setor", setorNome(f.setor_id)],
+          ["Trabalhadores", f.qtd_trabalhadores],
+          ["Jornada", f.jornada],
+          ["Turnos", f.turnos],
+          ["Treinamentos", [f.exige_nr10 && "NR-10", f.exige_nr33 && "NR-33", f.exige_nr35 && "NR-35"]
+            .filter(Boolean).join(", ") || null],
+        ],
+        f.descricao_atividades,
+      ).join("  ·  ");
       const ats = (ctx.atividades || []).filter((a: any) => a.funcao_id === f.id);
-      ats.forEach((a: any) => {
+      const detalhes = ats.map((a: any) => {
         const det = [
           a.caracteristica, a.frequencia, a.duracao, a.postura_esforco,
           a.trabalhadores_envolvidos != null ? `${a.trabalhadores_envolvidos} envolvido(s)` : null,
         ].filter(Boolean).join(" · ");
-        para(b, `– ${a.nome}${det ? `  (${det})` : ""}`, 8);
+        return `– ${a.nome}${det ? `  (${det})` : ""}`;
       });
-      b.y += 1;
+      linhaFun([
+        `${f.nome}${f.cbo ? `\n(CBO ${f.cbo})` : ""}`,
+        [meta, f.descricao_atividades, ...detalhes].filter(Boolean).join("\n") || "—",
+      ]);
     });
+    b.y += 3;
   }
 
   title(b, "Metodologia de Avaliação");
@@ -555,13 +624,10 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
         ? `S${i.severidade} x P${i.probabilidade} = ${i.severidade * i.probabilidade}\n${cls}`
         : "Sem avaliação";
 
-      addLinha([
-        colGes,
-        colPerigo,
-        colLesoes,
-        controlesStr,
-        avalStr,
-      ]);
+      // A cor é a mesma da legenda da matriz, logo acima: quem lê o inventário
+      // enxerga o nível de risco antes de ler a conta que levou até ele.
+      const cor = i.classificacao ? CLASSE_HEX[i.classificacao as PgrClasse] : undefined;
+      addLinha([colGes, colPerigo, colLesoes, controlesStr, avalStr], cor);
     });
     b.y += 2;
   }
@@ -577,18 +643,36 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     pdf.text(`• ${a.descricao}`, 12, b.y + 4);
     pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
     const risco = a.classe_risco ? classeLabel(a.classe_risco) : "—";
-    pdf.text(`Status: ${a.status}  ·  Risco: ${risco}  ·  Prazo: ${fmtDate(a.prazo)}  ·  Conclusão: ${fmtDate(a.data_conclusao)}`, 12, b.y + 8);
+    // Um ponto na cor da classe: a mesma legenda da matriz e do inventário,
+    // para o plano e o risco que o originou se lerem juntos.
+    if (a.classe_risco && CLASSE_HEX[a.classe_risco as PgrClasse]) {
+      const [cr, cg, cb] = CLASSE_HEX[a.classe_risco as PgrClasse];
+      pdf.setFillColor(cr, cg, cb);
+      pdf.circle(13.2, b.y + 6.9, 1.1, "F");
+    }
+    pdf.text(
+      `Status: ${a.status}  ·  Risco: ${risco}  ·  Prazo: ${fmtDate(a.prazo)}  ·  Conclusão: ${fmtDate(a.data_conclusao)}`,
+      a.classe_risco ? 16 : 12, b.y + 8,
+    );
+    /*
+     * 5W2H com os rótulos em português.
+     *
+     * O método se chama assim, mas o documento é brasileiro e vai para
+     * fiscalização: "Why", "Who", "Where" no meio de um texto em português
+     * fazem o plano parecer planilha importada pela metade. O nome do método
+     * fica no título da seção; as linhas dizem o que perguntam.
+     */
     const linhas = [
-      a.what && `What: ${a.what}`,
-      a.why && `Why: ${a.why}`,
-      a.who && `Who: ${a.who}`,
-      a.where_local && `Where: ${a.where_local}`,
-      a.prazo && `When: até ${fmtDate(a.prazo)}`,
-      a.how && `How: ${a.how}`,
+      a.what && `O que será feito: ${a.what}`,
+      a.why && `Por quê: ${a.why}`,
+      a.who && `Responsável: ${a.who}`,
+      a.where_local && `Onde: ${a.where_local}`,
+      a.prazo && `Quando: até ${fmtDate(a.prazo)}`,
+      a.how && `Como: ${a.how}`,
       // `toFixed` escreve no formato americano: "R$ 18000.00". Num documento em
       // português, com valores que chegam à casa dos milhares, isso se lê
       // errado — o ponto vira separador de milhar aos olhos de quem assina.
-      a.how_much != null && `How much: ${fmtMoeda(a.how_much)}`,
+      a.how_much != null && `Quanto custa: ${fmtMoeda(a.how_much)}`,
     ].filter(Boolean) as string[];
     b.y += 11;
     linhas.forEach((l) => {
@@ -659,7 +743,9 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   const resps = ctx.responsaveis || [];
   if (resps.length === 0) {
     kv(b, "Responsável Técnico", pgr.resp_tec_nome || "—");
-    kv(b, "Registro Profissional", pgr.resp_tec_registro || "—");
+    // Registro em branco vira "REGISTRO PROFISSIONAL —" logo abaixo do nome
+    // de quem assina: um campo vazio anunciado no fecho do documento.
+    if (pgr.resp_tec_registro) kv(b, "Registro Profissional", pgr.resp_tec_registro);
   } else {
     resps.forEach((r) => {
       ensure(b, 10);
@@ -675,7 +761,33 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     });
   }
   para(b, "Assinatura visual com hash SHA-256 e MFA verificado. Não constitui assinatura digital ICP-Brasil.");
-  if (ctx.assinaturas.length === 0) para(b, "Nenhuma assinatura visual registrada até a geração deste PDF.");
+  /*
+   * Sem assinatura registrada, o documento ganha as linhas para assinar à
+   * mão.
+   *
+   * Antes o fecho era a frase "Nenhuma assinatura visual registrada" e mais
+   * nada — um PGR impresso para levar à fiscalização terminava sem lugar
+   * onde assinar, e o item 1.5.7.2 da NR-01 pede documento datado e assinado.
+   * As duas linhas são as duas responsabilidades que a norma distingue: quem
+   * elabora tecnicamente e a organização, que responde pelo programa.
+   */
+  if (ctx.assinaturas.length === 0) {
+    para(b, "Nenhuma assinatura eletrônica registrada até a geração deste PDF.");
+    ensure(b, 34);
+    b.y += 10;
+    const linhaAssinatura = (x: number, nome: string, papel: string) => {
+      pdf.setDrawColor(120); pdf.setLineWidth(0.3);
+      pdf.line(x, b.y, x + 78, b.y);
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5); pdf.setTextColor(15, 23, 42);
+      pdf.text(nome, x, b.y + 4);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7); pdf.setTextColor(110);
+      pdf.text(papel, x, b.y + 7.5);
+      pdf.setTextColor(0);
+    };
+    linhaAssinatura(12, pgr.resp_tec_nome || "", "Responsável técnico pela elaboração");
+    linhaAssinatura(110, ctx.empresaNome || "", "Pela organização (NR-01, item 1.5.7.2)");
+    b.y += 14;
+  }
   ctx.assinaturas.forEach((a) => {
     ensure(b, 18);
     pdf.setDrawColor(180); pdf.line(12, b.y + 12, 100, b.y + 12);
@@ -694,11 +806,15 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   await rodapePaginas(pdf, {
     qrUrl: opts.qrUrl,
     marca: opts.comMarca ? (pgr.status === "em_revisao" ? "EM REVISÃO" : "RASCUNHO") : null,
-    linhas: (p, total) => [
-      "QR Code de validação interna — abre o PGR no sistema (acesso restrito à empresa).",
-      opts.qrUrl,
-      `Gerado em ${fmtDT(new Date().toISOString())}  ·  PDF v${opts.pdfVersao}  ·  PGR v${pgr.versao}  ·  Página ${p}/${total}`,
-      "Documento técnico interno. Assinatura ICP-Brasil não implementada nesta fase.",
+    /*
+     * Três linhas em vez de quatro: a explicação do que é um QR Code ocupava
+     * a linha mais larga do rodapé para dizer o que o próprio QR ao lado já
+     * diz. O endereço fica, porque quem tem o papel na mão precisa digitá-lo.
+     */
+    linhas: () => [
+      `Validação interna: ${opts.qrUrl}`,
+      `Gerado em ${fmtDT(new Date().toISOString())}  ·  PDF v${opts.pdfVersao}  ·  PGR v${pgr.versao}`,
+      "Documento técnico interno  ·  assinatura ICP-Brasil não aplicada a este documento.",
     ],
   });
 

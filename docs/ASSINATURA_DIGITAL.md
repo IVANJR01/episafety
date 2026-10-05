@@ -14,13 +14,30 @@ Isso não depende de certificado nenhum e funciona hoje.
 
 ## 2. Assinatura PAdES no PDF (depende de certificado)
 
-A função `supabase/functions/assinar-pdf` assina o PDF inteiro no padrão
-PAdES. Ela lê dois secrets:
+**Em produção desde 14/09/2026, com e-CNPJ A1 da AC Certisign RFB G5.**
+Conferido em <https://validar.iti.gov.br>: *"Assinatura aprovada"*, com o selo
+**Assinatura Eletrônica Qualificada** (MP 2.200-2/01 e Lei 14.063/20).
 
-| Secret | Conteúdo |
-| --- | --- |
-| `CERT_A1_PFX_BASE64` | o arquivo `.pfx` inteiro em base64, numa linha só |
-| `CERT_A1_SENHA` | a senha do `.pfx` |
+A função `supabase/functions/assinar-pdf` assina o PDF inteiro. Ela lê duas
+coisas:
+
+| O quê | Onde | Por quê ali |
+| --- | --- | --- |
+| `.pfx` em base64, numa linha só | segredo `CERT_A1_PFX_BASE64` **ou** o Vault do banco | colar ~5.400 caracteres no campo do painel falhou três vezes seguidas na configuração real: o valor não era salvo. O Vault aceita ser preenchido por SQL. |
+| senha do `.pfx` | segredo `CERT_A1_SENHA` | fica fora do banco de propósito: arquivo e senha no mesmo lugar é o que transforma um vazamento de banco numa assinatura falsificada |
+
+O segredo do painel tem prioridade; o Vault é a reserva, lido pela RPC
+`certificado_a1_pfx_base64` — `SECURITY DEFINER`, com `EXECUTE` revogado de
+`public`, `anon` e `authenticated` e concedido só à `service_role`, porque
+quem lê aquilo assina como a empresa.
+
+Para gravar no Vault:
+
+```sql
+select vault.update_secret(
+  (select id from vault.secrets where name = 'CERT_A1_PFX_BASE64'),
+  '<base64>', 'CERT_A1_PFX_BASE64', 'Certificado A1 em base64');
+```
 
 Enquanto esses secrets não existirem, a função responde
 `{ success: false, configuracaoAusente: true }` e o front baixa a ficha sem
@@ -28,6 +45,27 @@ assinatura, avisando o usuário. Nada quebra.
 
 Cadastre em **Supabase → Project Settings → Edge Functions → Secrets**.
 A chave privada não deve passar por chat, e-mail nem pelo repositório.
+
+## O que o validador vê, e o que o Edge vê
+
+A assinatura sai com `/SubFilter /adbe.pkcs7.detached`, SHA-256, atributos
+assinados contentType, signingTime e messageDigest.
+
+O `.pfx` do titular traz só o certificado dele — a cadeia até a AC **não vai
+embutida**. O validador do ITI monta a cadeia sozinho e aprovou assim; não há
+o que corrigir. Se algum dia um verificador reclamar de cadeia incompleta, o
+caminho é embutir o certificado (público) da AC emissora na assinatura.
+
+Leitores que usam o repositório de certificados do Windows — Edge, Chrome —
+mostram "Desconhecido" e falam em "certificados pai não encontrados": eles não
+trazem as raízes da ICP-Brasil. Não é defeito do documento; no mesmo painel
+eles dizem "Documento modificado: Não".
+
+O nome exibido como signatário é o titular do certificado: a razão social do
+CNPJ na Receita Federal, escrita pela AC dentro do certificado e protegida
+pela assinatura dela. Exibir outro nome exige certificado emitido para outra
+empresa. O campo `/Name` do objeto de assinatura, esse sim nosso, declara
+"Safety Soluções".
 
 ## Qual certificado usar
 
@@ -47,6 +85,10 @@ portal só entrega o `.crt` público; não existe `.pfx` para exportar. Só
 assina manualmente em <https://assinador.iti.br>.
 
 ### Auto-assinado (gratuito) — integridade sim, identidade não
+
+> Foi o que rodou até 14/09/2026, como ponte até o A1 chegar. Continua no
+> repositório para quem precisar testar o caminho de assinatura sem gastar
+> certificado.
 
 Gerado com `scripts/gerar-certificado-autoassinado.sh`. Produz uma
 assinatura PAdES criptográfica real: alterar um byte do PDF depois de
@@ -115,5 +157,24 @@ Dois cuidados que o código toma:
 
 ## Trocar de certificado depois
 
-Basta substituir os dois secrets. As fichas já emitidas continuam válidas
-com a assinatura antiga; as novas saem com a nova. Não há migração.
+Basta substituir os dois valores — o `.pfx` em base64 e a senha. As fichas já
+emitidas continuam válidas com a assinatura antiga; as novas saem com a nova.
+Não há migração. O certificado em uso vence em **14/09/2027**.
+
+Para gerar o base64 **sem passar por editor de texto**:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\caminho\cert.pfx")) | Set-Clipboard
+```
+
+O resultado começa com `MIIP` — todo PKCS#12 começa assim — e tem alguns
+milhares de caracteres. Se não começar com `MIIP`, não é o certificado.
+
+> **Nunca abra um `.pfx` no Bloco de Notas para copiar o conteúdo.** É
+> binário: salvar assim destrói o arquivo. Aconteceu na configuração real —
+> 137 bytes trocados, com `00` e `07` virando espaço e `LF` virando `CR`, e o
+> OpenSSL já não conseguia ler a estrutura.
+
+A senha do certificado anterior não abre o novo. Se ela ficar para trás, a
+função responde exatamente isso, em vez do "MAC could not be verified" do
+node-forge.

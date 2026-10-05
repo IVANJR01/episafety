@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { MODULOS, ACOES, ACOES_ESPECIAIS, allPermissions, allActionsForModule } from "@/lib/permissions";
+import { allPermissions, allActionsForModule } from "@/lib/permissions";
+import MatrizPermissoes from "@/components/permissoes/MatrizPermissoes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -36,14 +37,6 @@ interface Empresa {
   empresa_pai_id: string | null;
 }
 
-/*
- * Rótulo curto para o cabeçalho da tabela.
- *
- * "Criar / Adicionar" numa coluna de 80 px quebra em três linhas e encosta
- * na coluna vizinha. O nome inteiro continua aparecendo no celular, onde
- * cada caixa carrega o próprio rótulo ao lado.
- */
-const ROTULO_COLUNA: Record<string, string> = { create: "Criar" };
 
 export default function UsuariosLiberados() {
   const { toast } = useToast();
@@ -397,10 +390,6 @@ export default function UsuariosLiberados() {
     setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, modulos_permitidos: [] } : u));
   };
 
-  const getModulePermCount = (perms: string[], moduleKey: string): number => {
-    if (perms.includes(moduleKey)) return ACOES.length;
-    return ACOES.filter(a => perms.includes(`${moduleKey}:${a.key}`)).length;
-  };
 
   // Clone permissions logic
   const cloneSource = cloneSourceId ? usuarios.find(u => u.id === cloneSourceId) : null;
@@ -440,10 +429,6 @@ export default function UsuariosLiberados() {
     setCloneFilterText("");
   };
 
-  const hasModulePerm = (perms: string[], moduleKey: string, action: string): boolean => {
-    if (perms.includes(moduleKey)) return true;
-    return perms.includes(`${moduleKey}:${action}`);
-  };
 
   const handleTogglePrincipal = async (userId: string) => {
     const user = usuarios.find(u => u.id === userId);
@@ -1005,96 +990,11 @@ export default function UsuariosLiberados() {
                     </div>
                   </div>
 
-                  {/*
-                    * Duas formas para a mesma informação.
-                    *
-                    * A tabela de quatro colunas é boa no desktop, onde dá
-                    * para varrer trinta módulos de relance. No celular ela
-                    * não cabe: sobravam 150 px para o nome do módulo, o
-                    * cabeçalho quebrava em três linhas e as caixas viravam
-                    * círculos soltos, sem rótulo, embaixo de palavras
-                    * empilhadas. Ali cada permissão passa a carregar o
-                    * próprio nome ao lado, e o módulo vira um cartão.
-                    */}
-                  <div className="space-y-2 sm:space-y-1">
-                    <div className="hidden sm:grid grid-cols-[1fr_repeat(4,_80px)] gap-1 items-end border-b px-2 pb-1.5">
-                      <span className="text-xs font-semibold text-muted-foreground">Módulo</span>
-                      {ACOES.map(a => (
-                        <span key={a.key} className="text-xs font-semibold text-muted-foreground text-center">
-                          {ROTULO_COLUNA[a.key] ?? a.label}
-                        </span>
-                      ))}
-                    </div>
-
-                    {MODULOS.map(mod => {
-                      const perms = permsUser.modulos_permitidos || [];
-                      const modulePermCount = getModulePermCount(perms, mod.key);
-                      const hasAllModule = modulePermCount === ACOES.length;
-                      const especiais = ACOES_ESPECIAIS[mod.key];
-
-                      return (
-                        <div
-                          key={mod.key}
-                          className={`rounded-lg border p-3 transition-colors sm:grid sm:grid-cols-[1fr_repeat(4,_80px)] sm:items-center sm:gap-1 sm:rounded-md sm:border-0 sm:px-2 sm:py-2 ${
-                            modulePermCount > 0 ? "border-primary/30 bg-primary/5" : "hover:bg-muted/50"
-                          }`}
-                        >
-                          <label
-                            className="flex cursor-pointer items-center gap-2"
-                            onClick={() => toggleModuleAll(permsUser.id, mod.key)}
-                          >
-                            <Checkbox checked={hasAllModule} className="pointer-events-none shrink-0" />
-                            <span className="text-sm font-medium leading-snug">{mod.label}</span>
-                          </label>
-
-                          {/* Celular: caixa com rótulo, duas por linha. */}
-                          <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2.5 pl-6 sm:hidden">
-                            {ACOES.map(acao => (
-                              <label key={acao.key} className="flex cursor-pointer items-center gap-2">
-                                <Checkbox
-                                  checked={hasModulePerm(perms, mod.key, acao.key)}
-                                  onCheckedChange={() => togglePerm(permsUser.id, `${mod.key}:${acao.key}`)}
-                                  className="shrink-0"
-                                />
-                                <span className="text-xs text-muted-foreground">{acao.label}</span>
-                              </label>
-                            ))}
-                          </div>
-
-                          {/* Desktop: só a caixa, sob a coluna que a nomeia. */}
-                          {ACOES.map(acao => (
-                            <div key={acao.key} className="hidden justify-center sm:flex">
-                              <Checkbox
-                                checked={hasModulePerm(perms, mod.key, acao.key)}
-                                onCheckedChange={() => togglePerm(permsUser.id, `${mod.key}:${acao.key}`)}
-                              />
-                            </div>
-                          ))}
-
-                          {/*
-                            * Permissões específicas do módulo. Eram uma fila
-                            * `flex` sem quebra: com cinco itens de texto
-                            * longo, como os do eSocial, a fila estourava a
-                            * largura e os últimos saíam cortados na borda.
-                            */}
-                          {especiais && (
-                            <div className="mt-2.5 flex flex-col gap-2 border-t pt-2.5 pl-6 sm:col-span-full sm:mt-0 sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-1.5 sm:border-t-0 sm:pt-1">
-                              {especiais.map(acao => (
-                                <label key={acao.key} className="flex cursor-pointer items-start gap-2">
-                                  <Checkbox
-                                    checked={perms.includes(`${mod.key}:${acao.key}`)}
-                                    onCheckedChange={() => togglePerm(permsUser.id, `${mod.key}:${acao.key}`)}
-                                    className="mt-0.5 shrink-0"
-                                  />
-                                  <span className="text-xs leading-snug text-muted-foreground">{acao.label}</span>
-                                </label>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <MatrizPermissoes
+                    perms={permsUser.modulos_permitidos || []}
+                    onAlternar={(chave) => togglePerm(permsUser.id, chave)}
+                    onAlternarModulo={(mod) => toggleModuleAll(permsUser.id, mod)}
+                  />
 
                   <DialogFooter>
                     <Button onClick={() => handleSavePermissions(permsUser.id)} disabled={savingPerms === permsUser.id}>

@@ -20,6 +20,20 @@ import { GruposDoSetorDialog } from "./GruposDoSetorDialog";
 import { GesExposicoesTab } from "./GesExposicoesTab";
 import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle, Users, Download } from "lucide-react";
 
+/*
+ * O que a coluna Tipo mostra.
+ *
+ * A tabela imprimia o valor cru do banco — "proprio", em minúscula e sem
+ * acento, dentro de um selo. O formulário sempre teve os nomes por extenso;
+ * a lista é que não os usava.
+ */
+const TIPO_ESTABELECIMENTO: Record<string, string> = {
+  proprio: "Próprio",
+  terceiro: "Terceiro / Cliente",
+  obra: "Obra",
+  administrativo: "Administrativo",
+};
+
 /** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */
 const ROTULO_MODAL: Record<string, string> = {
   estabelecimento: "estabelecimento",
@@ -111,7 +125,7 @@ function ListaEstrutura<T extends { id: string }>({
       {acoesExtras?.(item)}
       <Button onClick={() => onEditar(item)} variant="ghost" size="sm"
         aria-label={rotuloEditar ?? "Editar"} title={rotuloEditar ?? "Editar"}>
-        <Edit2 className="w-4 h-4 text-slate-600" />
+        <Edit2 className="w-4 h-4 text-muted-foreground" />
       </Button>
       <Button onClick={() => onExcluir(item)} variant="ghost" size="sm"
         aria-label="Excluir" title="Excluir">
@@ -132,7 +146,7 @@ function ListaEstrutura<T extends { id: string }>({
   if (itens.length === 0) {
     return (
       <Card className="border-dashed p-10 text-center">
-        <p className="text-sm text-slate-500">{vazio}</p>
+        <p className="text-sm text-muted-foreground">{vazio}</p>
       </Card>
     );
   }
@@ -143,19 +157,19 @@ function ListaEstrutura<T extends { id: string }>({
         {itens.map((item) => (
           <Card key={item.id} className="p-3">
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 font-medium text-slate-900">{nome(item)}</div>
+              <div className="min-w-0 font-medium text-foreground">{nome(item)}</div>
               {acoes(item)}
             </div>
             <dl className="mt-2 space-y-1.5">
               {colunas.map((c) => (c.longo ? (
                 <div key={c.rotulo} className="text-xs">
-                  <dt className="text-slate-500">{c.rotulo}</dt>
-                  <dd className="mt-0.5 break-words text-slate-700 line-clamp-3">{c.celula(item)}</dd>
+                  <dt className="text-muted-foreground">{c.rotulo}</dt>
+                  <dd className="mt-0.5 break-words text-foreground line-clamp-3">{c.celula(item)}</dd>
                 </div>
               ) : (
                 <div key={c.rotulo} className="flex gap-2 text-xs">
-                  <dt className="shrink-0 text-slate-500">{c.rotulo}:</dt>
-                  <dd className="min-w-0 break-words text-slate-700">{c.celula(item)}</dd>
+                  <dt className="shrink-0 text-muted-foreground">{c.rotulo}:</dt>
+                  <dd className="min-w-0 break-words text-foreground">{c.celula(item)}</dd>
                 </div>
               )))}
             </dl>
@@ -172,30 +186,30 @@ function ListaEstrutura<T extends { id: string }>({
       <Card className="hidden sm:block overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-slate-50">
+            <TableHeader className="bg-muted/50">
               <TableRow className="hover:bg-transparent">
                 {/* Largura mínima para o nome não quebrar em duas linhas
                     quando uma coluna de texto longo puxa o espaço. */}
-                <TableHead className="h-11 min-w-[190px] text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <TableHead className="h-11 min-w-[190px] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {rotuloPrincipal}
                 </TableHead>
                 {colunas.map((c) => (
                   <TableHead key={c.rotulo}
-                    className={`h-11 text-[11px] font-semibold uppercase tracking-wide text-slate-500 ${c.classe ?? ""}`}>
+                    className={`h-11 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground ${c.classe ?? ""}`}>
                     {c.rotulo}
                   </TableHead>
                 ))}
-                <TableHead className="h-11 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <TableHead className="h-11 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Ações
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {itens.map((item) => (
-                <TableRow key={item.id} className="hover:bg-slate-50/70">
-                  <TableCell className="py-3 font-medium text-slate-900">{nome(item)}</TableCell>
+                <TableRow key={item.id} className="hover:bg-muted/50">
+                  <TableCell className="py-3 font-medium text-foreground">{nome(item)}</TableCell>
                   {colunas.map((c) => (
-                    <TableCell key={c.rotulo} className={`py-3 text-slate-600 ${c.classe ?? ""}`} title={c.dica?.(item)}>
+                    <TableCell key={c.rotulo} className={`py-3 text-muted-foreground ${c.classe ?? ""}`} title={c.dica?.(item)}>
                       {c.celula(item)}
                     </TableCell>
                   ))}
@@ -642,8 +656,8 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-slate-500">
-        <Loader2 className="w-8 h-8 animate-spin mb-2 text-indigo-600" />
+      <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+        <Loader2 className="w-8 h-8 animate-spin mb-2 text-primary" />
         <span>Carregando Estrutura Ocupacional do Núcleo Mestre...</span>
       </div>
     );
@@ -690,11 +704,11 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
       <Tabs value={secaoAtiva} onValueChange={(v) => setActiveSubTab(v as any)} className="w-full">
         {!only && !setorDetalheId && (
-          <TabsList className="grid grid-cols-2 sm:grid sm:grid-cols-4 lg:inline-flex lg:w-auto w-full bg-slate-100 p-1 rounded-lg h-auto gap-1">
-            <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-slate-600 data-[state=active]:text-indigo-700">
+          <TabsList className="grid grid-cols-2 sm:grid sm:grid-cols-4 lg:inline-flex lg:w-auto w-full bg-muted p-1 rounded-lg h-auto gap-1">
+            <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-muted-foreground data-[state=active]:text-primary">
               <Building2 className="w-4 h-4" /> Estabelecimentos
             </TabsTrigger>
-            <TabsTrigger value="setores" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-slate-600 data-[state=active]:text-indigo-700">
+            <TabsTrigger value="setores" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-muted-foreground data-[state=active]:text-primary">
               <LayoutGrid className="w-4 h-4" /> Setores
             </TabsTrigger>
             {/*
@@ -712,10 +726,10 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               É a MESMA tela do assistente (mesmo componente, mesmo conteúdo),
               agora com porta também aqui. Não é um segundo lugar de cadastro.
             */}
-            <TabsTrigger value="funcoes" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-slate-600 data-[state=active]:text-indigo-700">
+            <TabsTrigger value="funcoes" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-muted-foreground data-[state=active]:text-primary">
               <Briefcase className="w-4 h-4" /> Funções
             </TabsTrigger>
-            <TabsTrigger value="riscos" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-slate-600 data-[state=active]:text-indigo-700">
+            <TabsTrigger value="riscos" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-muted-foreground data-[state=active]:text-primary">
               <Users className="w-4 h-4" /> GES
             </TabsTrigger>
           </TabsList>
@@ -724,9 +738,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         {/* 1. ESTABELECIMENTOS */}
         <TabsContent value="estabelecimentos" className="mt-4 space-y-4">
           <div className="flex flex-wrap justify-between items-center gap-2">
-            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
               Estabelecimentos
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                 {estabelecimentos.length} {estabelecimentos.length === 1 ? "estabelecimento" : "estabelecimentos"}
               </span>
             </h3>
@@ -742,12 +756,19 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               <>
                 {est.nome}
                 {est.nome_fantasia && (
-                  <span className="block text-xs font-normal text-slate-500">{est.nome_fantasia}</span>
+                  <span className="block text-xs font-normal text-muted-foreground">{est.nome_fantasia}</span>
                 )}
               </>
             )}
             colunas={[
-              { rotulo: "Tipo", celula: (est) => <Badge variant="outline">{est.tipo}</Badge> },
+              {
+                rotulo: "Tipo",
+                celula: (est) => (
+                  <Badge variant="outline" className="font-normal">
+                    {TIPO_ESTABELECIMENTO[est.tipo] ?? est.tipo ?? "—"}
+                  </Badge>
+                ),
+              },
               { rotulo: "CNPJ / CNO", celula: (est) => est.cnpj || est.cno || "—" },
               {
                 rotulo: "CNAE / Grau Risco",
@@ -758,10 +779,14 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               {
                 rotulo: "Endereço",
                 longo: true,
-                classe: "text-xs text-slate-600 max-w-[220px]",
+                classe: "text-xs text-muted-foreground max-w-[220px]",
                 celula: (est) => formatarEndereco(est.endereco) || "—",
               },
-              { rotulo: "Trab.", classe: "text-right", celula: (est) => est.qtd_trabalhadores ?? "—" },
+              {
+                rotulo: "Trabalhadores",
+                classe: "text-right tabular-nums",
+                celula: (est) => est.qtd_trabalhadores ?? "—",
+              },
             ]}
             onEditar={(est) => handleOpenModal("estabelecimento", est)}
             onExcluir={(est) => setDeleteConfirm({ open: true, type: "estabelecimento", id: est.id, nome: est.nome })}
@@ -790,7 +815,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                       &larr; Voltar
                     </Button>
                     <div>
-                      <h3 className="text-xl font-bold text-slate-900">Setor: {setorAtual.nome}</h3>
+                      <h3 className="text-xl font-bold text-foreground">Setor: {setorAtual.nome}</h3>
 
                     </div>
                   </div>
@@ -798,32 +823,32 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   {/* Detalhes do Ambiente */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-semibold text-slate-800 text-lg">Ambiente de Trabalho</h4>
+                      <h4 className="font-semibold text-foreground text-lg">Ambiente de Trabalho</h4>
                       <Button variant="outline" size="sm" onClick={() => handleOpenModal("setor", setorAtual)}>
                         <Edit2 className="w-4 h-4 mr-1" /> Editar
                       </Button>
                     </div>
                     {ambienteAtual ? (
-                      <Card className="p-4 bg-slate-50/50">
+                      <Card className="p-4 bg-muted/40">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                           <div>
-                            <span className="text-slate-500 block mb-1">Tipo de Ambiente</span>
+                            <span className="text-muted-foreground block mb-1">Tipo de Ambiente</span>
                             <Badge variant="outline">{ambienteAtual.tipo_ambiente}</Badge>
                           </div>
                           {ambienteAtual.pe_direito && (
                             <div>
-                              <span className="text-slate-500 block mb-1">Pé-direito</span>
-                              <span className="font-medium text-slate-700">{ambienteAtual.pe_direito} m</span>
+                              <span className="text-muted-foreground block mb-1">Pé-direito</span>
+                              <span className="font-medium text-foreground">{ambienteAtual.pe_direito} m</span>
                             </div>
                           )}
                           <div className="md:col-span-2">
-                            <span className="text-slate-500 block mb-1">Caracterização Física</span>
-                            <p className="text-slate-700">{ambienteAtual.descricao || "Não informada"}</p>
+                            <span className="text-muted-foreground block mb-1">Caracterização Física</span>
+                            <p className="text-foreground">{ambienteAtual.descricao || "Não informada"}</p>
                           </div>
                         </div>
                       </Card>
                     ) : (
-                      <p className="text-sm text-slate-500 italic">Ambiente não caracterizado.</p>
+                      <p className="text-sm text-muted-foreground italic">Ambiente não caracterizado.</p>
                     )}
                   </div>
 
@@ -838,14 +863,14 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   */}
                   <div className="space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h4 className="font-semibold text-slate-800 text-lg">Processos de trabalho</h4>
+                      <h4 className="font-semibold text-foreground text-lg">Processos de trabalho</h4>
                       <Button variant="outline" size="sm"
                         onClick={() => handleOpenModal("processo", { setor_id: setorAtual.id })}>
                         <Plus className="w-4 h-4 mr-1" /> Novo processo
                       </Button>
                     </div>
                     {processosDoSetor.length === 0 ? (
-                      <p className="text-sm text-slate-500 italic">
+                      <p className="text-sm text-muted-foreground italic">
                         Nenhum processo cadastrado neste setor.
                       </p>
                     ) : (
@@ -855,14 +880,14 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0 space-y-1">
                                 <Badge variant="outline">{pr.caracteristica_atividade || "—"}</Badge>
-                                <p className="text-sm text-slate-700 break-words">
+                                <p className="text-sm text-foreground break-words">
                                   {pr.descricao_etapas || "Sem descrição."}
                                 </p>
                               </div>
                               <div className="flex shrink-0 gap-1">
                                 <Button variant="ghost" size="sm" aria-label="Editar processo"
                                   onClick={() => handleOpenModal("processo", pr)}>
-                                  <Edit2 className="w-4 h-4 text-slate-600" />
+                                  <Edit2 className="w-4 h-4 text-muted-foreground" />
                                 </Button>
                                 <Button variant="ghost" size="sm" aria-label="Excluir processo"
                                   onClick={() => setDeleteConfirm({ open: true, type: "processo", id: pr.id, nome: pr.nome })}>
@@ -882,9 +907,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           ) : (
             <>
               <div className="flex flex-wrap justify-between items-center gap-2">
-                <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                <h3 className="font-semibold text-foreground flex items-center gap-2">
               Setores
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                 {setores.length} {setores.length === 1 ? "setor" : "setores"}
               </span>
             </h3>
@@ -904,7 +929,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     /* Sai inteiro. Era `max-w-xs truncate` — uma linha com
                        reticências — e a caracterização do ambiente é o que a
                        NR-01 cobra: escondê-la atrás do mouse não serve. */
-                    classe: "text-sm text-slate-600 whitespace-normal break-words align-top",
+                    classe: "text-sm text-muted-foreground whitespace-normal break-words align-top",
                     celula: (set) =>
                       caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)) || "—",
                   },
@@ -920,7 +945,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   {
                     rotulo: "Descrição do processo",
                     longo: true,
-                    classe: "text-sm text-slate-600 whitespace-normal break-words align-top",
+                    classe: "text-sm text-muted-foreground whitespace-normal break-words align-top",
                     celula: (set) => {
                       const ps = processosDoSetor(set.id);
                       if (!ps.length) return "—";
@@ -937,7 +962,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     rotulo: "Característica",
                     celula: (set) => {
                       const ps = processosDoSetor(set.id);
-                      if (!ps.length) return <span className="text-slate-400">—</span>;
+                      if (!ps.length) return <span className="text-muted-foreground/70">—</span>;
                       return (
                         <div className="space-y-1">
                           {ps.map((pr) => (
@@ -966,7 +991,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                         .filter((v) => v.setor_id === set.id).map((v) => v.ghe_id));
                       const grupos = gesList.filter((g: any) => ids.has(g.id));
                       if (!grupos.length) {
-                        return <span className="text-slate-400 italic">Sem GES</span>;
+                        return <span className="text-muted-foreground/70 italic">Sem GES</span>;
                       }
                       return <span>{grupos.map((g: any) => g.codigo || g.nome).join(" · ")}</span>;
                     },
@@ -975,7 +1000,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 acoesExtras={(set) => (
                   <Button variant="ghost" size="sm" aria-label="Duplicar setor"
                     onClick={() => duplicarSetor(set.id)} disabled={duplicandoId === set.id}>
-                    {duplicandoId === set.id ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : <ClipboardPaste className="w-4 h-4 text-slate-600" />}
+                    {duplicandoId === set.id ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/70" /> : <ClipboardPaste className="w-4 h-4 text-muted-foreground" />}
                   </Button>
                 )}
                 /*
@@ -1006,9 +1031,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         {/* 5. FUNÇÕES */}
         <TabsContent value="funcoes" className="mt-4 space-y-4">
           <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-3">
-            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
               Funções
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                 {funcoesFiltradas.length} {funcoesFiltradas.length === 1 ? "função" : "funções"}
               </span>
             </h3>
@@ -1073,7 +1098,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                  */
                 rotulo: "Descrição das atividades",
                 longo: true,
-                classe: "text-sm text-slate-600 whitespace-normal break-words align-top",
+                classe: "text-sm text-muted-foreground whitespace-normal break-words align-top",
                 celula: (func) => (func as any).descricao_atividades || "—",
               },
             ]}
@@ -1123,8 +1148,8 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
             </div>
 
             {loteLinhas.length > 0 && (
-              <div className="rounded-lg border bg-slate-50/60 p-3 text-xs space-y-1">
-                <p className="font-medium text-slate-700">
+              <div className="rounded-lg border bg-muted/50/60 p-3 text-xs space-y-1">
+                <p className="font-medium text-foreground">
                   {loteNovas.length} para cadastrar
                   {loteLinhas.length - loteNovas.length > 0
                     && `, ${loteLinhas.length - loteNovas.length} já existe(m) e será(ão) ignorada(s)`}
@@ -1132,7 +1157,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 <div className="flex flex-wrap gap-1 pt-1">
                   {loteLinhas.map((l, i) => (
                     <Badge key={i} variant={l.repetida ? "outline" : "secondary"}
-                      className={`font-normal ${l.repetida ? "text-slate-400 line-through" : ""}`}>
+                      className={`font-normal ${l.repetida ? "text-muted-foreground/70 line-through" : ""}`}>
                       {l.nome}
                     </Badge>
                   ))}
@@ -1322,7 +1347,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 </div>
 
                 <fieldset className="border rounded-md p-3 space-y-3">
-                  <legend className="px-1 text-xs font-semibold text-slate-600">Endereço</legend>
+                  <legend className="px-1 text-xs font-semibold text-muted-foreground">Endereço</legend>
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                     <div className="sm:col-span-3">
                       <Label>Logradouro</Label>
