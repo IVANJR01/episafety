@@ -3,7 +3,11 @@ import { Capacitor } from "@capacitor/core";
 import App from "./App.tsx";
 import { supabase } from "@/integrations/supabase/client";
 import { purgeOnVersionChange } from "@/lib/appUpdate";
+import { instalarDownloadMobile } from "@/lib/downloadMobile";
 import "./index.css";
+
+// Downloads de PDF/Excel/CSV em iOS e Android (ver lib/downloadMobile.ts)
+instalarDownloadMobile();
 
 // Handle Android back button in native app
 if (Capacitor.isNativePlatform()) {
