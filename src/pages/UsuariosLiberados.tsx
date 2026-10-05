@@ -316,6 +316,37 @@ export default function UsuariosLiberados() {
     setSavingPerms(null);
   };
 
+  const [resetSenha, setResetSenha] = useState("");
+  const [showResetSenha, setShowResetSenha] = useState(false);
+  const [resetando, setResetando] = useState(false);
+
+  // Somente Super Admin: a função do servidor revalida a permissão.
+  const handleResetSenha = async (email: string) => {
+    if (resetSenha.length < 6) {
+      toast({ title: "A senha deve ter no mínimo 6 caracteres", variant: "destructive" });
+      return;
+    }
+    setResetando(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-set-password", {
+        body: { email, password: resetSenha },
+      });
+      if (error || (data as any)?.error) {
+        let msg = (data as any)?.error || error?.message || "Falha ao alterar a senha";
+        try {
+          const corpo = await (error as any)?.context?.json?.();
+          if (corpo?.error) msg = corpo.error;
+        } catch { /* mantém a mensagem padrão */ }
+        toast({ title: "Não foi possível alterar a senha", description: msg, variant: "destructive" });
+      } else {
+        toast({ title: "Senha alterada!", description: `Nova senha definida para ${email}` });
+        setResetSenha("");
+      }
+    } finally {
+      setResetando(false);
+    }
+  };
+
   const handleSaveUserData = async (userId: string) => {
     setSavingData(true);
     const newEmpresaId = editEmpresaId || null;
@@ -945,6 +976,27 @@ export default function UsuariosLiberados() {
                       />
                     </div>
                   </div>
+
+                  {isSuperAdmin && (
+                    <div className="space-y-2 p-4 rounded-lg border bg-muted/30">
+                      <Label>Nova senha de acesso</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type={showResetSenha ? "text" : "password"}
+                          value={resetSenha}
+                          onChange={e => setResetSenha(e.target.value)}
+                          placeholder="Mínimo 6 caracteres"
+                          autoComplete="new-password"
+                        />
+                        <Button type="button" variant="outline" size="icon" onClick={() => setShowResetSenha(v => !v)}>
+                          {showResetSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </Button>
+                        <Button type="button" onClick={() => handleResetSenha(permsUser.email)} disabled={resetando || resetSenha.length < 6}>
+                          {resetando ? "Alterando..." : "Alterar senha"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
                   <DialogFooter>
                     <Button onClick={() => handleSaveUserData(permsUser.id)} disabled={savingData || !editEmail.trim()}>
