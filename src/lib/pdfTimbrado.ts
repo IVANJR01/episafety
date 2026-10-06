@@ -186,42 +186,53 @@ export interface CapaTimbrada {
  * e não dizia nada — o espaço passou a ser do título.
  */
 export function capaTimbrada(pdf: jsPDF, capa: CapaTimbrada) {
+  /*
+   * Faixa no topo, de margem a margem.
+   *
+   * A capa dependia inteiramente dos dados para ter alguma presença: sem logo
+   * cadastrada, o terço superior ficava literalmente em branco, e a página
+   * abria com um vazio. A faixa não precisa de dado nenhum e dá à capa um
+   * começo — é o que um papel timbrado faz com a marca impressa.
+   */
+  pdf.setFillColor(15, 23, 42);
+  pdf.rect(0, 0, LARGURA, 10, "F");
+
   if (capa.logoDataUrl) {
     // Falha de imagem não pode derrubar a geração do documento inteiro: o
     // documento sai sem logo, e sai.
-    try { pdf.addImage(capa.logoDataUrl, "PNG", MARGEM, 14, 24, 24); }
+    try { pdf.addImage(capa.logoDataUrl, "PNG", MARGEM, 20, 24, 24); }
     catch { /* logo inválida: segue sem ela */ }
   }
 
   if (capa.revisao) {
     pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(30);
-    pdf.text(capa.revisao, LARGURA - MARGEM, 22, { align: "right" });
+    pdf.text(capa.revisao, LARGURA - MARGEM, 28, { align: "right" });
   }
   if (capa.meta) {
     pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(120);
-    pdf.text(capa.meta, LARGURA - MARGEM, 27, { align: "right" });
+    pdf.text(capa.meta, LARGURA - MARGEM, 33, { align: "right" });
   }
 
   pdf.setDrawColor(200); pdf.setLineWidth(0.4);
-  pdf.line(MARGEM, 42, LARGURA - MARGEM, 42);
+  pdf.line(MARGEM, 48, LARGURA - MARGEM, 48);
 
   // ── Título ────────────────────────────────────────────────────────────────
   pdf.setTextColor(15, 23, 42); pdf.setFont("helvetica", "bold"); pdf.setFontSize(52);
-  pdf.text(capa.sigla, MARGEM, 86);
+  pdf.text(capa.sigla, MARGEM, 92);
   // Régua curta sob a sigla: ancora o título, que antes flutuava sozinho no
   // meio de uma página em branco.
   pdf.setFillColor(15, 23, 42);
-  pdf.rect(MARGEM, 92, 26, 1.6, "F");
+  pdf.rect(MARGEM, 98, 26, 1.6, "F");
 
   pdf.setFont("helvetica", "normal"); pdf.setFontSize(15); pdf.setTextColor(40);
-  pdf.text(capa.titulo, MARGEM, 104);
+  pdf.text(capa.titulo, MARGEM, 110);
   if (capa.subtitulo) {
     pdf.setFontSize(11); pdf.setTextColor(110);
-    pdf.text(capa.subtitulo, MARGEM, 112);
+    pdf.text(capa.subtitulo, MARGEM, 118);
   }
   if (capa.nota) {
     pdf.setFontSize(9); pdf.setTextColor(130);
-    pdf.text(capa.nota, MARGEM, 119);
+    pdf.text(capa.nota, MARGEM, 125);
   }
 
   /*
@@ -236,36 +247,46 @@ export function capaTimbrada(pdf: jsPDF, capa: CapaTimbrada) {
    * depois os campos em duas colunas, cada um com rótulo miúdo e valor em
    * destaque. Campo sem dado não entra — quem monta a lista já filtra.
    */
+  /*
+   * O painel é ancorado pelo PÉ, não pelo topo.
+   *
+   * Preso no topo, ele terminava a dois terços da altura e o resto da página
+   * descia vazio até a borda — a capa ficava com todo o peso em cima e nada
+   * embaixo. Ancorado embaixo, o branco fica entre o título e o painel, que é
+   * onde respiro é respiro, e a página fecha.
+   */
+  const PAINEL_BASE = 262;
+
+  /*
+   * Os campos são distribuídos em linhas de duas colunas ANTES de desenhar.
+   *
+   * Contar a altura de um jeito e desenhar de outro, como estava, produzia os
+   * dois erros juntos: sobrava uma faixa vazia no pé do painel, e a segunda
+   * coluna nunca era usada quando havia um campo largo no meio da lista.
+   */
+  const linhasDeCampos: CampoCapa[][] = [];
+  capa.campos.forEach((campo) => {
+    const ultima = linhasDeCampos[linhasDeCampos.length - 1];
+    if (!campo.largo && ultima && ultima.length === 1 && !ultima[0].largo) ultima.push(campo);
+    else linhasDeCampos.push([campo]);
+  });
+
   const PAINEL_X = MARGEM;
   const PAINEL_L = LARGURA - MARGEM * 2;
-  const PAINEL_Y = 152;
+  const larguraCol = (PAINEL_L - 16) / 2;
 
-  const colunas = 2;
-  const larguraCol = (PAINEL_L - 16) / colunas;
-
-  // Altura: nome da empresa + identificação + linhas de campos.
   pdf.setFont("helvetica", "bold"); pdf.setFontSize(16);
   const nomeEmpresa = pdf.splitTextToSize(capa.empresaNome || "Empresa", PAINEL_L - 16) as string[];
-  let linhasDeCampos = 0;
-  let coluna = 0;
-  capa.campos.forEach((c) => {
-    if (c.largo) {
-      if (coluna !== 0) { linhasDeCampos += 1; coluna = 0; }
-      linhasDeCampos += 1;
-    } else {
-      if (coluna === 0) linhasDeCampos += 1;
-      coluna = (coluna + 1) % colunas;
-    }
-  });
+
   const alturaPainel =
-    10 + nomeEmpresa.length * 7 + capa.identificacao.length * 5 + 6 + linhasDeCampos * 13 + 4;
+    11 + nomeEmpresa.length * 7 + capa.identificacao.length * 5 + 6 + linhasDeCampos.length * 13 + 2;
+  const PAINEL_Y = PAINEL_BASE - alturaPainel;
 
   pdf.setFillColor(248, 249, 251);
   pdf.setDrawColor(222);
   pdf.setLineWidth(0.3);
   pdf.rect(PAINEL_X, PAINEL_Y, PAINEL_L, alturaPainel, "FD");
-  // Faixa na borda esquerda, na cor do documento: é o que liga o painel ao
-  // título lá em cima.
+  // Faixa na borda esquerda, na cor do documento: liga o painel ao título.
   pdf.setFillColor(15, 23, 42);
   pdf.rect(PAINEL_X, PAINEL_Y, 1.8, alturaPainel, "F");
 
@@ -278,17 +299,16 @@ export function capaTimbrada(pdf: jsPDF, capa: CapaTimbrada) {
   capa.identificacao.forEach((linha) => { pdf.text(linha, PAINEL_X + 8, y); y += 5; });
 
   y += 6;
-  coluna = 0;
-  capa.campos.forEach((c) => {
-    if (c.largo && coluna !== 0) { y += 13; coluna = 0; }
-    const x = PAINEL_X + 8 + coluna * larguraCol;
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(7); pdf.setTextColor(130);
-    pdf.text(c.rotulo.toUpperCase(), x, y);
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(10.5); pdf.setTextColor(25);
-    const largura = c.largo ? PAINEL_L - 16 : larguraCol - 6;
-    pdf.text(pdf.splitTextToSize(c.valor, largura)[0], x, y + 5);
-    if (c.largo) { y += 13; coluna = 0; }
-    else { coluna = (coluna + 1) % colunas; if (coluna === 0) y += 13; }
+  linhasDeCampos.forEach((linha) => {
+    linha.forEach((campo, i) => {
+      const x = PAINEL_X + 8 + i * larguraCol;
+      const largura = campo.largo ? PAINEL_L - 16 : larguraCol - 6;
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7); pdf.setTextColor(130);
+      pdf.text(campo.rotulo.toUpperCase(), x, y);
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(10.5); pdf.setTextColor(25);
+      pdf.text(pdf.splitTextToSize(campo.valor, largura)[0], x, y + 5);
+    });
+    y += 13;
   });
 
   pdf.setTextColor(0);

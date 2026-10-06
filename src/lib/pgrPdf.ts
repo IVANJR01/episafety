@@ -296,7 +296,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       pgr.data_vigencia_inicio && pgr.data_vigencia_fim
         ? { rotulo: "Vigência", valor: `${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}` }
         : null,
-      pgr.resp_tec_nome ? { rotulo: "Responsável técnico", valor: pgr.resp_tec_nome, largo: true } : null,
+      pgr.resp_tec_nome ? { rotulo: "Responsável técnico", valor: pgr.resp_tec_nome } : null,
       pgr.resp_tec_registro ? { rotulo: "Registro profissional", valor: pgr.resp_tec_registro } : null,
       pgr.qtd_trabalhadores != null
         ? { rotulo: "Trabalhadores abrangidos", valor: String(pgr.qtd_trabalhadores) }
