@@ -2,7 +2,7 @@
  * Descobre o GES de um colaborador a partir da função e do setor.
  *
  * Hoje o ASO só sai se alguém tiver preenchido `funcionarios.ghe_id` na mão,
- * um a um. O RH abre o portal, escolhe o colaborador e esbarra em "Sem GHE
+ * um a um. O RH abre o portal, escolhe o colaborador e esbarra em "Sem GES
  * vinculado — não é possível gerar o ASO", sem ter como resolver: quem vincula
  * é o setor de Segurança do Trabalho.
  *

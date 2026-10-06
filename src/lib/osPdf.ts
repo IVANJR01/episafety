@@ -54,7 +54,7 @@ function paragraph(doc: jsPDF, text: string | null | undefined, y: number, fontS
 
 function riscosSection(doc: jsPDF, riscos: OsRiscoSnapshot[], y: number): number {
   if (!riscos.length) {
-    return paragraph(doc, "Não há riscos identificados para este GES/GHE.", y);
+    return paragraph(doc, "Não há riscos identificados para este GES.", y);
   }
   const grouped: Record<string, OsRiscoSnapshot[]> = {};
   for (const r of riscos) {
@@ -121,8 +121,8 @@ export function gerarOsPdf(ctx: OsPdfContext): jsPDF {
     ["Empresa", empresaNome || "—"],
     ["CNPJ", empresaCnpj || "—"],
     ["Documento", `${os.titulo}  •  Versão ${os.versao}  •  Emitida em ${dataEmissao}`],
-    ["Escopo", os.escopo === "funcionario" ? "Por funcionário" : os.escopo === "funcao" ? "Por função" : "Por GES/GHE"],
-    ["GES/GHE", gheNome || "—"],
+    ["Escopo", os.escopo === "funcionario" ? "Por funcionário" : os.escopo === "funcao" ? "Por função" : "Por GES"],
+    ["GES", gheNome || "—"],
     ["Função", funcaoNome || "—"],
     ["Funcionário", funcionarioNome ? `${funcionarioNome}${funcionarioMatricula ? ` (matr. ${funcionarioMatricula})` : ""}` : "—"],
   ];

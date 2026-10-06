@@ -150,7 +150,7 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
   const gheVinculado = (funcSel as any)?.ghe_ges;
   const [usarGhe, setUsarGhe] = useState(true);
 
-  // Auto-carregar riscos e exames do GHE quando funcionário ou tipo mudar (apenas se não estiver editando e usarGhe ativo)
+  // Auto-carregar riscos e exames do GES quando funcionário ou tipo mudar (apenas se não estiver editando e usarGhe ativo)
   useEffect(() => {
     if (editingId || !usarGhe) return;
     const gheId = (funcSel as any)?.ghe_id;
@@ -161,7 +161,7 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
         if (r.length || ex.length) {
           setRiscos(r);
           setExames(ex.map((e) => ({ nome_exame: e.nome_exame, realizado: true, data_realizacao: dataEmissao })));
-          toast.success(`Carregados ${r.length} risco(s) e ${ex.length} exame(s) do GHE`);
+          toast.success(`Carregados ${r.length} risco(s) e ${ex.length} exame(s) do GES`);
         }
       } catch (e) { /* silent */ }
     })();
@@ -294,10 +294,10 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
                   {gheVinculado ? (
                     <div className="mt-1 p-2 rounded bg-primary/10 border border-primary/20">
                       <div className="flex items-center justify-between mb-1">
-                        <strong>GHE/GES:</strong> {gheVinculado.codigo} — {gheVinculado.nome}
+                        <strong>GES:</strong> {gheVinculado.codigo} — {gheVinculado.nome}
                         <div className="flex items-center gap-1.5 bg-background/50 px-2 py-1 rounded border">
                           <Checkbox id="usarGhe" checked={usarGhe} onCheckedChange={(v) => setUsarGhe(!!v)} />
-                          <Label htmlFor="usarGhe" className="text-[10px] cursor-pointer">Usar dados do GHE</Label>
+                          <Label htmlFor="usarGhe" className="text-[10px] cursor-pointer">Usar dados do GES</Label>
                         </div>
                       </div>
                       {gheVinculado.setor && <span className="text-muted-foreground"> ({gheVinculado.setor})</span>}
@@ -309,7 +309,7 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
                     </div>
                   ) : (
                     <div className="mt-1 p-2 rounded bg-destructive/10 border border-destructive/20 text-destructive">
-                      Colaborador sem GHE/GES vinculado. Vá em <strong>PCMSO / GHE</strong> ou no cadastro do colaborador para vincular.
+                      Colaborador sem GES vinculado. Vá em <strong>PCMSO / GES</strong> ou no cadastro do colaborador para vincular.
                     </div>
                   )}
                 </div>

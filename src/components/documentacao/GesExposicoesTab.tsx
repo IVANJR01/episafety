@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { Layers, Plus, Edit2, Trash2, ListTree } from "lucide-react";
 
 /**
- * Cadastro dos Grupos de Exposição Similar (GES/GHE).
+ * Cadastro dos Grupos de Exposição Similar (GES).
  *
  * Esta tela tinha três abas — "Grupos", "Riscos" e "Exposições". As duas
  * últimas gravavam a MESMA tabela (`sst_exposicoes`) pelo mesmo `saveExposicao`,

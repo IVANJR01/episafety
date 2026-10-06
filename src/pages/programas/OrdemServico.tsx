@@ -48,7 +48,7 @@ export default function OrdemServico() {
       <VoltarParaCentral />
       <PageHeader
         title="Ordem de Serviço"
-        subtitle="Documentos de orientação de segurança por função/atividade. Base central: GES/GHE."
+        subtitle="Documentos de orientação de segurança por função/atividade. Base central: GES."
         actions={
           <Button asChild className="min-h-[44px]">
             <Link to="/programas/ordem-servico/novo">
@@ -74,7 +74,7 @@ export default function OrdemServico() {
         <EmptyState
           icon={ClipboardList}
           title="Nenhuma Ordem de Serviço"
-          description="Crie sua primeira OS a partir de um GES/GHE, função ou funcionário. Os riscos, EPIs e medidas serão pré-preenchidos automaticamente."
+          description="Crie sua primeira OS a partir de um GES, função ou funcionário. Os riscos, EPIs e medidas serão pré-preenchidos automaticamente."
           action={
             <Button asChild>
               <Link to="/programas/ordem-servico/novo">

@@ -331,7 +331,7 @@ export default function PppDashboard() {
             <Input value={setorFiltro} onChange={(e) => setSetorFiltro(e.target.value)} placeholder="ex.: operação" />
           </div>
           <div>
-            <Label className="text-xs">GHE/GES</Label>
+            <Label className="text-xs">GES</Label>
             <Select value={gheFiltro} onValueChange={setGheFiltro}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>

@@ -1,4 +1,4 @@
-// Loader unificado do GES/GHE: retorna o cadastro + riscos + exames + funções.
+// Loader unificado do GES: retorna o cadastro + riscos + exames + funções.
 // Base central usada por Ordem de Serviço, tela "Gerar Documentos" e imports para PGR/PCMSO/LTCAT.
 import { supabase } from "@/integrations/supabase/client";
 
@@ -66,7 +66,7 @@ export async function loadGheFicha(gheId: string): Promise<GheFichaCompleta> {
     (supabase as any).from("ghe_funcoes").select("id, nome_funcao, cbo, descricao_atividade").eq("ghe_id", gheId).order("nome_funcao"),
   ]);
   if (gheRes.error) throw gheRes.error;
-  if (!gheRes.data) throw new Error("GHE não encontrado");
+  if (!gheRes.data) throw new Error("GES não encontrado");
   return {
     cabecalho: gheRes.data as GheFichaCabecalho,
     riscos: (riscosRes.data || []) as GheFichaRisco[],

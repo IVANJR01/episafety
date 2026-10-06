@@ -120,9 +120,9 @@ async function render(ctx: LtcatPdfContext, opts: { qrUrl: string; pdfVersao: nu
     b.y += 11;
   });
 
-  // 3) GHE/GES
-  title(b, "3. Setores / GHE / GES avaliados");
-  if (ctx.ghes.length === 0) para(b, "Nenhum GHE/GES cadastrado.");
+  // 3) GES
+  title(b, "3. Setores / GES avaliados");
+  if (ctx.ghes.length === 0) para(b, "Nenhum GES cadastrado.");
   ctx.ghes.forEach((g) => {
     ensure(b, 8);
     pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
@@ -207,7 +207,7 @@ async function render(ctx: LtcatPdfContext, opts: { qrUrl: string; pdfVersao: nu
 
   // 6) Conclusões previdenciárias
   pdf.addPage(); b.y = 15;
-  title(b, "6. Conclusões previdenciárias por GHE × Função");
+  title(b, "6. Conclusões previdenciárias por GES × Função");
   if (ctx.conclusoes.length === 0) para(b, "Nenhuma conclusão registrada.");
   ctx.conclusoes.forEach((c: any) => {
     const g = ctx.ghes.find((x) => x.id === c.grupo_homogeneo_id);
@@ -215,7 +215,7 @@ async function render(ctx: LtcatPdfContext, opts: { qrUrl: string; pdfVersao: nu
     ensure(b, 24);
     pdf.setDrawColor(200); pdf.rect(10, b.y, 190, 0.2, "F");
     pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-    pdf.text(`• ${g ? `${g.codigo} — ${g.nome}` : "GHE"}  ${f ? `× ${f.nome_funcao}` : "(genérica)"}`, 12, b.y + 4);
+    pdf.text(`• ${g ? `${g.codigo} — ${g.nome}` : "GES"}  ${f ? `× ${f.nome_funcao}` : "(genérica)"}`, 12, b.y + 4);
     pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
     pdf.text(
       `Conclusão: ${LTCAT_CONCLUSAO_LABEL[c.conclusao as keyof typeof LTCAT_CONCLUSAO_LABEL]}  ·  Habitualidade: ${c.enquadramento ? LTCAT_ENQUADRAMENTO_LABEL[c.enquadramento as keyof typeof LTCAT_ENQUADRAMENTO_LABEL] : "—"}`,

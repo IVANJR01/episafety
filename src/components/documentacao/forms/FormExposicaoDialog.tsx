@@ -125,7 +125,7 @@ export function FormExposicaoDialog({
                     >
                       <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ges">GES / GHE (Grupo Todo)</SelectItem>
+                        <SelectItem value="ges">GES (Grupo Todo)</SelectItem>
                         <SelectItem value="ambiente">Ambiente Específico</SelectItem>
                         <SelectItem value="setor">Setor Específico</SelectItem>
                         <SelectItem value="funcao">Função / Cargo Específico</SelectItem>
@@ -166,7 +166,7 @@ export function FormExposicaoDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold">GES / GHE (Grupo Homogêneo de Exposição)</Label>
+                    <Label className="text-xs font-semibold">GES (Grupo Homogêneo de Exposição)</Label>
                     <Select
                       value={formData.ges_id || ""}
                       onValueChange={v => {

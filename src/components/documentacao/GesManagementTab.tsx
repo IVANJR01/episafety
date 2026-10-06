@@ -40,7 +40,7 @@ export function GesManagementTab() {
   const handleCreateNewGes = () => {
     setActiveGesId("new");
     setFormData({
-      codigo: `GHE-${Math.floor(100 + Math.random() * 900)}`
+      codigo: `GES-${Math.floor(100 + Math.random() * 900)}`
     });
     setSelectedFuncoes([]);
   };
@@ -157,7 +157,7 @@ export function GesManagementTab() {
                   <Input 
                     value={formData.codigo || ""} 
                     onChange={e => setFormData({...formData, codigo: e.target.value})}
-                    placeholder="Ex: GHE-01"
+                    placeholder="Ex: GES-01"
                   />
                 </div>
                 <div className="col-span-9 space-y-2">

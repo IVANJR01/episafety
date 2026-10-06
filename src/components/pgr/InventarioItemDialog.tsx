@@ -370,7 +370,7 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
         severidade_residual: form.severidade_residual ?? null,
         probabilidade_residual: form.probabilidade_residual ?? null,
         // Núcleo Mestre: só grava ges_id se o GES realmente existir em sst_ges.
-        // O espelhamento garante id idêntico nas duas tabelas, mas GHEs legados
+        // O espelhamento garante id idêntico nas duas tabelas, mas GES legados
         // criados antes do espelhamento existem apenas em ghe_ges — gravar o id
         // deles violaria a FK. ghe_id segue preenchido como fallback.
         ges_id: form.ghe_id && gesNucleoIds.has(form.ghe_id) ? form.ghe_id : null,

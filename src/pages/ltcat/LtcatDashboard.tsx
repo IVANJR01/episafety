@@ -422,7 +422,7 @@ export default function LtcatDashboard() {
               </SelectContent>
             </Select>
           </div>
-          <div><Label className="text-xs">GHE/GES</Label>
+          <div><Label className="text-xs">GES</Label>
             <Select value={gheFiltro} onValueChange={setGheFiltro}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent className="max-h-72">
@@ -492,7 +492,7 @@ export default function LtcatDashboard() {
         </Card>
 
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-base">GHE/GES com mais agentes</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-base">GES com mais agentes</CardTitle></CardHeader>
           <CardContent className="space-y-1 text-sm">
             {gheTop.length === 0 ? <div className="text-muted-foreground">Sem dados.</div> :
               gheTop.map(({ ghe, n }) => (

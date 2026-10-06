@@ -127,7 +127,7 @@ export default function Funcionarios() {
   // Load unidades/contratos on mount for display in table
   useEffect(() => { fetchUnidadesContratos(); }, []);
 
-  // Load empresa info + GHEs
+  // Load empresa info + GES
   useEffect(() => {
     if (!empresaId) return;
     supabase.from("empresa_config").select("nome, cnpj").eq("id", empresaId).single().then(({ data }) => {
@@ -145,7 +145,7 @@ export default function Funcionarios() {
   const contratosFiltrados = form.unidade_id ? contratos.filter(c => c.unidade_id === form.unidade_id) : contratos;
   const selectedGhe = useMemo(() => ghes.find(g => g.id === form.ghe_id) || null, [ghes, form.ghe_id]);
 
-  // Carrega funções do GHE selecionado e sincroniza setor automaticamente
+  // Carrega funções do GES selecionado e sincroniza setor automaticamente
   useEffect(() => {
     if (!form.ghe_id) { setGheFuncoes([]); return; }
     supabase.from("ghe_funcoes").select("id, nome_funcao").eq("ghe_id", form.ghe_id).eq("status", "ativo").order("nome_funcao").then(({ data }) => {
@@ -212,9 +212,9 @@ export default function Funcionarios() {
       });
       return;
     }
-    /* GHE opcional agora
+    /* GES opcional agora
     if (!form.ghe_id) {
-      toast({ title: "GHE/GES obrigatório", description: "Selecione o GHE/GES do colaborador. Esse vínculo é necessário para gerar o ASO automaticamente.", variant: "destructive" });
+      toast({ title: "GES obrigatório", description: "Selecione o GES do colaborador. Esse vínculo é necessário para gerar o ASO automaticamente.", variant: "destructive" });
       return;
     }
     */

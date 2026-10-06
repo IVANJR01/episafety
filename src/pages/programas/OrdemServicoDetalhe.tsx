@@ -78,7 +78,7 @@ export default function OrdemServicoDetalhe() {
     toast.success("OS emitida");
 
     // Arquiva no Arquivo Digital só quando a OS é de um colaborador
-    // específico — de função/GHE é modelo compartilhado, sem dono pra
+    // específico — de função/GES é modelo compartilhado, sem dono pra
     // pendurar o documento. Best-effort: a emissão já está confirmada,
     // uma falha aqui não pode desfazer isso nem travar o usuário.
     if (os.escopo === "funcionario" && os.funcionario_id) {
@@ -178,7 +178,7 @@ export default function OrdemServicoDetalhe() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
             <div><b>Empresa:</b> {empresa?.nome || "—"}</div>
             <div><b>CNPJ:</b> {empresa?.cnpj || "—"}</div>
-            <div><b>GES/GHE:</b> {ghe ? `${ghe.codigo} — ${ghe.nome}` : "—"}</div>
+            <div><b>GES:</b> {ghe ? `${ghe.codigo} — ${ghe.nome}` : "—"}</div>
             <div><b>Função:</b> {funcao?.nome_funcao || "—"}</div>
             <div><b>Funcionário:</b> {funcionario?.nome || "—"}</div>
             <div><b>Responsável técnico:</b> {os.responsavel_tecnico_nome || "—"} {os.responsavel_tecnico_registro ? `(${os.responsavel_tecnico_registro})` : ""}</div>

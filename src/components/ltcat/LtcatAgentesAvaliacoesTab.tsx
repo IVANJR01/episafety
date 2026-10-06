@@ -49,10 +49,10 @@ export default function LtcatAgentesAvaliacoesTab({ ltcatId, ltcatVersao, empres
   });
 
   const removeGhe = async (id: string) => {
-    if (!confirm("Remover este GHE e todos os agentes/avaliações vinculados?")) return;
+    if (!confirm("Remover este GES e todos os agentes/avaliações vinculados?")) return;
     const { error } = await (supabase.from as any)("ltcat_grupos_homogeneos").delete().eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("GHE removido");
+    toast.success("GES removido");
     qc.invalidateQueries({ queryKey: ["ltcat-aa", ltcatId] });
   };
 
@@ -80,7 +80,7 @@ export default function LtcatAgentesAvaliacoesTab({ ltcatId, ltcatVersao, empres
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm text-muted-foreground">
-          {ghes.length} GHE/GES · {agentes.length} agentes · {avals.length} avaliações
+          {ghes.length} GES · {agentes.length} agentes · {avals.length} avaliações
         </div>
         <div className="flex gap-2">
           {editavel ? (
@@ -89,7 +89,7 @@ export default function LtcatAgentesAvaliacoesTab({ ltcatId, ltcatVersao, empres
                 <Download className="h-4 w-4 mr-1" /> Importar do PGR
               </Button>
               <Button size="sm" onClick={() => { setEditGhe(null); setGheOpen(true); }}>
-                <Plus className="h-4 w-4 mr-1" /> Adicionar GHE
+                <Plus className="h-4 w-4 mr-1" /> Adicionar GES
               </Button>
             </>
           ) : (
@@ -103,7 +103,7 @@ export default function LtcatAgentesAvaliacoesTab({ ltcatId, ltcatVersao, empres
       ) : ghes.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
-            Nenhum GHE/GES avaliado. {editavel && "Adicione manualmente ou importe do PGR."}
+            Nenhum GES avaliado. {editavel && "Adicione manualmente ou importe do PGR."}
           </CardContent>
         </Card>
       ) : (
@@ -129,10 +129,10 @@ export default function LtcatAgentesAvaliacoesTab({ ltcatId, ltcatVersao, empres
                     {editavel && (
                       <>
                         <Button size="sm" variant="outline" onClick={() => { setEditGhe(g); setGheOpen(true); }}>
-                          <Pencil className="h-3 w-3 mr-1" /> Editar GHE
+                          <Pencil className="h-3 w-3 mr-1" /> Editar GES
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => removeGhe(g.id)}>
-                          <Trash2 className="h-3 w-3 mr-1" /> Remover GHE
+                          <Trash2 className="h-3 w-3 mr-1" /> Remover GES
                         </Button>
                         <Button size="sm" onClick={() => { setAgenteCtx({ gheId: g.id }); setAgenteOpen(true); }}>
                           <Plus className="h-3 w-3 mr-1" /> Agente
@@ -142,7 +142,7 @@ export default function LtcatAgentesAvaliacoesTab({ ltcatId, ltcatVersao, empres
                   </div>
 
                   {ags.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-3">Nenhum agente cadastrado neste GHE.</p>
+                    <p className="text-sm text-muted-foreground py-3">Nenhum agente cadastrado neste GES.</p>
                   ) : (
                     <ul className="space-y-3">
                       {ags.map((a) => {

@@ -76,12 +76,12 @@ export default function AsoDiagnostico() {
           </Badge>
           <Badge variant="secondary" className="justify-center gap-1"><Users className="h-3 w-3" />{data?.funcionarios ?? "…"} colab.</Badge>
           <Badge variant="secondary" className="justify-center gap-1"><Stethoscope className="h-3 w-3" />{data?.exames ?? "…"} exames</Badge>
-          <Badge variant="secondary" className="justify-center gap-1"><Shield className="h-3 w-3" />{data?.ghes ?? "…"} GHE/GES</Badge>
+          <Badge variant="secondary" className="justify-center gap-1"><Shield className="h-3 w-3" />{data?.ghes ?? "…"} GES</Badge>
           <Badge variant="secondary" className="justify-center gap-1"><FileText className="h-3 w-3" />{data?.asos ?? "…"} ASOs</Badge>
         </div>
         {data && data.ghes === 0 && (
           <div className="text-amber-600 dark:text-amber-400 pt-1">
-            Sem GES/GHE cadastrados nesta empresa. Cadastre em <b>Cadastro → GES/GHE</b> para começar.
+            Sem GES cadastrados nesta empresa. Cadastre em <b>Cadastro → GES</b> para começar.
           </div>
         )}
       </CardContent>

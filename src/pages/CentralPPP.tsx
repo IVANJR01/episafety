@@ -189,7 +189,7 @@ export default function CentralPPP() {
         return;
       }
 
-      // Agrupar agentes por GHE
+      // Agrupar agentes por GES
       const agentesPorGhe = new Map<string, any[]>();
       agentes.forEach((a) => {
         if (!a.grupo_homogeneo_id) return;

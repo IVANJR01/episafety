@@ -143,7 +143,7 @@ export default function LtcatFuncoesTab({ ltcatId, empresaId, editavel }: Props)
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm text-muted-foreground">
-          {(ghes as any[]).length} GHE/GES · {funcoes.length} funções cadastradas
+          {(ghes as any[]).length} GES · {funcoes.length} funções cadastradas
         </div>
         {!editavel && (
           <Badge variant="outline" className="bg-zinc-100 text-zinc-700"><Lock className="h-3 w-3 mr-1" /> Somente leitura</Badge>
@@ -154,7 +154,7 @@ export default function LtcatFuncoesTab({ ltcatId, empresaId, editavel }: Props)
         <Card><CardContent className="p-6 text-center text-muted-foreground">Carregando…</CardContent></Card>
       ) : (ghes as any[]).length === 0 ? (
         <Card><CardContent className="p-8 text-center text-muted-foreground">
-          Cadastre GHE/GES na aba Agentes e Avaliações antes de vincular funções.
+          Cadastre GES na aba Agentes e Avaliações antes de vincular funções.
         </CardContent></Card>
       ) : (
         <Accordion type="multiple" className="space-y-2">
@@ -176,7 +176,7 @@ export default function LtcatFuncoesTab({ ltcatId, empresaId, editavel }: Props)
                     </Button>
                   )}
                   {fs.length === 0 ? (
-                    <p className="text-xs text-muted-foreground py-2">Nenhuma função vinculada a este GHE.</p>
+                    <p className="text-xs text-muted-foreground py-2">Nenhuma função vinculada a este GES.</p>
                   ) : (
                     <div className="space-y-1">
                       {fs.map((f) => (
@@ -208,12 +208,12 @@ export default function LtcatFuncoesTab({ ltcatId, empresaId, editavel }: Props)
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar função" : "Adicionar função ao GHE"}</DialogTitle>
+            <DialogTitle>{editing ? "Editar função" : "Adicionar função ao GES"}</DialogTitle>
             <DialogDescription>Vincule função/CBO ao grupo homogêneo de exposição.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">GHE/GES *</Label>
+              <Label className="text-xs">GES *</Label>
               <Select value={form.grupo_homogeneo_id} onValueChange={(v) => setForm({ ...form, grupo_homogeneo_id: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>

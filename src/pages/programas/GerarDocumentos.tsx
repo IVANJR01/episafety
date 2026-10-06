@@ -15,8 +15,8 @@ import { toast } from "sonner";
 type DocKey = "os" | "pgr" | "pcmso" | "ltcat" | "insalubridade" | "periculosidade";
 
 const DOCUMENTOS: { key: DocKey; nome: string; icon: any; disponivel: boolean; nota?: string }[] = [
-  { key: "pgr", nome: "PGR", icon: ShieldCheck, disponivel: true, nota: "Importa riscos do GES/GHE para o inventário." },
-  { key: "os", nome: "Ordem de Serviço", icon: ClipboardList, disponivel: true, nota: "Gera OS pronta a partir do GES/GHE." },
+  { key: "pgr", nome: "PGR", icon: ShieldCheck, disponivel: true, nota: "Importa riscos do GES para o inventário." },
+  { key: "os", nome: "Ordem de Serviço", icon: ClipboardList, disponivel: true, nota: "Gera OS pronta a partir do GES." },
   { key: "pcmso", nome: "PCMSO", icon: Stethoscope, disponivel: false, nota: "Fase B — em breve." },
   { key: "ltcat", nome: "LTCAT", icon: FileText, disponivel: false, nota: "Fase C — requer revisão técnica." },
   { key: "insalubridade", nome: "Laudo de Insalubridade", icon: Flame, disponivel: true, nota: "Requer revisão e assinatura do responsável técnico." },
@@ -67,10 +67,10 @@ export default function GerarDocumentos() {
 
   const gerar = () => {
     if (docSel === "os") {
-      // Vai para tela de nova OS já com GHE pré-selecionado via query (opcional; simplifica indo direto)
+      // Vai para tela de nova OS já com GES pré-selecionado via query (opcional; simplifica indo direto)
       nav("/programas/ordem-servico/novo");
     } else if (docSel === "pgr") {
-      // Vai para lista PGR — usuário abre um PGR e usa "Importar GHE/GES"
+      // Vai para lista PGR — usuário abre um PGR e usa "Importar GES"
       nav("/pgr");
     } else if (docSel === "insalubridade") {
       nav("/programas/laudo-insalubridade");
@@ -83,7 +83,7 @@ export default function GerarDocumentos() {
     <div className="space-y-4">
       <PageHeader
         title="Gerar Documentos"
-        subtitle="Cadastre o GES/GHE uma vez. Reaproveite os dados nos programas técnicos."
+        subtitle="Cadastre o GES uma vez. Reaproveite os dados nos programas técnicos."
       />
 
       <Card>
@@ -100,7 +100,7 @@ export default function GerarDocumentos() {
               </Select>
             </div>
             <div>
-              <Label>GES/GHE</Label>
+              <Label>GES</Label>
               <Select value={gheSel} onValueChange={setGheSel} disabled={!empresaSel}>
                 <SelectTrigger><SelectValue placeholder={empresaSel ? "Selecione" : "Escolha a empresa primeiro"} /></SelectTrigger>
                 <SelectContent>
@@ -147,7 +147,7 @@ export default function GerarDocumentos() {
       {ficha && (
         <Card>
           <CardContent className="p-4 space-y-3">
-            <h3 className="font-semibold text-sm">3. Prévia do GES/GHE</h3>
+            <h3 className="font-semibold text-sm">3. Prévia do GES</h3>
             <div className="text-xs text-muted-foreground">Estes dados serão reaproveitados no documento.</div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
               <div className="border rounded p-2">

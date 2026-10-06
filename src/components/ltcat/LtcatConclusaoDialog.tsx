@@ -204,14 +204,14 @@ export default function LtcatConclusaoDialog({ open, onOpenChange, ltcatId, empr
         <DialogHeader>
           <DialogTitle>{editing ? "Editar conclusão previdenciária" : "Nova conclusão previdenciária"}</DialogTitle>
           <DialogDescription>
-            Análise técnica por GHE × Função. Não constitui promessa de concessão de benefício pelo INSS.
+            Análise técnica por GES × Função. Não constitui promessa de concessão de benefício pelo INSS.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label className="text-xs">GHE/GES *</Label>
+              <Label className="text-xs">GES *</Label>
               <Select value={gheId} onValueChange={setGheId}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
@@ -222,7 +222,7 @@ export default function LtcatConclusaoDialog({ open, onOpenChange, ltcatId, empr
             <div>
               <Label className="text-xs">Função (opcional)</Label>
               <Select value={funcaoId || "__none"} onValueChange={(v) => setFuncaoId(v === "__none" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Sem função (conclusão por GHE)" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Sem função (conclusão por GES)" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none">— Sem função (conclusão genérica) —</SelectItem>
                   {(funcoes as any[]).map((f) => <SelectItem key={f.id} value={f.id}>{f.nome_funcao}{f.cbo ? ` · ${f.cbo}` : ""}</SelectItem>)}
@@ -243,7 +243,7 @@ export default function LtcatConclusaoDialog({ open, onOpenChange, ltcatId, empr
           <div>
             <Label className="text-xs">Agentes considerados *</Label>
             {(agentes as any[]).length === 0 ? (
-              <p className="text-xs text-muted-foreground py-2">Nenhum agente cadastrado para este GHE.</p>
+              <p className="text-xs text-muted-foreground py-2">Nenhum agente cadastrado para este GES.</p>
             ) : (
               <div className="border rounded-md max-h-72 overflow-y-auto divide-y">
                 {(agentes as any[]).map((ag) => {

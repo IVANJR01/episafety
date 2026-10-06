@@ -510,7 +510,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       b.y += 3;
     }
     if (ctx.gesDetalhes && ctx.gesDetalhes.length > 0) {
-      sub(b, "Grupos de Exposição Semelhante (GES/GHE)");
+      sub(b, "Grupos de Exposição Semelhante (GES)");
       ctx.gesDetalhes.forEach((g: any) => {
         ensure(b, 12);
         pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5);
@@ -593,7 +593,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       { rotulo: "Avaliação", x: 170, w: 28 },
     ]);
 
-    // Ordena por GHE para manter os itens do mesmo grupo próximos
+    // Ordena por GES para manter os itens do mesmo grupo próximos
     const mapaGes: Record<string, string> = (ctx.ghes as any) || {};
     const nomeGes = (id?: string | null) => (id && mapaGes[id]) || "";
     const nomeSetor = (id?: string | null) =>

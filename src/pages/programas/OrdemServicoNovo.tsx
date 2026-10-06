@@ -58,7 +58,7 @@ export default function OrdemServicoNovo() {
     })();
   }, [empresaScopeIds.join(",")]);
 
-  // GHEs da empresa selecionada
+  // GES da empresa selecionada
   useEffect(() => {
     if (!form.empresa_id) return;
     (async () => {
@@ -72,7 +72,7 @@ export default function OrdemServicoNovo() {
     })();
   }, [form.empresa_id]);
 
-  // Funcões do GHE selecionado
+  // Funcões do GES selecionado
   useEffect(() => {
     if (!form.ghe_id) {
       setFuncoes([]);
@@ -171,9 +171,9 @@ export default function OrdemServicoNovo() {
         responsabilidades: f.responsabilidades ||
           "Cumprir integralmente as medidas de segurança; usar corretamente os EPIs fornecidos; comunicar imediatamente ao superior qualquer condição insegura; não realizar atividade para a qual não tenha sido treinado.",
       }));
-      toast.success(`Dados carregados do GES/GHE (${riscos.length} riscos)`);
+      toast.success(`Dados carregados do GES (${riscos.length} riscos)`);
     } catch (e: any) {
-      toast.error(e.message || "Falha ao carregar GES/GHE");
+      toast.error(e.message || "Falha ao carregar GES");
     }
   };
 
@@ -257,7 +257,7 @@ export default function OrdemServicoNovo() {
     <div className="space-y-4">
       <PageHeader
         title={editing ? "Editar Ordem de Serviço" : "Nova Ordem de Serviço"}
-        subtitle="Documento gerado a partir do GES/GHE — riscos, EPIs e medidas são reaproveitados."
+        subtitle="Documento gerado a partir do GES — riscos, EPIs e medidas são reaproveitados."
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => nav("/programas/ordem-servico")}>
@@ -294,7 +294,7 @@ export default function OrdemServicoNovo() {
               }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ghe">Por GES/GHE</SelectItem>
+                  <SelectItem value="ghe">Por GES</SelectItem>
                   <SelectItem value="funcao">Por Função</SelectItem>
                   <SelectItem value="funcionario">Por Funcionário</SelectItem>
                 </SelectContent>
@@ -305,7 +305,7 @@ export default function OrdemServicoNovo() {
               <Input type="date" value={form.data_emissao} onChange={(e) => set("data_emissao", e.target.value)} />
             </div>
             <div>
-              <Label>GES/GHE {form.escopo !== "funcionario" ? "*" : ""}</Label>
+              <Label>GES {form.escopo !== "funcionario" ? "*" : ""}</Label>
               <Select value={form.ghe_id} onValueChange={(v) => {
                 setForm((f: any) => ({ ...f, ghe_id: v, funcao_id: "" }));
                 carregarDoGhe(v, "", form.escopo);
@@ -347,7 +347,7 @@ export default function OrdemServicoNovo() {
           </div>
           <div>
             <Button variant="outline" size="sm" onClick={carregarDoGhe} disabled={!form.ghe_id}>
-              Carregar dados do GES/GHE
+              Carregar dados do GES
             </Button>
             <span className="text-xs text-muted-foreground ml-2">Popula riscos, atividades e medidas.</span>
           </div>
@@ -364,7 +364,7 @@ export default function OrdemServicoNovo() {
           <div>
             <Label>Riscos identificados ({(form.riscos_snapshot || []).length})</Label>
             <div className="border rounded p-2 max-h-48 overflow-y-auto text-xs space-y-2">
-              {Object.keys(riscosPorGrupo).length === 0 && <p className="text-muted-foreground">Nenhum risco carregado. Use "Carregar dados do GES/GHE".</p>}
+              {Object.keys(riscosPorGrupo).length === 0 && <p className="text-muted-foreground">Nenhum risco carregado. Use "Carregar dados do GES".</p>}
               {Object.entries(riscosPorGrupo).map(([g, arr]) => (
                 <div key={g}>
                   <Badge variant="outline" className="mb-1">{GRUPO_RISCO_LABEL[g] || g}</Badge>

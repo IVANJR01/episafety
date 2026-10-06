@@ -233,7 +233,7 @@ export default function PppHistoricoTab({ ppp, funcionario }: Props) {
       return;
     }
     if (!form.setor_nome && !form.ghe_id) {
-      toast.warning("Recomendado informar setor ou GHE/GES.");
+      toast.warning("Recomendado informar setor ou GES.");
     }
     if (form.funcao_nome && !form.cbo) {
       toast.warning("Recomendado informar o CBO da função.");
@@ -347,7 +347,7 @@ export default function PppHistoricoTab({ ppp, funcionario }: Props) {
       ghe_codigo: g.codigo,
       ghe_descricao: g.nome,
       setor_nome: s.setor_nome || g.setor || null,
-      funcao_id: null, // limpa para recarregar funções do GHE
+      funcao_id: null, // limpa para recarregar funções do GES
     }));
   }
 
@@ -385,7 +385,7 @@ export default function PppHistoricoTab({ ppp, funcionario }: Props) {
                 <TableHead>Início</TableHead>
                 <TableHead>Fim</TableHead>
                 <TableHead>Função / CBO</TableHead>
-                <TableHead>Setor / GHE</TableHead>
+                <TableHead>Setor / GES</TableHead>
                 <TableHead>Vínculos</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
@@ -457,7 +457,7 @@ export default function PppHistoricoTab({ ppp, funcionario }: Props) {
             </div>
 
             <div>
-              <Label>GHE/GES</Label>
+              <Label>GES</Label>
               <Select value={form.ghe_id || "__none"} onValueChange={(v) => aplicarGhe(v === "__none" ? "" : v)}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>

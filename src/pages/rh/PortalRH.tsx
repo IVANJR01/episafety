@@ -95,7 +95,7 @@ export default function PortalRH() {
     setValidadeTipoSel(validade_tipo);
   }, [tipoExame, dataEmissao]);
 
-  // Funcionários da empresa (todos os ativos, com ou sem GHE — o alerta aparece após seleção)
+  // Funcionários da empresa (todos os ativos, com ou sem GES — o alerta aparece após seleção)
   const { data: funcionarios = [] } = useQuery({
     queryKey: ["portal-rh-aso-colaboradores", empresaScopeIds.join(",")],
     enabled: (empresaScopeIds?.length ?? 0) > 0,
@@ -241,7 +241,7 @@ export default function PortalRH() {
     || gesEscolhido
     || (gesDerivado?.tipo === "resolvido" ? gesDerivado.ges.ghe_id : null);
 
-  // Carrega riscos/exames do GHE
+  // Carrega riscos/exames do GES
   useEffect(() => {
     if (!gheEfetivo) { setRiscos([]); setExames([]); return; }
     setLoadingGhe(true);
@@ -411,7 +411,7 @@ export default function PortalRH() {
             <div className="leading-tight">
               <h1 className="font-bold text-base md:text-lg">Portal RH — ASO</h1>
               <p className="text-xs text-muted-foreground hidden md:block">
-                Selecione o colaborador, escolha o tipo de exame e gere o ASO em PDF com base no PCMSO/GHE.
+                Selecione o colaborador, escolha o tipo de exame e gere o ASO em PDF com base no PCMSO/GES.
               </p>
             </div>
           </div>
@@ -434,7 +434,7 @@ export default function PortalRH() {
                 <p className="font-medium">Nenhum colaborador ativo encontrado nesta empresa.</p>
                 <p className="text-muted-foreground">
                   Cadastre colaboradores em <b>Cadastro → Funcionários</b>.<br />
-                  <span className="text-xs">Colaboradores sem GHE/GES também aparecem na busca — o alerta é exibido após a seleção.</span>
+                  <span className="text-xs">Colaboradores sem GES também aparecem na busca — o alerta é exibido após a seleção.</span>
                 </p>
               </CardContent></Card>
             )}
@@ -477,7 +477,7 @@ export default function PortalRH() {
                       </Popover>
                       {!funcionarioId && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Selecione um colaborador para gerar o ASO com base no GHE/GES vinculado.
+                          Selecione um colaborador para gerar o ASO com base no GES vinculado.
                         </p>
                       )}
                     </div>
@@ -493,15 +493,15 @@ export default function PortalRH() {
                         <div><b>Admissão:</b> {funcSel.data_admissao || "—"}</div>
                         {funcSel.ghe_ges ? (
                           <div className="mt-1 p-2 rounded bg-primary/10 border border-primary/20">
-                            <b>GHE/GES:</b> {funcSel.ghe_ges.codigo} — {funcSel.ghe_ges.nome}
+                            <b>GES:</b> {funcSel.ghe_ges.codigo} — {funcSel.ghe_ges.nome}
                             {funcSel.ghe_ges.setor && <span className="text-muted-foreground"> ({funcSel.ghe_ges.setor})</span>}
                           </div>
                         ) : (
                           <div className="mt-1 p-2 rounded bg-destructive/10 border border-destructive/20 text-destructive flex gap-2 items-start">
                             <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                             <div>
-                              Este colaborador ainda não possui GHE/GES vinculado.<br />
-                              <span className="text-xs">Solicite ao setor de Segurança do Trabalho a vinculação do colaborador ao GHE/GES.</span>
+                              Este colaborador ainda não possui GES vinculado.<br />
+                              <span className="text-xs">Solicite ao setor de Segurança do Trabalho a vinculação do colaborador ao GES.</span>
                             </div>
                           </div>
                         )}
@@ -574,16 +574,16 @@ export default function PortalRH() {
                 </Card>
 
 
-                {/* Coluna 2: Prévia do PCMSO/GHE */}
+                {/* Coluna 2: Prévia do PCMSO/GES */}
                 <Card>
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold">Prévia do ASO (dados do GHE)</h3>
+                      <h3 className="font-semibold">Prévia do ASO (dados do GES)</h3>
                       {loadingGhe && <span className="text-xs text-muted-foreground">Carregando…</span>}
                     </div>
 
                     {!funcSel && (
-                      <p className="text-sm text-muted-foreground italic">Selecione um colaborador para visualizar os riscos e exames do GHE.</p>
+                      <p className="text-sm text-muted-foreground italic">Selecione um colaborador para visualizar os riscos e exames do GES.</p>
                     )}
 
                     {/* GES herdado da função: o RH não precisa mais esperar o
@@ -651,7 +651,7 @@ export default function PortalRH() {
                           {Object.values(gruposPreenchidos).every((v) => v === 0) && (
                             <div className="mt-2 p-2 rounded bg-orange-500/10 border border-orange-500/30 text-orange-700 text-xs flex gap-2">
                               <AlertTriangle className="h-4 w-4 shrink-0" />
-                              O GHE/GES deste colaborador ainda não possui riscos cadastrados. Cadastre os riscos do PCMSO antes de gerar o ASO.
+                              O GES deste colaborador ainda não possui riscos cadastrados. Cadastre os riscos do PCMSO antes de gerar o ASO.
                             </div>
                           )}
                         </div>
@@ -659,7 +659,7 @@ export default function PortalRH() {
                         <div>
                           <h4 className="text-sm font-medium mb-1">Exames previstos para {TIPO[tipoExame]}</h4>
                           {exames.length === 0 ? (
-                            <p className="text-xs text-muted-foreground italic">Nenhum exame configurado para este tipo no GHE.</p>
+                            <p className="text-xs text-muted-foreground italic">Nenhum exame configurado para este tipo no GES.</p>
                           ) : (
                             <ul className="text-sm list-disc pl-5">
                               {exames.map((e, i) => <li key={i}>{e.nome_exame}</li>)}
@@ -706,7 +706,7 @@ export default function PortalRH() {
                         <TableHead>Colaborador</TableHead>
                         <TableHead>CPF</TableHead>
                         <TableHead>Função</TableHead>
-                        <TableHead>GHE/GES</TableHead>
+                        <TableHead>GES</TableHead>
                         <TableHead>Tipo</TableHead>
                         <TableHead>Emissão</TableHead>
                         <TableHead>Vencimento</TableHead>

@@ -16,7 +16,7 @@ export const OS_STATUS_COLOR: Record<OsStatus, string> = {
 export const OS_ESCOPO_LABEL: Record<OsEscopo, string> = {
   funcionario: "Por funcionário",
   funcao: "Por função",
-  ghe: "Por GES/GHE",
+  ghe: "Por GES",
 };
 
 export interface OsRiscoSnapshot {

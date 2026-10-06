@@ -591,7 +591,7 @@ export default function InventarioTab({
         <CardContent className="p-3">
           <div className="flex items-center gap-2 mb-3">
             <Search className="h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar por perigo, GHE, fonte..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+            <Input placeholder="Buscar por perigo, GES, fonte..." value={busca} onChange={(e) => setBusca(e.target.value)} />
           </div>
           {isLoading ? (
             <p className="text-center py-6 text-muted-foreground text-sm">Carregando…</p>

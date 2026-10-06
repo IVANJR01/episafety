@@ -148,7 +148,7 @@ export default function LtcatConclusoesTab({ ltcatId, empresaId, editavel }: Pro
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>GHE/GES</TableHead>
+                  <TableHead>GES</TableHead>
                   <TableHead>Função</TableHead>
                   <TableHead>Agentes</TableHead>
                   <TableHead>Habitualidade</TableHead>

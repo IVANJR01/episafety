@@ -52,13 +52,13 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
   const [importing, setImporting] = useState(false);
 
   const baixarModelo = () => {
-    const cols = ["GHE Codigo", "GHE Nome", "Setor", "Descricao", "Funcao", "Risco Grupo", "Risco Agente", "Risco Texto ASO", "Exame Nome", "Exame Codigo", "Admissional", "Periodico", "Retorno", "Mudanca Risco", "Mudanca Funcao", "Demissional"];
+    const cols = ["GES Codigo", "GES Nome", "Setor", "Descricao", "Funcao", "Risco Grupo", "Risco Agente", "Risco Texto ASO", "Exame Nome", "Exame Codigo", "Admissional", "Periodico", "Retorno", "Mudanca Risco", "Mudanca Funcao", "Demissional"];
     const rows = [
       cols,
-      ["GHE 01", "Administrativo / PCP", "Administrativo", "Atividades administrativas", "Auxiliar Administrativo", "Ergonomico", "Postura sentada prolongada", "Postura sentada prolongada", "Clínico Ocupacional", "", "X", "X", "X", "", "", "X"],
-      ["GHE 01", "Administrativo / PCP", "Administrativo", "", "Supervisor de PCP", "", "", "", "Acuidade Visual", "", "X", "X", "", "", "", ""],
-      ["GHE 02", "Costura", "Costura", "Operação de máquinas de costura", "Costureiro(a)", "Ergonomico", "Movimentos repetitivos", "Movimentos repetitivos", "Clínico Ocupacional", "", "X", "X", "X", "", "", "X"],
-      ["GHE 02", "Costura", "", "", "", "Fisico", "Ruído contínuo", "Ruído contínuo", "Audiometria", "", "X", "X", "", "", "", ""],
+      ["GES 01", "Administrativo / PCP", "Administrativo", "Atividades administrativas", "Auxiliar Administrativo", "Ergonomico", "Postura sentada prolongada", "Postura sentada prolongada", "Clínico Ocupacional", "", "X", "X", "X", "", "", "X"],
+      ["GES 01", "Administrativo / PCP", "Administrativo", "", "Supervisor de PCP", "", "", "", "Acuidade Visual", "", "X", "X", "", "", "", ""],
+      ["GES 02", "Costura", "Costura", "Operação de máquinas de costura", "Costureiro(a)", "Ergonomico", "Movimentos repetitivos", "Movimentos repetitivos", "Clínico Ocupacional", "", "X", "X", "X", "", "", "X"],
+      ["GES 02", "Costura", "", "", "", "Fisico", "Ruído contínuo", "Ruído contínuo", "Audiometria", "", "X", "X", "", "", "", ""],
     ];
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -83,9 +83,17 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
 
     const map = new Map<string, ParsedGhe>();
     for (const r of raw) {
-      const codigo = String(get(r, "GHE Codigo", "GHE", "Codigo GHE", "Codigo") || "").trim();
+      /*
+       * O cabeçalho da planilha aceita GES e GHE.
+       *
+       * A tela passou a dizer GES em tudo, mas as planilhas que as empresas
+       * já têm no computador foram salvas com "GHE Codigo". Deixar de ler
+       * esse cabeçalho quebraria a importação de arquivo antigo sem avisar.
+       */
+      const codigo = String(get(r, "GES Codigo", "GES", "Codigo GES",
+        "GHE Codigo", "GHE", "Codigo GHE", "Codigo") || "").trim();
       if (!codigo) continue;
-      const nome = String(get(r, "GHE Nome", "Nome", "Nome GHE") || codigo).trim();
+      const nome = String(get(r, "GES Nome", "Nome GES", "GHE Nome", "Nome", "Nome GHE") || codigo).trim();
       const setor = String(get(r, "Setor") || "").trim();
       const descricao = String(get(r, "Descricao", "Descrição") || "").trim();
       const funcao = String(get(r, "Funcao", "Função") || "").trim();
@@ -121,7 +129,7 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
       }
     }
     setGhes([...map.values()]);
-    toast.success(`${map.size} GHEs identificados na planilha`);
+    toast.success(`${map.size} GES identificados na planilha`);
   };
 
   const fileToBase64 = (file: File): Promise<string> =>
@@ -173,7 +181,7 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
       })).filter((e: any) => e.nome_exame),
     })).filter((g: ParsedGhe) => g.codigo || g.nome);
     setGhes(parsed);
-    toast.success(`IA identificou ${parsed.length} GHEs`);
+    toast.success(`IA identificou ${parsed.length} GES`);
   };
 
   const parseTextoIA = async () => {
@@ -253,7 +261,7 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
           }
         }
       }
-      toast.success(`Importado: ${okGhe} GHEs, ${okFunc} funções, ${okRisco} riscos, ${okExame} exames` + (errs ? ` (${errs} erros)` : ""));
+      toast.success(`Importado: ${okGhe} GES, ${okFunc} funções, ${okRisco} riscos, ${okExame} exames` + (errs ? ` (${errs} erros)` : ""));
       onImported();
       onOpenChange(false);
       setGhes([]); setTextoLivre("");
@@ -269,7 +277,7 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />Importar PCMSO</DialogTitle>
-          <p className="text-sm text-muted-foreground">Crie GHEs, funções, riscos e exames automaticamente a partir de uma planilha ou colagem do PCMSO.</p>
+          <p className="text-sm text-muted-foreground">Crie GES, funções, riscos e exames automaticamente a partir de uma planilha ou colagem do PCMSO.</p>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab}>
@@ -288,13 +296,13 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
               </Label>
             </div>
             <p className="text-xs text-muted-foreground">
-              Colunas esperadas: <code>GHE Codigo, GHE Nome, Setor, Descricao, Funcao, Risco Grupo, Risco Agente, Risco Texto ASO, Exame Nome, Exame Codigo, Admissional, Periodico, Retorno, Mudanca Risco, Mudanca Funcao, Demissional</code>.
-              Use uma linha por combinação. O sistema agrupa por <code>GHE Codigo</code>.
+              Colunas esperadas: <code>GES Codigo, GES Nome, Setor, Descricao, Funcao, Risco Grupo, Risco Agente, Risco Texto ASO, Exame Nome, Exame Codigo, Admissional, Periodico, Retorno, Mudanca Risco, Mudanca Funcao, Demissional</code>.
+              Use uma linha por combinação. O sistema agrupa por <code>GES Codigo</code>.
             </p>
           </TabsContent>
 
           <TabsContent value="pdf" className="mt-3 space-y-3">
-            <Label className="text-xs">Envie o PDF do PCMSO. A IA lê o documento completo (Quadro Laboral, GHEs, riscos e exames) e estrutura para importação.</Label>
+            <Label className="text-xs">Envie o PDF do PCMSO. A IA lê o documento completo (Quadro Laboral, GES, riscos e exames) e estrutura para importação.</Label>
             <div className="flex gap-2 flex-wrap items-center">
               <Label className="cursor-pointer">
                 <Input type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => e.target.files?.[0] && parsePdfIA(e.target.files[0])} disabled={loading} />
@@ -307,12 +315,12 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
               </Label>
               <span className="text-xs text-muted-foreground">Até 20 MB. A IA pode levar 30-60s.</span>
             </div>
-            <p className="text-xs text-muted-foreground">A IA extrai GHEs/GES, funções por setor, riscos (físico, químico, biológico, ergonômico, acidente) e exames (admissional, periódico, etc.) diretamente do PDF.</p>
+            <p className="text-xs text-muted-foreground">A IA extrai GES, funções por setor, riscos (físico, químico, biológico, ergonômico, acidente) e exames (admissional, periódico, etc.) diretamente do PDF.</p>
           </TabsContent>
 
           <TabsContent value="texto" className="mt-3 space-y-3">
-            <Label className="text-xs">Cole o texto do PCMSO (Quadro Laboral, lista por GHE, tabela copiada de PDF, etc.)</Label>
-            <Textarea rows={10} value={textoLivre} onChange={(e) => setTextoLivre(e.target.value)} placeholder="GHE 01 — Administrativo / PCP&#10;Funções: Auxiliar Administrativo, Supervisor de PCP&#10;Riscos: Ergonômico — postura sentada prolongada&#10;Exames: Clínico ocupacional, Acuidade visual&#10;&#10;GHE 02 — Costura..." />
+            <Label className="text-xs">Cole o texto do PCMSO (Quadro Laboral, lista por GES, tabela copiada de PDF, etc.)</Label>
+            <Textarea rows={10} value={textoLivre} onChange={(e) => setTextoLivre(e.target.value)} placeholder="GES 01 — Administrativo / PCP&#10;Funções: Auxiliar Administrativo, Supervisor de PCP&#10;Riscos: Ergonômico — postura sentada prolongada&#10;Exames: Clínico ocupacional, Acuidade visual&#10;&#10;GHE 02 — Costura..." />
             <div className="flex justify-end">
               <Button onClick={parseTextoIA} disabled={loading || !textoLivre.trim()}>
                 {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
@@ -326,7 +334,7 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
         {ghes.length > 0 && (
           <div className="border rounded-lg p-3 space-y-2 mt-3 bg-muted/30">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-medium">Pré-visualização ({ghes.length} GHEs)</div>
+              <div className="text-sm font-medium">Pré-visualização ({ghes.length} GES)</div>
               <Button size="sm" variant="ghost" onClick={() => setGhes([])}>Limpar</Button>
             </div>
             <div className="max-h-[300px] overflow-y-auto space-y-2">

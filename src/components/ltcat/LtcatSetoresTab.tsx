@@ -99,11 +99,11 @@ export default function LtcatSetoresTab({ ltcatId, empresaId, editavel }: Props)
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">GHE / GES disponíveis da empresa</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">GES disponíveis da empresa</CardTitle></CardHeader>
         <CardContent>
           {(ghes as any[]).length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
-              Nenhum GHE/GES cadastrado na empresa. Use Cadastro → GHE/GES.
+              Nenhum GES cadastrado na empresa. Use Cadastro → GES.
             </p>
           ) : (
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
@@ -115,7 +115,7 @@ export default function LtcatSetoresTab({ ltcatId, empresaId, editavel }: Props)
             </ul>
           )}
           <p className="text-xs text-muted-foreground mt-3">
-            O vínculo formal GHE × LTCAT (com agentes e avaliações) é liberado na <strong>Parte 3</strong>.
+            O vínculo formal GES × LTCAT (com agentes e avaliações) é liberado na <strong>Parte 3</strong>.
           </p>
         </CardContent>
       </Card>

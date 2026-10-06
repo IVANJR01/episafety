@@ -79,12 +79,12 @@ export default function LtcatGheDialog({ open, onOpenChange, ltcatId, empresaId,
         const { error } = await (supabase.from as any)("ltcat_grupos_homogeneos")
           .update(payload).eq("id", ghe.id);
         if (error) throw error;
-        toast.success("GHE atualizado");
+        toast.success("GES atualizado");
       } else {
         const { error } = await (supabase.from as any)("ltcat_grupos_homogeneos")
           .insert({ ...payload, created_by: user?.id });
         if (error) throw error;
-        toast.success("GHE adicionado");
+        toast.success("GES adicionado");
       }
       qc.invalidateQueries({ queryKey: ["ltcat-aa", ltcatId] });
       onOpenChange(false);
@@ -96,11 +96,11 @@ export default function LtcatGheDialog({ open, onOpenChange, ltcatId, empresaId,
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle>{editing ? "Editar GHE/GES" : "Novo GHE/GES avaliado"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? "Editar GES" : "Novo GES avaliado"}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {!editing && (
             <div className="md:col-span-2">
-              <Label className="text-xs">Importar de GHE/GES existente da empresa</Label>
+              <Label className="text-xs">Importar de GES existente da empresa</Label>
               <Select value={form.ghe_origem_id} onValueChange={pickFromOrigem}>
                 <SelectTrigger><SelectValue placeholder="Selecionar (opcional)" /></SelectTrigger>
                 <SelectContent>

@@ -102,7 +102,7 @@ async function render(
     pdf.text(`Período ${i + 1}: ${fmtD(p.data_inicio)} → ${p.data_fim ? fmtD(p.data_fim) : "atual"}`, 12, b.y);
     b.y += 4;
     pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-    const line1 = `Função: ${p.funcao_nome || "—"}  ·  CBO: ${p.cbo || "—"}  ·  Setor: ${p.setor_nome || "—"}  ·  GHE: ${p.ghe_codigo || "—"}`;
+    const line1 = `Função: ${p.funcao_nome || "—"}  ·  CBO: ${p.cbo || "—"}  ·  Setor: ${p.setor_nome || "—"}  ·  GES: ${p.ghe_codigo || "—"}`;
     pdf.text(pdf.splitTextToSize(line1, 186), 12, b.y); b.y += 4;
     if (p.descricao_atividade) {
       const ll = pdf.splitTextToSize("Atividades: " + p.descricao_atividade, 186);

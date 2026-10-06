@@ -83,7 +83,7 @@ export default function LtcatChecklistTab({ ltcat }: { ltcat: LtcatDocumento }) 
 
     const arr: { status: ItemStatus; label: string; hint?: string }[] = [
       { status: d.rts.length ? "ok" : "fail", label: `Responsável técnico cadastrado (${d.rts.length})` },
-      { status: d.ghes.length ? "ok" : "fail", label: `GHE/GES cadastrados (${d.ghes.length})` },
+      { status: d.ghes.length ? "ok" : "fail", label: `GES cadastrados (${d.ghes.length})` },
       { status: d.funcs.length ? "ok" : "warn", label: `Funções vinculadas (${d.funcs.length})` },
       { status: d.agentes.length ? "ok" : "fail", label: `Agentes nocivos cadastrados (${d.agentes.length})` },
       { status: d.avals.length ? "ok" : "fail", label: `Avaliações cadastradas (${d.avals.length})` },

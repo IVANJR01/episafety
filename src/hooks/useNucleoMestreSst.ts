@@ -71,7 +71,7 @@ async function resilientSaveItem<T extends { id?: string }>(
   legacyFieldMap?: (item: any) => any,
   // Quando true, o registro é sempre replicado (upsert) na tabela legada,
   // mesmo quando o salvamento na tabela primária (Núcleo Mestre) tem sucesso.
-  // Necessário para GES/GHE: outros módulos (ex.: ASO/RH) ainda leem da
+  // Necessário para GES: outros módulos (ex.: ASO/RH) ainda leem da
   // tabela legada via FK (funcionarios.ghe_id -> ghe_ges.id), então o
   // registro precisa existir com o MESMO id nas duas tabelas.
   alwaysMirrorToLegacy = false,
@@ -227,7 +227,7 @@ export function useNucleoMestreSst() {
   const { data: atividades = [], isLoading: loadingAtividades } =
     useSupabaseQuery<SstAtividade>("sst_atividades", "nome", true);
 
-  // LEGACY FALLBACK QUERIES (Sincronização Automática de Unidades, CNO/CNPJ e GHEs Existentes)
+  // LEGACY FALLBACK QUERIES (Sincronização Automática de Unidades, CNO/CNPJ e GES Existentes)
   const { data: legacyEmpresasConfig = [] } = useQuery({
     queryKey: ["sst-legacy-empresa-config", activeEmpresaId],
     enabled: !!activeEmpresaId,
@@ -288,10 +288,10 @@ export function useNucleoMestreSst() {
   const legacyGesAsSst = legacyGhe.map((g: any) => ({
     id: g.id,
     empresa_id: g.empresa_id,
-    codigo: g.codigo || `GHE-${g.nome.substring(0, 5).toUpperCase()}`,
+    codigo: g.codigo || `GES-${g.nome.substring(0, 5).toUpperCase()}`,
     nome: g.nome,
-    descricao: g.descricao || g.descricao_ambiente || "GHE importado da base legada",
-    criterio_agrupamento: g.processo ? `Processo: ${g.processo}` : "Importado automaticamente do cadastro de GHE existente",
+    descricao: g.descricao || g.descricao_ambiente || "GES importado da base legada",
+    criterio_agrupamento: g.processo ? `Processo: ${g.processo}` : "Importado automaticamente do cadastro de GES existente",
     validade_inicio: g.created_at ? g.created_at.substring(0, 10) : new Date().toISOString().substring(0, 10),
   }));
   const effectiveGesList = unionById(gesList, legacyGesAsSst);
@@ -446,7 +446,7 @@ export function useNucleoMestreSst() {
           // (união por id) e mantém os dois registros como a MESMA entidade.
           id: g.id,
           empresa_id: g.empresa_id,
-          codigo: g.codigo || `GHE-${Math.floor(100 + Math.random() * 900)}`,
+          codigo: g.codigo || `GES-${Math.floor(100 + Math.random() * 900)}`,
           nome: g.nome || "Novo GES",
           descricao: g.criterio_agrupamento || g.descricao || null,
           status: "ativo",
@@ -461,11 +461,11 @@ export function useNucleoMestreSst() {
       queryClient.invalidateQueries({ queryKey: ["supabase", "ghe_ges"] });
       queryClient.invalidateQueries({ queryKey: ["cad-ghe-list"] });
       if (!variaveis?._silencioso) {
-        toast({ title: "Sucesso", description: "GES/GHE salvo com sucesso no Núcleo Mestre!" });
+        toast({ title: "Sucesso", description: "GES salvo com sucesso no Núcleo Mestre!" });
       }
     },
     onError: (err: any) => {
-      toast({ title: "Erro ao salvar GES/GHE", description: err.message, variant: "destructive" });
+      toast({ title: "Erro ao salvar GES", description: err.message, variant: "destructive" });
     },
   });
 
@@ -720,7 +720,7 @@ export function useNucleoMestreSst() {
   const deleteGesMutation = useMutation({
     mutationFn: async (id: string) => {
       // O .delete() do supabase-js NÃO lança: devolve { error }. Ignorar isso
-      // fazia a tela dizer "GES/GHE removido." com a linha ainda no banco.
+      // fazia a tela dizer "GES removido." com a linha ainda no banco.
       //
       // A ordem importa. funcionarios.ghe_id referencia ghe_ges.id, então a
       // chave estrangeira barra a exclusão de um GES com gente vinculada — mas
@@ -749,7 +749,7 @@ export function useNucleoMestreSst() {
       queryClient.invalidateQueries({ queryKey: ["supabase", "sst_ges"] });
       queryClient.invalidateQueries({ queryKey: ["supabase", "ghe_ges"] });
       queryClient.invalidateQueries({ queryKey: ["cad-ghe-list"] });
-      toast({ title: "Sucesso", description: "GES/GHE removido." });
+      toast({ title: "Sucesso", description: "GES removido." });
     },
     onError: (err: any) => {
       toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });

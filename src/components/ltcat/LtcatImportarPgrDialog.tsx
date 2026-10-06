@@ -84,7 +84,7 @@ export default function LtcatImportarPgrDialog({ open, onOpenChange, ltcatId, em
       });
       if (error) throw error;
       const r = data || {};
-      toast.success(`Importação concluída: ${r.criadas || 0} criadas, ${r.ignoradas || 0} ignoradas, ${r.sem_agente_no_catalogo || 0} sem agente no catálogo, ${r.sem_ghe || 0} sem GHE`);
+      toast.success(`Importação concluída: ${r.criadas || 0} criadas, ${r.ignoradas || 0} ignoradas, ${r.sem_agente_no_catalogo || 0} sem agente no catálogo, ${r.sem_ghe || 0} sem GES`);
       qc.invalidateQueries({ queryKey: ["ltcat-aa", ltcatId] });
       onOpenChange(false);
       setSelected(new Set()); setPgrId("");
@@ -157,7 +157,7 @@ export default function LtcatImportarPgrDialog({ open, onOpenChange, ltcatId, em
                           )}
                           {!i.ghe_id && (
                             <Badge variant="outline" className="mt-1 ml-1 bg-amber-100 text-amber-800 border-amber-300">
-                              <AlertTriangle className="h-3 w-3 mr-1" /> Sem GHE — será ignorada
+                              <AlertTriangle className="h-3 w-3 mr-1" /> Sem GES — será ignorada
                             </Badge>
                           )}
                         </div>
