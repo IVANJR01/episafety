@@ -138,10 +138,17 @@ export default function PgrModule() {
                        {pgrAtivo.status === "vigente" ? "Revisar" : "Continuar elaboração"}
                      </Button>
                   )}
-                  {/* Vista clássica em abas: destino diferente do assistente,
-                      senão os dois botões abririam a mesma tela. */}
-                  <Button variant="outline" onClick={() => navigate(`/pgr/${pgrAtivo.id}/classico`)}>
-                    <Eye className="h-4 w-4 mr-2" /> Visualizar
+                  {/*
+                    Havia aqui uma segunda tela do mesmo PGR -- a "vista
+                    clássica" em dez abas --, que repetia inventário, plano de
+                    ação, emergências, PDF, checklist e governança já
+                    existentes no assistente. Duas telas para o mesmo documento
+                    significam dois lugares para corrigir cada defeito. O botão
+                    agora leva ao assistente, direto na etapa de emissão, que é
+                    onde se confere e se gera o documento.
+                  */}
+                  <Button variant="outline" onClick={() => navigate(`/pgr/${pgrAtivo.id}?etapa=emissao`)}>
+                    <Eye className="h-4 w-4 mr-2" /> Revisar e emitir
                   </Button>
                 </div>
               </div>

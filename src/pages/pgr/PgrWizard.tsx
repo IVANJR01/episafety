@@ -27,6 +27,8 @@ import EmergenciasTab from "@/components/pgr/EmergenciasTab";
 import GovernancaTab from "@/components/pgr/GovernancaTab";
 import PgrChecklistTab from "@/components/pgr/PgrChecklistTab";
 import PgrPdfTab from "@/components/pgr/PgrPdfTab";
+import HistoricoRevisoes from "@/components/pgr/HistoricoRevisoes";
+import TextosTab from "@/components/pgr/TextosTab";
 import MatrizRisco from "@/components/pgr/MatrizRisco";
 import { PgrEtapaProvider, useAcoesEtapa } from "@/components/pgr/PgrEtapaContext";
 import PgrPendenciasPainel, { usePgrPendencias } from "@/components/pgr/PgrPendenciasPainel";
@@ -357,9 +359,22 @@ function Assistente() {
               descricao="Confere o documento item a item contra a NR-01.">
               <PgrChecklistTab pgr={pgr} />
             </Secao>
+            <Secao titulo="Histórico de revisões"
+              descricao="Item 1.5.7.3.3.1 da NR-01: o histórico das atualizações é mantido por 20 anos.">
+              <HistoricoRevisoes pgrId={pgr.id} />
+            </Secao>
             <Secao titulo="Gatilhos e aprovações"
               descricao="Prazo de revisão e trâmite de aprovação interna.">
               <GovernancaTab pgr={pgr} canEdit={editavel} />
+            </Secao>
+            {/*
+              Os textos institucionais também só existiam na tela clássica.
+              A NR-01 não os pede, e por isso eles ficam no fim, depois do que
+              a norma exige: só saem no PDF quando alguém escreve algum.
+            */}
+            <Secao titulo="Textos do documento"
+              descricao="Opcionais — introdução, objetivos, recomendações. A NR-01 não os exige, e só aparecem no PDF se forem preenchidos.">
+              <TextosTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
             </Secao>
             <Secao titulo="Documento"
               descricao="Inventário de riscos e plano de ação — o conteúdo que a NR-01 exige do PGR.">

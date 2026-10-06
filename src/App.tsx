@@ -65,7 +65,6 @@ import CatValidar from "@/pages/cat/CatValidar";
 import EsocialConfig from "@/pages/cat/EsocialConfig";
 import PgrModule from "@/pages/pgr/PgrModule";
 import PgrNovo from "@/pages/pgr/PgrNovo";
-import PgrDetalhe from "@/pages/pgr/PgrDetalhe";
 import PgrWizard from "@/pages/pgr/PgrWizard";
 import PgrEstruturaTecnica from "@/pages/pgr/PgrEstruturaTecnica";
 import PgrComparar from "@/pages/pgr/PgrComparar";
@@ -346,7 +345,6 @@ function ProtectedRoute() {
         <Route path="/pgr/:id/estrutura" element={<PgrEstruturaTecnica />} />
         <Route path="/pgr/:id/comparar" element={<PgrComparar />} />
         <Route path="/campo" element={<LevantamentoCampo />} />
-        <Route path="/pgr/:id/classico" element={<PgrDetalhe />} />
         <Route path="/pgr/:id/editar" element={<PgrNovo />} />
         <Route path="/pgr/validar/:id" element={<PgrValidar />} />
         <Route path="/ltcat" element={<LtcatModule />} />
