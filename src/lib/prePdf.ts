@@ -7,7 +7,7 @@
 // ganharam este gerador, com o mesmo timbre — é o mesmo emissor.
 import jsPDF from "jspdf";
 import {
-  B, capaTimbrada, ensure, fmtDT, fmtDate, para, rodapePaginas, sub, sumario,
+  B, type CampoCapa, capaTimbrada, ensure, fmtDT, fmtDate, para, rodapePaginas, sub, sumario,
   tabela, title,
 } from "@/lib/pdfTimbrado";
 
@@ -112,14 +112,15 @@ export async function render(
     nota: "Documento técnico — NR-01, item 1.5.6",
     empresaNome: ctx.empresaNome || "Empresa",
     identificacao: [
-      ctx.empresaCnpj ? `CNPJ: ${ctx.empresaCnpj}` : null,
+      ctx.empresaCnpj ? `CNPJ ${ctx.empresaCnpj}` : null,
       ctx.unidadeNome ? `Unidade: ${ctx.unidadeNome}` : null,
     ].filter(Boolean) as string[],
-    dados: [
-      `Emitido em: ${fmtDate(ctx.dataEmissao || new Date().toISOString())}`,
-      `Responsável Técnico: ${ctx.respTecNome || "—"}`,
-      `Registro Profissional: ${ctx.respTecRegistro || "—"}`,
-    ],
+    campos: [
+      { rotulo: "Emitido em", valor: fmtDate(ctx.dataEmissao || new Date().toISOString()) },
+      { rotulo: "Cenários mapeados", valor: String(ctx.cenarios.length) },
+      ctx.respTecNome ? { rotulo: "Responsável técnico", valor: ctx.respTecNome, largo: true } : null,
+      ctx.respTecRegistro ? { rotulo: "Registro profissional", valor: ctx.respTecRegistro } : null,
+    ].filter(Boolean) as CampoCapa[],
   });
   pdf.addPage(); b.y = 15;
 

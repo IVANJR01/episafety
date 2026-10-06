@@ -152,6 +152,13 @@ export function para(b: B, txt: string, size = 8, color: [number, number, number
   b.doc.setTextColor(0);
 }
 
+export interface CampoCapa {
+  rotulo: string;
+  valor: string;
+  /** Ocupa a largura inteira do painel, para valores longos. */
+  largo?: boolean;
+}
+
 export interface CapaTimbrada {
   logoDataUrl?: string | null;
   /** Canto superior direito, em destaque: "REV. 00". */
@@ -164,11 +171,12 @@ export interface CapaTimbrada {
   subtitulo?: string | null;
   nota?: string | null;
   empresaNome: string;
-  /** CNPJ, unidade, código do documento. */
+  /** CNPJ e unidade, logo abaixo do nome, dentro do painel. */
   identificacao: string[];
-  /** Emissão, vigência, responsável técnico. */
-  dados: string[];
+  /** Emissão, vigência, responsável técnico — em duas colunas no painel. */
+  campos: CampoCapa[];
 }
+
 
 /**
  * A capa: papel timbrado, não banner.
@@ -197,39 +205,95 @@ export function capaTimbrada(pdf: jsPDF, capa: CapaTimbrada) {
   pdf.setDrawColor(200); pdf.setLineWidth(0.4);
   pdf.line(MARGEM, 42, LARGURA - MARGEM, 42);
 
-  pdf.setTextColor(15, 23, 42); pdf.setFont("helvetica", "bold"); pdf.setFontSize(46);
-  pdf.text(capa.sigla, MARGEM, 96);
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(14); pdf.setTextColor(40);
-  pdf.text(capa.titulo, MARGEM, 107);
+  // ── Título ────────────────────────────────────────────────────────────────
+  pdf.setTextColor(15, 23, 42); pdf.setFont("helvetica", "bold"); pdf.setFontSize(52);
+  pdf.text(capa.sigla, MARGEM, 86);
+  // Régua curta sob a sigla: ancora o título, que antes flutuava sozinho no
+  // meio de uma página em branco.
+  pdf.setFillColor(15, 23, 42);
+  pdf.rect(MARGEM, 92, 26, 1.6, "F");
+
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(15); pdf.setTextColor(40);
+  pdf.text(capa.titulo, MARGEM, 104);
   if (capa.subtitulo) {
     pdf.setFontSize(11); pdf.setTextColor(110);
-    pdf.text(capa.subtitulo, MARGEM, 114);
+    pdf.text(capa.subtitulo, MARGEM, 112);
   }
   if (capa.nota) {
-    pdf.setFontSize(9); pdf.setTextColor(110);
-    pdf.text(capa.nota, MARGEM, 121);
+    pdf.setFontSize(9); pdf.setTextColor(130);
+    pdf.text(capa.nota, MARGEM, 119);
   }
 
   /*
-   * Identificação da empresa no pé da capa.
+   * ── Painel de identificação ───────────────────────────────────────────────
    *
-   * Ela ficava logo abaixo do título, e o resto da página descia vazio até a
-   * borda. Aqui embaixo ela fecha a capa e o título fica com o espaço que
-   * pedia — é a proporção do modelo de referência.
+   * A capa tinha o título no terço de cima, a empresa no pé e setecentos
+   * pixels de nada no meio — a marca d'água era a única coisa ali. Não era
+   * respiro, era buraco: quem abre um PGR procura justamente estes dados, e
+   * eles estavam espremidos em linhas corridas no rodapé.
+   *
+   * Agora o miolo é o painel que identifica o documento: empresa no alto,
+   * depois os campos em duas colunas, cada um com rótulo miúdo e valor em
+   * destaque. Campo sem dado não entra — quem monta a lista já filtra.
    */
-  pdf.setDrawColor(225); pdf.setLineWidth(0.3);
-  pdf.line(MARGEM, 228, LARGURA - MARGEM, 228);
-  pdf.setFont("helvetica", "bold"); pdf.setFontSize(15); pdf.setTextColor(15, 23, 42);
-  const nomeEmpresa = pdf.splitTextToSize(capa.empresaNome || "Empresa", LARGURA - MARGEM * 2) as string[];
-  pdf.text(nomeEmpresa, MARGEM, 238);
-  let y = 238 + nomeEmpresa.length * 7;
+  const PAINEL_X = MARGEM;
+  const PAINEL_L = LARGURA - MARGEM * 2;
+  const PAINEL_Y = 152;
 
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(10); pdf.setTextColor(60);
-  capa.identificacao.forEach((linha) => { pdf.text(linha, MARGEM, y); y += 5.5; });
-  y += 4;
-  capa.dados.forEach((linha) => { pdf.text(linha, MARGEM, y); y += 5.5; });
+  const colunas = 2;
+  const larguraCol = (PAINEL_L - 16) / colunas;
+
+  // Altura: nome da empresa + identificação + linhas de campos.
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(16);
+  const nomeEmpresa = pdf.splitTextToSize(capa.empresaNome || "Empresa", PAINEL_L - 16) as string[];
+  let linhasDeCampos = 0;
+  let coluna = 0;
+  capa.campos.forEach((c) => {
+    if (c.largo) {
+      if (coluna !== 0) { linhasDeCampos += 1; coluna = 0; }
+      linhasDeCampos += 1;
+    } else {
+      if (coluna === 0) linhasDeCampos += 1;
+      coluna = (coluna + 1) % colunas;
+    }
+  });
+  const alturaPainel =
+    10 + nomeEmpresa.length * 7 + capa.identificacao.length * 5 + 6 + linhasDeCampos * 13 + 4;
+
+  pdf.setFillColor(248, 249, 251);
+  pdf.setDrawColor(222);
+  pdf.setLineWidth(0.3);
+  pdf.rect(PAINEL_X, PAINEL_Y, PAINEL_L, alturaPainel, "FD");
+  // Faixa na borda esquerda, na cor do documento: é o que liga o painel ao
+  // título lá em cima.
+  pdf.setFillColor(15, 23, 42);
+  pdf.rect(PAINEL_X, PAINEL_Y, 1.8, alturaPainel, "F");
+
+  let y = PAINEL_Y + 11;
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(16); pdf.setTextColor(15, 23, 42);
+  pdf.text(nomeEmpresa, PAINEL_X + 8, y);
+  y += nomeEmpresa.length * 7;
+
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(9.5); pdf.setTextColor(90);
+  capa.identificacao.forEach((linha) => { pdf.text(linha, PAINEL_X + 8, y); y += 5; });
+
+  y += 6;
+  coluna = 0;
+  capa.campos.forEach((c) => {
+    if (c.largo && coluna !== 0) { y += 13; coluna = 0; }
+    const x = PAINEL_X + 8 + coluna * larguraCol;
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(7); pdf.setTextColor(130);
+    pdf.text(c.rotulo.toUpperCase(), x, y);
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(10.5); pdf.setTextColor(25);
+    const largura = c.largo ? PAINEL_L - 16 : larguraCol - 6;
+    pdf.text(pdf.splitTextToSize(c.valor, largura)[0], x, y + 5);
+    if (c.largo) { y += 13; coluna = 0; }
+    else { coluna = (coluna + 1) % colunas; if (coluna === 0) y += 13; }
+  });
+
   pdf.setTextColor(0);
 }
+
 
 /** Sumário, inserido como página 2 — só dá para montar depois de tudo desenhado. */
 export function sumario(pdf: jsPDF, toc: ItemSumario[]) {

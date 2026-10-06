@@ -85,7 +85,7 @@ describe("capa do PGR", () => {
   it("identifica a empresa coberta pelo documento", async () => {
     const t = await capa();
     expect(t).toContain("LEONARDO A. DE ARAUJO LTDA");
-    expect(t).toContain("CNPJ: 51.213.683/0001-04");
+    expect(t).toContain("CNPJ 51.213.683/0001-04");
   });
 
   it("fecha a capa com a identificação da empresa, e nada mais", async () => {
@@ -129,6 +129,33 @@ describe("capa do PGR", () => {
 
     expect(linhasDoTitulo.length).toBeGreaterThan(1);
     expect(linhasDoTitulo.join(" ").replace(/\s+/g, " ").trim()).toBe(nome);
-    expect(t).toContain("Emitido em: 01/07/2026");
+    // No painel, rótulo e valor são desenhados separados.
+    expect(t).toContain("EMITIDO EM");
+    expect(t).toContain("01/07/2026");
+  });
+});
+
+describe("painel de identificação da capa", () => {
+  it("traz os campos que identificam o documento, com rótulo e valor", async () => {
+    const t = await capa();
+    ["EMITIDO EM", "VIGÊNCIA", "RESPONSÁVEL TÉCNICO", "CÓDIGO DO DOCUMENTO"].forEach((r) =>
+      expect(t, `faltou o rótulo ${r}`).toContain(r));
+    expect(t).toContain("PGR-2026-D2840596");
+    expect(t).toContain("01/07/2026 a 30/06/2028");
+  });
+
+  it("não imprime campo sem dado", async () => {
+    // Saía "Vigência: — a —" e "Registro Profissional: —" na capa de um
+    // documento de fiscalização.
+    const t = await capa({
+      doc: {
+        id: "x", versao: 1, status: "rascunho", data_emissao: "2026-07-01",
+        data_vigencia_inicio: null, data_vigencia_fim: null,
+        resp_tec_nome: null, resp_tec_registro: null,
+      },
+    } as any);
+    expect(t.some((s) => s.includes("—"))).toBe(false);
+    expect(t).not.toContain("VIGÊNCIA");
+    expect(t).not.toContain("REGISTRO PROFISSIONAL");
   });
 });
