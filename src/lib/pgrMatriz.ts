@@ -31,22 +31,65 @@ export const CLASSE_LABEL: Record<PgrClasse, string> = {
   intoleravel: "Intolerável",
 };
 
-/** Preenchimento sólido — células da matriz. */
-export const CLASSE_BG: Record<PgrClasse, string> = {
-  trivial: "bg-emerald-500",
-  toleravel: "bg-lime-500",
-  moderado: "bg-yellow-500",
-  substancial: "bg-orange-500",
-  intoleravel: "bg-red-600",
+/*
+ * AS CORES OFICIAIS DA CLASSIFICAÇÃO — fonte única.
+ *
+ * São as mesmas da planilha de inventário da SafetySoluções e dos documentos
+ * em Word gerados pelo pacote (ferramentas/documentos). Antes a tela usava a
+ * paleta do Tailwind (esmeralda, lima, amarelo-500...), e a mesma linha de
+ * risco saía de uma cor na tela e de outra no Excel e no Word entregue ao
+ * cliente. Agora há um lugar só, e o teste coresOficiais.test.ts confere que
+ * o gerador de Word continua usando exatamente estes valores.
+ *
+ * Não trocar por classe do Tailwind: FFFF00 e 92D050 não existem na paleta
+ * padrão, e aproximar "quase igual" é como a divergência começou.
+ */
+export const CLASSE_HEX_OFICIAL: Record<PgrClasse, string> = {
+  trivial: "00B0F0",
+  toleravel: "92D050",
+  moderado: "FFFF00",
+  substancial: "FFC000",
+  intoleravel: "C00000",
 };
 
-/** Badge/etiqueta — fundo claro com texto legível. */
+/**
+ * A letra que se lê em cima de cada cor.
+ *
+ * Só o Intolerável leva letra branca — é a mesma regra do gerador de Word
+ * (`txtCor`). Nos outros o fundo é claro demais e o branco some; branco sobre
+ * amarelo FFFF00 é ilegível, e rótulo ilegível num documento legal vale o
+ * mesmo que rótulo ausente.
+ */
+export const CLASSE_TEXTO_SOBRE: Record<PgrClasse, string> = {
+  trivial: "#000000",
+  toleravel: "#000000",
+  moderado: "#000000",
+  substancial: "#000000",
+  intoleravel: "#FFFFFF",
+};
+
+/** Preenchimento sólido — células da matriz. */
+export const CLASSE_BG: Record<PgrClasse, string> = {
+  trivial: "bg-[#00B0F0]",
+  toleravel: "bg-[#92D050]",
+  moderado: "bg-[#FFFF00]",
+  substancial: "bg-[#FFC000]",
+  intoleravel: "bg-[#C00000]",
+};
+
+/*
+ * Badge/etiqueta — a mesma cor, clara o bastante para texto por cima.
+ *
+ * A cor oficial entra a 18% com borda a 55% dela; o texto usa um tom escuro
+ * da MESMA matiz, para a etiqueta ser reconhecida como a mesma cor da célula
+ * pintada sem ficar ilegível.
+ */
 export const CLASSE_TEXT: Record<PgrClasse, string> = {
-  trivial: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  toleravel: "bg-lime-100 text-lime-800 border-lime-300",
-  moderado: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  substancial: "bg-orange-100 text-orange-800 border-orange-300",
-  intoleravel: "bg-red-100 text-red-800 border-red-300",
+  trivial: "bg-[#00B0F0]/18 text-[#065A7D] border-[#00B0F0]/55",
+  toleravel: "bg-[#92D050]/18 text-[#3F6B12] border-[#92D050]/55",
+  moderado: "bg-[#FFFF00]/25 text-[#6B6000] border-[#C9A400]/55",
+  substancial: "bg-[#FFC000]/20 text-[#7A5A00] border-[#FFC000]/55",
+  intoleravel: "bg-[#C00000]/12 text-[#8F0000] border-[#C00000]/45",
 };
 
 /**
@@ -56,18 +99,13 @@ export const CLASSE_TEXT: Record<PgrClasse, string> = {
  * cor que se lê em cima dela. É a escala de decisão da NR-01 — quanto mais
  * quente, mais urgente —, e pintar a célula inteira faz a linha crítica saltar
  * numa tabela de dezoito colunas.
- *
- * Só o Intolerável leva letra branca: nos outros o fundo é claro demais, e
- * branco sobre amarelo ou verde-limão desaparece. A escolha é por contraste
- * medido, não por gosto — rótulo ilegível num documento legal é o mesmo que
- * rótulo ausente.
  */
 export const CLASSE_COR: Record<PgrClasse, { fundo: string; texto: string }> = {
-  trivial: { fundo: "#10B981", texto: "#1F2937" },
-  toleravel: { fundo: "#84CC16", texto: "#1F2937" },
-  moderado: { fundo: "#EAB308", texto: "#1F2937" },
-  substancial: { fundo: "#F97316", texto: "#1F2937" },
-  intoleravel: { fundo: "#DC2626", texto: "#FFFFFF" },
+  trivial: { fundo: "#00B0F0", texto: CLASSE_TEXTO_SOBRE.trivial },
+  toleravel: { fundo: "#92D050", texto: CLASSE_TEXTO_SOBRE.toleravel },
+  moderado: { fundo: "#FFFF00", texto: CLASSE_TEXTO_SOBRE.moderado },
+  substancial: { fundo: "#FFC000", texto: CLASSE_TEXTO_SOBRE.substancial },
+  intoleravel: { fundo: "#C00000", texto: CLASSE_TEXTO_SOBRE.intoleravel },
 };
 
 /**
@@ -79,13 +117,19 @@ export function corDaClasse(classe?: string | null): { fundo: string; texto: str
   return CLASSE_COR[chave] ?? COR_NEUTRA;
 }
 
-/** Cor hexadecimal para o PDF (jsPDF não entende classes Tailwind). */
+/** O hexadecimal oficial em RGB, para o PDF (jsPDF não entende classe Tailwind). */
+const paraRgb = (hex: string): [number, number, number] => [
+  parseInt(hex.slice(0, 2), 16),
+  parseInt(hex.slice(2, 4), 16),
+  parseInt(hex.slice(4, 6), 16),
+];
+
 export const CLASSE_HEX: Record<PgrClasse, [number, number, number]> = {
-  trivial: [16, 185, 129],
-  toleravel: [132, 204, 22],
-  moderado: [234, 179, 8],
-  substancial: [249, 115, 22],
-  intoleravel: [220, 38, 38],
+  trivial: paraRgb(CLASSE_HEX_OFICIAL.trivial),
+  toleravel: paraRgb(CLASSE_HEX_OFICIAL.toleravel),
+  moderado: paraRgb(CLASSE_HEX_OFICIAL.moderado),
+  substancial: paraRgb(CLASSE_HEX_OFICIAL.substancial),
+  intoleravel: paraRgb(CLASSE_HEX_OFICIAL.intoleravel),
 };
 
 /** Decisão associada a cada faixa (NR-01 1.5.4.4.3). */

@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "documentos:sincronizar": "node scripts/sincronizar-docs-sst.cjs"
   },
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^10.0.0",
@@ -56,6 +57,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^3.6.0",
+    "docx": "^9.5.1",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.38.0",
     "idb-keyval": "^6.2.6",

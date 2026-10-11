@@ -1,0 +1,9 @@
+{
+  "name": "safetysolucoes-documentos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Geração dos documentos SST (PGR, PCMSO, AET, AEP, laudos) e da planilha de inventário",
+  "dependencies": {
+    "docx": "^9.10.0"
+  }
+}

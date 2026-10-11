@@ -67,12 +67,18 @@ describe("corDoGrupo", () => {
  * crítica saltar numa tabela de dezoito colunas.
  */
 describe("corDaClasse", () => {
-  it("segue a escala, do verde ao vermelho", () => {
-    expect(corDaClasse("trivial").fundo).toBe("#10B981");
-    expect(corDaClasse("toleravel").fundo).toBe("#84CC16");
-    expect(corDaClasse("moderado").fundo).toBe("#EAB308");
-    expect(corDaClasse("substancial").fundo).toBe("#F97316");
-    expect(corDaClasse("intoleravel").fundo).toBe("#DC2626");
+  it("usa as cores oficiais da planilha, do azul ao vermelho", () => {
+    /*
+     * Estas cinco cores NÃO são escolha de design: são as da planilha de
+     * inventário da SafetySoluções e as dos documentos em Word entregues ao
+     * cliente. Mudar aqui sem mudar no gerador faz a mesma linha de risco
+     * sair de uma cor na tela e de outra no arquivo assinado.
+     */
+    expect(corDaClasse("trivial").fundo).toBe("#00B0F0");
+    expect(corDaClasse("toleravel").fundo).toBe("#92D050");
+    expect(corDaClasse("moderado").fundo).toBe("#FFFF00");
+    expect(corDaClasse("substancial").fundo).toBe("#FFC000");
+    expect(corDaClasse("intoleravel").fundo).toBe("#C00000");
   });
 
   it("cada classe tem cor própria — duas iguais apagariam a escala", () => {
@@ -85,7 +91,7 @@ describe("corDaClasse", () => {
     // documento legal é o mesmo que rótulo ausente.
     expect(corDaClasse("intoleravel").texto).toBe("#FFFFFF");
     for (const c of ["trivial", "toleravel", "moderado", "substancial"]) {
-      expect(corDaClasse(c).texto, `${c} deveria ter letra escura`).toBe("#1F2937");
+      expect(corDaClasse(c).texto, `${c} deveria ter letra escura`).toBe("#000000");
     }
   });
 

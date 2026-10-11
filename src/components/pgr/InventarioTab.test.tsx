@@ -316,7 +316,8 @@ describe("InventarioTab — cor da classificação", () => {
     await waitFor(() => expect(document.querySelectorAll("tbody tr").length).toBe(1));
 
     const celula = celulaCom("Intolerável");
-    expect(celula?.style.backgroundColor).toBe("rgb(220, 38, 38)");
+    /* C00000 — o vermelho oficial da planilha, não o vermelho do Tailwind. */
+    expect(celula?.style.backgroundColor).toBe("rgb(192, 0, 0)");
     expect(celula?.style.color).toBe("rgb(255, 255, 255)");
   });
 
@@ -333,8 +334,9 @@ describe("InventarioTab — cor da classificação", () => {
     await waitFor(() => expect(document.querySelectorAll("tbody tr").length).toBe(1));
 
     const celula = celulaCom("Moderado");
-    expect(celula?.style.backgroundColor).toBe("rgb(234, 179, 8)");
-    expect(celula?.style.color).toBe("rgb(31, 41, 55)");
+    /* FFFF00 — o amarelo oficial. Letra branca sobre ele desapareceria. */
+    expect(celula?.style.backgroundColor).toBe("rgb(255, 255, 0)");
+    expect(celula?.style.color).toBe("rgb(0, 0, 0)");
   });
 
   it("risco SEM avaliação não sai pintado como aceito", async () => {
