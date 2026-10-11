@@ -88,33 +88,35 @@ describe("a matriz sai legível", () => {
 });
 
 describe("o plano de ação imprime português, não o banco", () => {
-  it("mostra o rótulo do status, não o valor do enum", async () => {
+  /*
+   * O plano virou tabela 5W2H em página deitada, no formato da planilha —
+   * antes era uma lista de parágrafos. As regras continuam as mesmas: o que
+   * sai impresso é português, e campo vazio é campo vazio, não travessão.
+   */
+  it("a coluna de status mostra o rótulo, não o valor do enum", async () => {
     const pdf = await textoDoPdf();
-    expect(pdf).toContain("Status: Programada");
-    expect(pdf).not.toContain("Status: programada");
+    expect(pdf).toContain("Programada");
+    /* "programada" minúsculo é o nome do enum no banco. */
+    expect(pdf).not.toContain("(programada)");
   }, 30_000);
 
-  it("não imprime campo vazio como travessão", async () => {
-    const pdf = await textoDoPdf();
-    /* Saía "Risco: — · Prazo: 30/06/2026 · Conclusão: —" nesta mesma ação. */
-    expect(pdf).toContain("Status: Programada");
-    expect(pdf).not.toContain("Conclus");
+  it("traz as colunas do 5W2H e o cronograma dos doze meses", async () => {
+    /* Remontado: cabeçalho de coluna estreita sai partido em dois pedaços. */
+    const pdf = [...(await textoDoPdf()).matchAll(/\((.*?)\) Tj/g)]
+      .map((m) => m[1]).join(" ").replace(/\s+/g, " ");
+    for (const coluna of ["O QU", "POR QU", "COMO?", "ONDE?", "QUANTO?", "PRIOR.", "RESPON", "STATUS"]) {
+      expect(pdf, `faltou a coluna ${coluna}`).toContain(coluna);
+    }
+    expect(pdf, "faltou o cronograma").toContain("ACOMPANHAMENTO E AFERI");
   }, 30_000);
 
-  it("mas imprime a conclusão quando ela existe", async () => {
-    const comConclusao = {
+  it("a prioridade sai como ALTA, MÉDIA ou BAIXA, não como número", async () => {
+    const comPrioridade = {
       ...CTX,
-      acoes: [{ ...(CTX.acoes[0] as never as Record<string, unknown>), status: "concluida", data_conclusao: "2026-05-20" }],
+      acoes: [{ ...(CTX.acoes as never as Record<string, unknown>[])[0], prioridade: 5 }],
     } as PgrPdfContext;
-    const pdf = await render(comConclusao, { qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false });
-    const texto = Buffer.from(pdf.output("arraybuffer")).toString("latin1");
-    expect(texto).toContain("Status: Conclu");
-    expect(texto).toContain("20/05/2026");
-  }, 30_000);
-
-  it("não repete a medida como título e como linha do 5W2H", async () => {
-    const pdf = await textoDoPdf();
-    expect(pdf).not.toContain("O que ser");
+    const pdf = await render(comPrioridade, { qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false });
+    expect(Buffer.from(pdf.output("arraybuffer")).toString("latin1")).toContain("ALTA");
   }, 30_000);
 });
 
@@ -185,51 +187,36 @@ describe("defeitos vistos num PGR real de 14 páginas", () => {
     return achado!.y;
   };
 
-  it("título de várias linhas não escreve por cima do 5W2H", async () => {
-    /* Longo de propósito: precisa quebrar em mais de uma linha para o
-       defeito aparecer — com título de uma linha ele fica escondido. */
-    const longa = {
-      ...acaoComQuebra,
-      what:
-        'Implantar controle do risco "Mobiliário; Computador" com fornecimento de ' +
-        "Kit Ergonômico composto por suporte para notebook, apoio para os pés, mousepad " +
-        "com apoio de punho e apoio para teclado em todos os postos administrativos da " +
-        "empresa, incluindo escritório, marketing, comercial e recepção, conforme " +
-        "levantamento ergonômico preliminar realizado pelo responsável técnico",
-    };
-    const pdf = await render({ ...CTX, acoes: [longa] as never }, {
-      qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false,
-    });
-    const pos = posicoesDoTexto(pdf);
-
-    /* O título precisa mesmo ter quebrado, senão o teste não prova nada. */
-    const linhasTitulo = pos.filter((p) =>
-      /Implantar controle|mousepad|levantamento ergon/i.test(p.texto),
-    );
-    /* Com uma ou duas linhas o defeito não aparece: a sobreposição começa na
-       terceira. O caso de teste precisa ser pelo menos tão grande quanto o
-       que apareceu no PGR real. */
-    expect(linhasTitulo.length, "o título deveria ocupar 3 linhas ou mais").toBeGreaterThanOrEqual(3);
-
-    /* No PDF o y cresce para CIMA: cada linha seguinte tem y MENOR. */
-    const yUltimaLinhaTitulo = Math.min(...linhasTitulo.map((p) => p.y));
-    const ySituacao = alturaDe(pos, "Status:");
-    const y5w2h = alturaDe(pos, "Medida registrada");
-    /* Uma entrelinha inteira de folga, não "qualquer coisa positiva": duas
-       frases a um ponto de distância já se tocam na página. */
-    expect(yUltimaLinhaTitulo - ySituacao, "situação saiu em cima do título").toBeGreaterThan(8);
-    expect(ySituacao - y5w2h, "5W2H saiu em cima da situação").toBeGreaterThan(8);
-  }, 30_000);
-
-  it("quebra de linha no cadastro não vira linha solta no documento", async () => {
-    /* O jsPDF quebra em \n: o título virava três linhas sem altura reservada. */
+  it("medida com quebra de linha no cadastro sai inteira, numa célula só", async () => {
+    /*
+     * No plano em lista de parágrafos, a quebra de linha vinda do cadastro
+     * fazia o título ocupar três linhas sem altura reservada, e o texto saía
+     * por cima do 5W2H. Agora o plano é tabela, e a tabela MEDE o que
+     * desenha — a geometria deixou de ser o risco.
+     *
+     * O que sobrou para garantir é que nada se perde no caminho: a medida
+     * inteira precisa continuar impressa, em uma única célula.
+     */
     const pdf = await render({ ...CTX, acoes: [acaoComQuebra] as never }, {
       qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false,
     });
-    const pos = posicoesDoTexto(pdf);
-    const comKit = pos.filter((p) => p.texto.includes("Kit Ergon"));
-    expect(comKit).toHaveLength(1);
-    expect(comKit[0].texto).toContain("Implantar controle");
+    const texto = Buffer.from(pdf.output("arraybuffer")).toString("latin1");
+    for (const pedaco of ["Implantar controle", "Kit", "Ergon", "Teclado"]) {
+      expect(texto, `"${pedaco}" sumiu da medida`).toContain(pedaco);
+    }
+    /*
+     * E que a quebra de linha tenha virado espaço. Comparando com a mesma
+     * ação já sem a quebra: se o \n ainda passasse, a célula ganharia uma
+     * linha em branco e o documento teria mais linhas desenhadas que o outro.
+     */
+    const semQuebra = {
+      ...acaoComQuebra,
+      what: acaoComQuebra.what.replace(/\s*\n+\s*/g, " "),
+    };
+    const pdfSemQuebra = await render({ ...CTX, acoes: [semQuebra] as never }, {
+      qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false,
+    });
+    expect(posicoesDoTexto(pdf).length).toBe(posicoesDoTexto(pdfSemQuebra).length);
   }, 30_000);
 
   it("o inventário não afirma que ninguém está exposto", async () => {
@@ -243,19 +230,19 @@ describe("defeitos vistos num PGR real de 14 páginas", () => {
     const texto = Buffer.from(pdf.output("arraybuffer")).toString("latin1");
     /* Saía "0 expostos" em todas as linhas — o contrário do que o inventário registra. */
     expect(texto).not.toContain("0 expostos");
-    /* A coluna chama-se "Expostos"; a célula diz que o número não foi dado. */
-    expect(texto).toContain("n\xe3o informado");
+    /* A faixa do GES diz que o número não foi informado, em vez de zero. */
+    expect(texto).toContain("Trabalhadores expostos: n\xe3o informado");
   }, 30_000);
 
-  it("conta os expostos no singular quando é um só", async () => {
+  it("mostra o número de expostos do grupo quando ele existe", async () => {
+    /* O número vive na faixa do GES, que é o grupo exposto da letra "e". */
     const umExposto = {
       ...CTX,
-      inventario: [{ ...(CTX.inventario as never as Record<string, unknown>[])[0], trabalhadores_expostos: 1 }],
+      inventario: [{ ...(CTX.inventario as never as Record<string, unknown>[])[0], trabalhadores_expostos: 7 }],
     } as PgrPdfContext;
     const pdf = await render(umExposto, { qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false });
     const texto = Buffer.from(pdf.output("arraybuffer")).toString("latin1");
-    expect(texto).toContain("1 exposto");
-    expect(texto).not.toContain("1 expostos");
+    expect(texto).toContain("Trabalhadores expostos: 7");
     expect(texto).not.toContain("n\xe3o informado");
   }, 30_000);
 

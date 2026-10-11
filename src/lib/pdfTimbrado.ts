@@ -22,9 +22,29 @@ export interface B {
   toc: ItemSumario[];
   /** Contador de seções, preenchido por `title()`. Começa em 1. */
   secao?: number;
+  /*
+   * Os limites da página em uso.
+   *
+   * Eram constantes: 200 mm de borda direita e 278 mm de altura máxima, que
+   * é A4 em pé. O inventário do PGR precisa de página deitada — são quinze
+   * colunas, e é assim que a planilha e o documento em Word da
+   * SafetySoluções sempre imprimiram. Sem isto a tabela quebrava a página na
+   * altura errada e desenhava a linha de baixo fora do papel.
+   *
+   * Ausentes, valem os de A4 em pé; nada que já existia precisou mudar.
+   */
+  direita?: number;
+  limiteY?: number;
 }
 
-export const ensure = (b: B, h: number) => { if (b.y + h > 278) { b.doc.addPage(); b.y = 15; } };
+/** Borda direita útil da página em uso (A4 em pé, quando não dito). */
+export const direitaDe = (b: B) => b.direita ?? 200;
+/** Altura máxima antes de quebrar a página (A4 em pé, quando não dito). */
+export const limiteYDe = (b: B) => b.limiteY ?? 278;
+
+export const ensure = (b: B, h: number) => {
+  if (b.y + h > limiteYDe(b)) { b.doc.addPage(); b.y = 15; }
+};
 
 /**
  * Abre uma seção e registra a página no sumário.
@@ -57,7 +77,7 @@ export function title(b: B, t: string) {
   b.doc.text(numerado, 16, b.y + 4.2);
   b.y += 7;
   b.doc.setDrawColor(200); b.doc.setLineWidth(0.3);
-  b.doc.line(10, b.y, 200, b.y);
+  b.doc.line(10, b.y, direitaDe(b), b.y);
   b.doc.setTextColor(0);
   b.y += 4;
 }
@@ -75,12 +95,47 @@ export function sub(b: B, t: string) {
  * Devolve a função que desenha uma linha garantindo a repetição: sem isso, uma
  * tabela de 80 riscos vira 3 páginas de números sem nome de coluna.
  */
-export function tabela(b: B, colunas: { rotulo: string; x: number; w: number }[]) {
+/*
+ * Opções de tamanho de letra.
+ *
+ * 7,5 pt serve para uma tabela de cinco colunas. Nas quinze colunas do
+ * inventário a mesma letra fazia o texto de uma célula encostar na coluna
+ * seguinte, e partia rótulo no meio da palavra ("ATENUAÇ" / "ÃO / FP").
+ * Quem monta a tabela sabe quantas colunas ela tem; é quem deve escolher.
+ */
+export interface OpcoesTabela {
+  fonte?: number;
+  fonteCabecalho?: number;
+}
+
+export function tabela(
+  b: B,
+  colunas: { rotulo: string; x: number; w: number }[],
+  opcoes: OpcoesTabela = {},
+) {
+  const FONTE = opcoes.fonte ?? 7.5;
+  const FONTE_CAB = opcoes.fonteCabecalho ?? 7;
+  /*
+   * O cabeçalho QUEBRA dentro da própria coluna.
+   *
+   * Escrito numa linha só, um rótulo longo invadia o vizinho: com as quinze
+   * colunas do inventário, "FONTE / CIRCUNSTÂNCIA" escrevia por cima de
+   * "POSSÍVEIS LESÕES OU AGRAVOS" e a faixa virava um borrão. A altura da
+   * faixa passa a ser a do rótulo mais alto.
+   */
   const desenhaCabecalho = () => {
-    b.doc.setFillColor(240, 240, 240); b.doc.rect(10, b.y, 190, 6, "F");
-    b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(7.5); b.doc.setTextColor(30);
-    colunas.forEach((c) => b.doc.text(c.rotulo, c.x, b.y + 4));
-    b.doc.setTextColor(0); b.y += 7;
+    b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(FONTE_CAB);
+    const rotulos = colunas.map((c) => b.doc.splitTextToSize(c.rotulo, c.w) as string[]);
+    const linhas = Math.max(...rotulos.map((r) => r.length));
+    const altura = Math.max(6, linhas * (FONTE_CAB * 0.4) + 2);
+    b.doc.setFillColor(240, 240, 240);
+    b.doc.rect(10, b.y, direitaDe(b) - 10, altura, "F");
+    b.doc.setTextColor(30);
+    rotulos.forEach((partes, i) =>
+      partes.forEach((parte, j) => b.doc.text(parte, colunas[i].x, b.y + 3 + j * (FONTE_CAB * 0.4))),
+    );
+    b.doc.setTextColor(0);
+    b.y += altura + 1;
   };
   desenhaCabecalho();
   /**
@@ -104,10 +159,12 @@ export function tabela(b: B, colunas: { rotulo: string; x: number; w: number }[]
     corBarra?: [number, number, number],
     pintada?: CelulaPintada,
   ) => {
+    b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(FONTE);
     const textos = colunas.map((c, i) => b.doc.splitTextToSize(celulas[i] ?? "—", c.w));
-    const h = Math.max(...textos.map((t) => t.length)) * 3.4 + 3;
-    if (b.y + h > 278) { b.doc.addPage(); b.y = 15; desenhaCabecalho(); }
-    b.doc.setDrawColor(225); b.doc.setLineWidth(0.2); b.doc.line(10, b.y, 200, b.y);
+    const alturaLinha = FONTE * 0.45;
+    const h = Math.max(...textos.map((t) => t.length)) * alturaLinha + 3;
+    if (b.y + h > limiteYDe(b)) { b.doc.addPage(); b.y = 15; desenhaCabecalho(); }
+    b.doc.setDrawColor(225); b.doc.setLineWidth(0.2); b.doc.line(10, b.y, direitaDe(b), b.y);
     if (corBarra) {
       b.doc.setFillColor(...corBarra);
       b.doc.rect(10, b.y, 1.8, h, "F");
@@ -117,7 +174,7 @@ export function tabela(b: B, colunas: { rotulo: string; x: number; w: number }[]
       b.doc.setFillColor(...pintada.fundo);
       b.doc.rect(c.x - 1.5, b.y + 0.6, c.w + 3, h - 1.2, "F");
     }
-    b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(7.5);
+    b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(FONTE);
     textos.forEach((t, i) => {
       if (pintada && i === pintada.col) b.doc.setTextColor(...pintada.texto);
       else b.doc.setTextColor(0);
@@ -444,17 +501,29 @@ export async function rodapePaginas(pdf: jsPDF, opts: RodapeOpts) {
       pdf.setTextColor(0);
     }
     if (p === 1) continue;
-    pdf.setDrawColor(215); pdf.setLineWidth(0.3); pdf.line(10, 284, 200, 284);
-    pdf.addImage(qrDataUrl, "PNG", 10, 286, 15, 15);
+    /*
+     * O rodapé segue o tamanho REAL da página.
+     *
+     * Estava fixo em 284/295 de altura e 200 de borda — A4 em pé. Nas
+     * páginas deitadas do inventário isso desenharia o QR Code e o número da
+     * página muito abaixo do papel, isto é, fora dele.
+     */
+    const larguraPg = pdf.internal.pageSize.getWidth();
+    const alturaPg = pdf.internal.pageSize.getHeight();
+    const borda = larguraPg - 10;
+    const linhaRodape = alturaPg - 13;
+    pdf.setDrawColor(215); pdf.setLineWidth(0.3); pdf.line(10, linhaRodape, borda, linhaRodape);
+    pdf.addImage(qrDataUrl, "PNG", 10, linhaRodape + 2, 11, 11);
     pdf.setFontSize(6.5); pdf.setFont("helvetica", "normal"); pdf.setTextColor(110);
     /*
      * Três linhas, não quatro, e a numeração fora delas: a página é o que
      * mais se procura num documento impresso, e estava no meio de uma frase
      * de 6,5pt entre o hash e o aviso de assinatura.
      */
-    opts.linhas(p, total).slice(0, 3).forEach((linha, i) => pdf.text(linha, 28, 289 + i * 3));
+    opts.linhas(p, total).slice(0, 3).forEach((linha, i) =>
+      pdf.text(linha, 24, linhaRodape + 4 + i * 3));
     pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.setTextColor(60);
-    pdf.text(`Página ${p} de ${total}`, 200, 295, { align: "right" });
+    pdf.text(`Página ${p} de ${total}`, borda, linhaRodape + 10, { align: "right" });
     pdf.setTextColor(0);
   }
 }
