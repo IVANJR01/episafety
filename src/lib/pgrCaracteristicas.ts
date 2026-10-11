@@ -47,6 +47,14 @@ export function caracteristicasNaoRepetidas(
 /*
  * Ambientes repetidos no cadastro.
  *
+ * NOTA: desde que as seções de estrutura saíram do PDF, nenhum documento
+ * chama esta função — a repetição de ambiente deixou de aparecer impressa
+ * porque a seção que a mostrava não existe mais. Ela fica porque o problema
+ * continua no CADASTRO (um PGR real tinha CORTE, COSTURA e LOJA em
+ * duplicata, ALMOXARIDADO/ALMOXARIFADDO e entradas "(Cópia)") e é sobre ela
+ * que a tela de limpeza de duplicados será construída. Está coberta por
+ * testes; não é código morto esquecido.
+ *
  * Um PGR real saiu com CORTE duas vezes, COSTURA duas vezes, LOJA duas vezes,
  * ESCRITORIO e ESCRITÓRIO, SEPARAÇÃO e "SEPARAÇÃO (Cópia)". São linhas
  * distintas no cadastro, mas o mesmo ambiente — e um documento técnico que

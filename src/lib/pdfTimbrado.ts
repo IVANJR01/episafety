@@ -99,7 +99,7 @@ export function tabela(b: B, colunas: { rotulo: string; x: number; w: number }[]
    * Desenha uma linha. `corBarra` pinta uma tarja fina na margem esquerda —
    * a mesma cor da legenda da matriz, na altura da linha inteira.
    */
-  return (
+  const adicionar = (
     celulas: string[],
     corBarra?: [number, number, number],
     pintada?: CelulaPintada,
@@ -126,6 +126,16 @@ export function tabela(b: B, colunas: { rotulo: string; x: number; w: number }[]
     b.doc.setTextColor(0);
     b.y += h;
   };
+
+  /*
+   * Redesenha o cabeçalho das colunas.
+   *
+   * Quem intercala uma faixa de grupo entre as linhas (o inventário, agrupado
+   * por GES) pode quebrar a página por conta própria; sem isto, a página
+   * seguinte começaria com linhas soltas, sem dizer o que é cada coluna.
+   */
+  adicionar.cabecalho = desenhaCabecalho;
+  return adicionar;
 }
 
 /**

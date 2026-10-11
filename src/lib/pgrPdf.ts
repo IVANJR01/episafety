@@ -9,7 +9,6 @@ import {
   B, type CampoCapa, MARGEM, LARGURA, capaTimbrada, ensure, fmtDT, fmtDate, kv, para,
   rodapePaginas, sub, sumario, tabela, title,
 } from "@/lib/pdfTimbrado";
-import { ambientesSemRepeticao, caracteristicasNaoRepetidas } from "@/lib/pgrCaracteristicas";
 import {
   CLASSE_LABEL as CLASSIF_LABEL,
   CLASSE_HEX,
@@ -414,171 +413,26 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     para(b, conteudo, 9, [40, 40, 40]);
   });
 
-  // ── Caracterização da estrutura ────────────────────────────────────────────
-  if (ctx.ambientes && ctx.ambientes.length > 0) {
-    title(b, "Caracterização dos Ambientes de Trabalho");
-    /*
-     * Tabela, e não uma ficha por ambiente.
-     *
-     * Em prosa, cada ambiente gastava título, linha de características, uma
-     * linha em branco e um parágrafo: perto de 30 mm por ambiente. Com 22
-     * ambientes, a seção sozinha ocupava três páginas e meia do PGR, e quem
-     * precisa comparar dois ambientes tinha que folhear. Aqui a mesma
-     * informação — toda ela, nada resumido — entra numa linha por ambiente,
-     * com o cabeçalho repetido a cada quebra de página.
-     */
-    /*
-     * Duas colunas, e a segunda larga.
-     *
-     * A primeira tentativa foi três colunas — nome, características,
-     * descrição — e medindo o resultado ela ocupava exatamente o mesmo
-     * espaço da prosa: 7 ambientes por página nos dois casos. O que gasta
-     * altura não é o formato, é a largura: o mesmo parágrafo quebrado em 86
-     * mm ocupa o dobro de linhas que em 164 mm. Juntar as duas colunas de
-     * texto foi o que de fato encolheu a seção.
-     */
-    const linhaAmb = tabela(b, [
-      { rotulo: "Ambiente", x: 12, w: 32 },
-      { rotulo: "Características e descrição", x: 46, w: 152 },
-    ]);
-    ambientesSemRepeticao(ctx.ambientes as any[]).forEach((a: any) => {
-      const campos: [string, any][] = [
-        ["Tipo", a.tipo_ambiente], ["Localização", a.localizacao],
-        ["Área", a.area_m2 ? `${a.area_m2} m²` : null],
-        ["Pé-direito", a.pe_direito], ["Piso", a.piso], ["Paredes", a.paredes],
-        ["Cobertura", a.cobertura], ["Ventilação", a.ventilacao],
-        ["Iluminação", a.iluminacao], ["Climatização", a.climatizacao],
-        ["Máquinas e instalações", a.maquinas_instalacoes],
-        ["Trabalhadores", a.qtd_trabalhadores],
-      ];
-      // Só o que a descrição já não disse — senão cada ambiente sai com o
-      // mesmo conteúdo escrito duas vezes, uma em campo e outra em texto.
-      const caracteristicas = caracteristicasNaoRepetidas(campos, a.descricao).join("  ·  ");
-      linhaAmb([
-        a.codigo ? `${a.codigo} — ${a.nome}` : a.nome,
-        [caracteristicas, a.descricao].filter(Boolean).join("\n") || "—",
-      ]);
-    });
-    b.y += 3;
-  }
-
-  if (ctx.processos && ctx.processos.length > 0) {
-    title(b, "Processos de Trabalho");
-    const setorNome = (id: string) =>
-      (ctx.setores || []).find((s: any) => s.id === id)?.nome || "—";
-    // Sem a coluna "Máquinas e produtos": os campos que a alimentavam saíram do
-    // cadastro de Processo, então ela sairia "—" em toda linha. A largura foi
-    // para "Etapas / descrição", que é o conteúdo que interessa aqui.
-    const linha = tabela(b, [
-      { rotulo: "Processo", x: 12, w: 42 },
-      { rotulo: "Setor", x: 57, w: 30 },
-      { rotulo: "Etapas / descrição", x: 90, w: 107 },
-    ]);
-    ctx.processos.forEach((p: any) => linha([
-      p.codigo ? `${p.codigo} — ${p.nome}` : p.nome,
-      setorNome(p.setor_id),
-      p.descricao_etapas || "—",
-    ]));
-    b.y += 3;
-  }
-
-  if ((ctx.setores && ctx.setores.length > 0) || (ctx.gesDetalhes && ctx.gesDetalhes.length > 0)) {
-    title(b, "Setores e Grupos de Exposição Semelhante");
-    if (ctx.setores && ctx.setores.length > 0) {
-      sub(b, "Setores");
-      /*
-       * Coluna inteiramente vazia não é impressa.
-       *
-       * Responsável, trabalhadores e jornada raramente estão preenchidos, e a
-       * tabela saía com três colunas de travessão de ponta a ponta —
-       * ocupando metade da largura para informar que não há informação. O
-       * nome do setor sempre existe; o resto entra só se algum setor tiver.
-       */
-      const colunasSetor: Array<{
-        rotulo: string; largura: number; valor: (s: any) => string;
-      }> = [
-        { rotulo: "Setor", largura: 60,
-          valor: (s) => (s.codigo ? `${s.codigo} — ${s.nome}` : s.nome) },
-        { rotulo: "Responsável", largura: 45, valor: (s) => s.responsavel_setor || "" },
-        { rotulo: "Trabalhadores", largura: 25,
-          valor: (s) => (s.qtd_trabalhadores != null ? String(s.qtd_trabalhadores) : "") },
-        { rotulo: "Jornada / turnos", largura: 60,
-          valor: (s) => [s.jornada_turnos, s.turnos].filter(Boolean).join(" · ") },
-      ].filter((c, i) => i === 0 || ctx.setores!.some((s: any) => c.valor(s).trim() !== ""));
-
-      let xSetor = 12;
-      const linha = tabela(b, colunasSetor.map((c) => {
-        const col = { rotulo: c.rotulo, x: xSetor, w: c.largura - 3 };
-        xSetor += c.largura;
-        return col;
-      }));
-      ctx.setores.forEach((s: any) =>
-        linha(colunasSetor.map((c) => c.valor(s) || "—")));
-      b.y += 3;
-    }
-    if (ctx.gesDetalhes && ctx.gesDetalhes.length > 0) {
-      sub(b, "Grupos de Exposição Semelhante (GES)");
-      ctx.gesDetalhes.forEach((g: any) => {
-        ensure(b, 12);
-        pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5);
-        pdf.text(`${g.codigo ? g.codigo + " — " : ""}${g.nome}`, 12, b.y + 3);
-        b.y += 5;
-        const meta = [
-          g.qtd_trabalhadores != null ? `${g.qtd_trabalhadores} trabalhador(es)` : null,
-          g.jornada, g.frequencia_exposicao,
-        ].filter(Boolean).join("  ·  ");
-        if (meta) para(b, meta, 8);
-        // O critério é o que distingue GES de setor. Quando falta, o documento
-        // precisa dizer que falta — não pode simplesmente omitir a linha.
-        para(b,
-          `Critério de agrupamento: ${g.justificativa_similaridade || g.criterio_agrupamento
-            || "não declarado — pendente de justificativa técnica"}`, 8);
-        b.y += 1;
-      });
-    }
-  }
-
-  if (ctx.funcoes && ctx.funcoes.length > 0) {
-    title(b, "Funções e Atividades");
-    const setorNome = (id: string) =>
-      (ctx.setores || []).find((s: any) => s.id === id)?.nome || "—";
-    /*
-     * Mesmo tratamento dos ambientes, pelo mesmo motivo: em prosa, 40 funções
-     * viravam cinco páginas em que cada função repetia o mesmo formato de
-     * "nome / setor / parágrafo". Em tabela, a lista de funções é o que ela
-     * é — uma lista.
-     */
-    const linhaFun = tabela(b, [
-      { rotulo: "Função", x: 12, w: 32 },
-      { rotulo: "Setor, jornada e atividades", x: 46, w: 152 },
-    ]);
-    ctx.funcoes.forEach((f: any) => {
-      const meta = caracteristicasNaoRepetidas(
-        [
-          ["Setor", setorNome(f.setor_id)],
-          ["Trabalhadores", f.qtd_trabalhadores],
-          ["Jornada", f.jornada],
-          ["Turnos", f.turnos],
-          ["Treinamentos", [f.exige_nr10 && "NR-10", f.exige_nr33 && "NR-33", f.exige_nr35 && "NR-35"]
-            .filter(Boolean).join(", ") || null],
-        ],
-        f.descricao_atividades,
-      ).join("  ·  ");
-      const ats = (ctx.atividades || []).filter((a: any) => a.funcao_id === f.id);
-      const detalhes = ats.map((a: any) => {
-        const det = [
-          a.caracteristica, a.frequencia, a.duracao, a.postura_esforco,
-          a.trabalhadores_envolvidos != null ? `${a.trabalhadores_envolvidos} envolvido(s)` : null,
-        ].filter(Boolean).join(" · ");
-        return `– ${a.nome}${det ? `  (${det})` : ""}`;
-      });
-      linhaFun([
-        `${f.nome}${f.cbo ? `\n(CBO ${f.cbo})` : ""}`,
-        [meta, f.descricao_atividades, ...detalhes].filter(Boolean).join("\n") || "—",
-      ]);
-    });
-    b.y += 3;
-  }
+  /*
+   * ── Caracterização da estrutura ───────────────────────────────────────────
+   *
+   * Aqui havia quatro seções inteiras — Caracterização dos Ambientes de
+   * Trabalho, Processos de Trabalho, Setores e Grupos de Exposição Semelhante,
+   * e Funções e Atividades. Num PGR real elas ocupavam 8 das 14 páginas,
+   * enquanto o inventário e o plano de ação — o que a NR-01 de fato exige —
+   * couberam em 3.
+   *
+   * A informação não foi jogada fora: ela é exigida pelo item 1.5.7.3.2,
+   * letras "a" (caracterização dos processos e ambientes), "b" (caracterização
+   * das atividades) e "e" (grupos de trabalhadores expostos). O que mudou é
+   * ONDE ela aparece. A norma pede esse conteúdo DENTRO do inventário, e é
+   * assim que a planilha e o documento em Word da SafetySoluções sempre
+   * fizeram: um cabeçalho por GES, com setor, funções, ambiente e processo,
+   * seguido das linhas de risco daquele grupo.
+   *
+   * Em seção separada o mesmo ambiente era descrito longe dos riscos que
+   * acontecem nele, e quem lê tinha de folhear para ligar os dois.
+   */
 
   title(b, "Metodologia de Avaliação");
   kv(b, "Método", pgr.metodologia_avaliacao || "Matriz 5×5 (Severidade × Probabilidade)", true);
@@ -591,73 +445,144 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   if (ctx.inventario.length === 0) {
     para(b, "Nenhum item de inventário registrado.");
   } else {
-    // Para caber no formato A4 retrato (190mm úteis), combinamos campos afins.
+    /*
+     * O inventário é agrupado por GES, com o cabeçalho do grupo trazendo o
+     * que a NR-01 1.5.7.3.2 pede nas letras "a", "b" e "e": o ambiente, o
+     * processo/atividades e o grupo de trabalhadores exposto. É o formato da
+     * planilha e do documento em Word da SafetySoluções — e é o que permitiu
+     * tirar daqui quatro seções que repetiam essa informação longe dos riscos
+     * que acontecem em cada lugar.
+     */
     const addLinha = tabela(b, [
-      { rotulo: "GES / Expostos", x: 12, w: 30 },
-      { rotulo: "Perigo / Fonte", x: 44, w: 40 },
-      { rotulo: "Lesões", x: 86, w: 35 },
-      { rotulo: "Controles", x: 123, w: 45 },
+      { rotulo: "Expostos", x: 12, w: 20 },
+      { rotulo: "Perigo / Fonte", x: 34, w: 46 },
+      { rotulo: "Lesões", x: 82, w: 36 },
+      { rotulo: "Controles", x: 120, w: 48 },
       { rotulo: "Avaliação", x: 170, w: 28 },
     ]);
 
-    // Ordena por GES para manter os itens do mesmo grupo próximos
     const mapaGes: Record<string, string> = (ctx.ghes as any) || {};
-    const nomeGes = (id?: string | null) => (id && mapaGes[id]) || "";
-    const nomeSetor = (id?: string | null) =>
-      (id && ((ctx.setores as any[]) || []).find((s: any) => s.id === id)?.nome) || "";
-    const itensOrdenados = [...ctx.inventario].sort((a, b) =>
-      nomeGes(a.ghe_id).localeCompare(nomeGes(b.ghe_id)),
-    );
+    const nomeGes = (i: any) => mapaGes[i.ges_id] || mapaGes[i.ghe_id] || "";
+    const nomeSetor = (i: any) =>
+      i.setor || ((ctx.setores as any[]) || []).find((s: any) => s.id === i.setor_id)?.nome || "";
 
-    itensOrdenados.forEach((i) => {
-      const ges = nomeGes(i.ghe_id) || "Sem GES";
-      const setor = nomeSetor((i as any).setor_id);
-      /*
-       * "0 expostos" não é informação: é uma afirmação falsa.
-       *
-       * O PGR real saiu com "0 expostos" em TODAS as linhas, porque o campo
-       * fica em zero enquanto ninguém o preenche. A NR-01 1.5.7.3.2 "e" pede
-       * os grupos de trabalhadores expostos; imprimir zero diz à fiscalização
-       * que aquele risco não atinge ninguém — o contrário do que o
-       * inventário existe para registrar. Sem número, o documento diz que o
-       * número não foi informado, que é a verdade.
-       */
-      const n = i.trabalhadores_expostos;
-      const expostos = n != null && n > 0
-        ? `${n} ${n === 1 ? "exposto" : "expostos"}`
-        : "expostos não informados";
-
-      const colGes = [ges, expostos, setor].filter(Boolean).join("\n");
-      /*
-       * O grupo sai pelo rótulo, não pelo valor do banco. Saía "[fisico]",
-       * "[quimico]", "[psicossocial]" — minúsculo, sem acento e entre
-       * colchetes, que é o nome do enum, não português. Num documento que vai
-       * para fiscalização isso é o sistema aparecendo por baixo do documento.
-       */
-      const agente = GRUPO_LABEL[i.grupo] || i.grupo;
-      const colPerigo = [`${agente} — ${i.perigo_descricao}`, i.fonte_geradora ? `Fonte: ${i.fonte_geradora}` : ""].filter(Boolean).join("\n");
-      const colLesoes = (i as any).lesoes || "—";
-
-      const controlesStr = Array.isArray(i.controles_existentes)
-        ? i.controles_existentes.join("; ")
-        : (i.controles_existentes || "—");
-
-      const cls = classeLabel(i.classificacao);
-      const temAval = i.severidade != null && i.probabilidade != null;
-      const avalStr = temAval
-        ? `S${i.severidade} x P${i.probabilidade} = ${i.severidade * i.probabilidade}\n${cls}`
-        : "Sem avaliação";
-
-      // A cor é a mesma da legenda da matriz, logo acima: quem lê o inventário
-      // enxerga o nível de risco antes de ler a conta que levou até ele.
-      const classe = i.classificacao as PgrClasse | undefined;
-      const cor = classe ? CLASSE_HEX[classe] : undefined;
-      addLinha(
-        [colGes, colPerigo, colLesoes, controlesStr, avalStr],
-        cor,
-        cor && classe ? { col: 4, fundo: cor, texto: CLASSE_TEXTO_HEX[classe] } : undefined,
-      );
+    /* Um grupo por GES, na ordem do nome; sem GES fica por último. */
+    const grupos = new Map<string, any[]>();
+    for (const i of ctx.inventario as any[]) {
+      const chave = i.ges_id || i.ghe_id || "__sem_ges__";
+      if (!grupos.has(chave)) grupos.set(chave, []);
+      grupos.get(chave)!.push(i);
+    }
+    const chavesOrdenadas = [...grupos.keys()].sort((a, c) => {
+      if (a === "__sem_ges__") return 1;
+      if (c === "__sem_ges__") return -1;
+      return (mapaGes[a] || "").localeCompare(mapaGes[c] || "");
     });
+
+    /**
+     * A faixa que abre cada GES.
+     *
+     * Desenhada fora do fluxo da tabela, então ela mesma cuida da quebra de
+     * página — e manda redesenhar o cabeçalho das colunas quando quebra,
+     * senão a página seguinte começaria com linhas sem dizer o que é cada uma.
+     */
+    const faixaDoGes = (itens: any[]) => {
+      const primeiro = itens[0];
+      const ges = nomeGes(primeiro) || "Sem GES";
+      const setor = nomeSetor(primeiro);
+      const funcoes = (primeiro.funcoes_snapshot || []).filter(Boolean).join(", ");
+      const ambiente = primeiro.descricao_ambiente || "";
+      const processo = primeiro.processo || "";
+
+      const cabecalho = ["GES: " + ges, setor && `Setor: ${setor}`, funcoes && `Funções: ${funcoes}`]
+        .filter(Boolean)
+        .join("    ·    ");
+      const detalhes = [
+        ambiente && `Ambiente: ${ambiente}`,
+        processo && `Processo / atividades: ${processo}`,
+      ].filter(Boolean) as string[];
+
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5);
+      const linhasCab = pdf.splitTextToSize(cabecalho, 184) as string[];
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7);
+      const linhasDet = detalhes.flatMap((d) => pdf.splitTextToSize(d, 184) as string[]);
+      const altura = linhasCab.length * 3.6 + linhasDet.length * 3.2 + 3;
+
+      if (b.y + altura + 8 > 278) {
+        pdf.addPage();
+        b.y = 15;
+        addLinha.cabecalho();
+      }
+      pdf.setFillColor(227, 234, 242);
+      pdf.rect(10, b.y, 190, altura, "F");
+      let yTexto = b.y + 3.4;
+      pdf.setTextColor(15, 23, 42);
+      linhasCab.forEach((l) => {
+        pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5);
+        pdf.text(l, 12, yTexto);
+        yTexto += 3.6;
+      });
+      linhasDet.forEach((l) => {
+        pdf.setFont("helvetica", "normal"); pdf.setFontSize(7);
+        pdf.text(l, 12, yTexto);
+        yTexto += 3.2;
+      });
+      pdf.setTextColor(0);
+      b.y += altura;
+    };
+
+    for (const chave of chavesOrdenadas) {
+      const itens = grupos.get(chave)!;
+      faixaDoGes(itens);
+
+      itens.forEach((i: any) => {
+        /*
+         * "0 expostos" não é informação: é uma afirmação falsa.
+         *
+         * O PGR real saiu com "0 expostos" em TODAS as linhas, porque o campo
+         * fica em zero enquanto ninguém o preenche. A NR-01 1.5.7.3.2 "e"
+         * pede os grupos de trabalhadores expostos; imprimir zero diz à
+         * fiscalização que aquele risco não atinge ninguém — o contrário do
+         * que o inventário existe para registrar. Sem número, o documento diz
+         * que o número não foi informado, que é a verdade.
+         */
+        const n = i.trabalhadores_expostos;
+        const expostos = n != null && n > 0
+          ? `${n} ${n === 1 ? "exposto" : "expostos"}`
+          : "não informado";
+
+        /*
+         * O grupo sai pelo rótulo, não pelo valor do banco. Saía "[fisico]",
+         * "[quimico]", "[psicossocial]" — minúsculo, sem acento e entre
+         * colchetes, que é o nome do enum, não português. Num documento que
+         * vai para fiscalização isso é o sistema aparecendo por baixo do
+         * documento.
+         */
+        const agente = GRUPO_LABEL[i.grupo] || i.grupo;
+        const colPerigo = [
+          `${agente} — ${i.perigo_descricao}`,
+          i.fonte_geradora ? `Fonte: ${i.fonte_geradora}` : "",
+        ].filter(Boolean).join("\n");
+
+        const controlesStr = Array.isArray(i.controles_existentes)
+          ? i.controles_existentes.join("; ")
+          : (i.controles_existentes || "—");
+
+        const cls = classeLabel(i.classificacao);
+        const temAval = i.severidade != null && i.probabilidade != null;
+        const avalStr = temAval
+          ? `S${i.severidade} x P${i.probabilidade} = ${i.severidade * i.probabilidade}\n${cls}`
+          : "Sem avaliação";
+
+        const classe = i.classificacao as PgrClasse | undefined;
+        const cor = classe ? CLASSE_HEX[classe] : undefined;
+        addLinha(
+          [expostos, colPerigo, i.lesoes || "—", controlesStr, avalStr],
+          cor,
+          cor && classe ? { col: 4, fundo: cor, texto: CLASSE_TEXTO_HEX[classe] } : undefined,
+        );
+      });
+    }
     b.y += 2;
   }
 

@@ -9,6 +9,13 @@ import { render, type PgrPdfContext } from "./pgrPdf";
  * dos processos e ambientes, caracterização das atividades, grupos expostos,
  * avaliação e critérios) e 1.5.7.2 (documentos datados e assinados).
  *
+ * O conteúdo das letras "a", "b" e "e" — ambientes, atividades e grupos
+ * expostos — vive DENTRO do inventário, no cabeçalho de cada GES. É onde a
+ * norma o pede e é como a planilha e o documento em Word da SafetySoluções
+ * sempre fizeram. Havia quatro seções separadas para isso; num PGR real elas
+ * ocupavam 8 das 14 páginas e descreviam cada ambiente longe dos riscos que
+ * acontecem nele.
+ *
  * O que saiu do documento tem motivo declarado:
  * — Preparação e Resposta a Emergências: o FAQ GRO/PGR do MTE, pergunta 59,
  *   diz que a documentação dos procedimentos de emergência fica na empresa
@@ -37,9 +44,13 @@ function contexto(): PgrPdfContext {
     emissorLinhas: [], emissorLogoDataUrl: null,
     unidadeNome: null, codigoDocumento: "PGR-2026-D2840596",
     inventario: [{
-      id: "i1", ghe_id: "g1", grupo: "Físico", perigo_descricao: "Ruído contínuo",
+      id: "i1", ghe_id: "g1", grupo: "fisico", perigo_descricao: "Ruído contínuo",
       fonte_geradora: "Serra circular", severidade: 3, probabilidade: 3,
       classificacao: "moderado", trabalhadores_expostos: 4, controles_existentes: "Protetor auricular",
+      /* Letras "a", "b" e "e" do 1.5.7.3.2 — vêm no cabeçalho do GES. */
+      descricao_ambiente: "Galpão de produção com piso cimentado e ventilação natural",
+      processo: "Corte e aparelhamento de madeira", setor: "Produção",
+      funcoes_snapshot: ["Marceneiro", "Auxiliar de marcenaria"],
     }] as any,
     acoes: [{
       id: "a1", descricao: "Enclausurar a serra", status: "pendente", prazo: "2026-12-01",
@@ -69,15 +80,26 @@ describe("seções do PGR", () => {
     [
       "Controle de Revisões",                       // 1.5.7.3.3.1 — histórico
       "Identificação da Empresa e do Estabelecimento", // 1.5.3.1 — por estabelecimento
-      "Caracterização dos Ambientes de Trabalho",   // 1.5.7.3.2 "a"
-      "Processos de Trabalho",                      // 1.5.7.3.2 "a"
-      "Setores e Grupos de Exposição Semelhante",   // 1.5.7.3.2 "c"
-      "Funções e Atividades",                       // 1.5.7.3.2 "b"
       "Metodologia de Avaliação",                   // 1.5.7.3.2 "f"
       "Inventário de Riscos Ocupacionais",          // 1.5.7.1 "a"
       "Plano de Ação",                              // 1.5.7.1 "b"
       "Assinaturas",                                // 1.5.7.2
     ].forEach((secao) => expect(texto, `faltou "${secao}"`).toContain(secao));
+  });
+
+  it("traz ambientes, atividades e grupos expostos dentro do inventário", async () => {
+    /*
+     * Estas três letras do 1.5.7.3.2 tinham uma seção inteira cada. O teste
+     * antigo cobrava o TÍTULO da seção; este cobra a informação, que é o que
+     * a norma de fato exige — e não deixa o conteúdo sumir se alguém mexer no
+     * formato de novo.
+     */
+    const texto = await gerar();
+    expect(texto, 'letra "e" — grupo de trabalhadores exposto').toContain("GES: Marcenaria");
+    expect(texto, 'letra "e" — setor').toContain("Setor: Produção");
+    expect(texto, 'letra "e" — funções').toContain("Marceneiro");
+    expect(texto, 'letra "a" — ambiente').toContain("Galpão de produção");
+    expect(texto, 'letra "b" — atividades').toContain("Corte e aparelhamento de madeira");
   });
 
   it("não imprime seção que a norma não pede", async () => {
@@ -93,6 +115,12 @@ describe("seções do PGR", () => {
       "Monitoramento e Revisão",
       "Apêndice A",
       "Apêndice B",
+      /* Quatro seções que repetiam, longe dos riscos, o que agora abre cada
+         GES dentro do inventário. */
+      "Caracterização dos Ambientes de Trabalho",
+      "Processos de Trabalho",
+      "Setores e Grupos de Exposição Semelhante",
+      "Funções e Atividades",
     ].forEach((secao) => expect(texto, `"${secao}" voltou ao documento`).not.toContain(secao));
   });
 });

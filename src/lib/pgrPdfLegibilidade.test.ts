@@ -243,7 +243,8 @@ describe("defeitos vistos num PGR real de 14 páginas", () => {
     const texto = Buffer.from(pdf.output("arraybuffer")).toString("latin1");
     /* Saía "0 expostos" em todas as linhas — o contrário do que o inventário registra. */
     expect(texto).not.toContain("0 expostos");
-    expect(texto).toContain("expostos n");
+    /* A coluna chama-se "Expostos"; a célula diz que o número não foi dado. */
+    expect(texto).toContain("n\xe3o informado");
   }, 30_000);
 
   it("conta os expostos no singular quando é um só", async () => {
@@ -255,21 +256,14 @@ describe("defeitos vistos num PGR real de 14 páginas", () => {
     const texto = Buffer.from(pdf.output("arraybuffer")).toString("latin1");
     expect(texto).toContain("1 exposto");
     expect(texto).not.toContain("1 expostos");
+    expect(texto).not.toContain("n\xe3o informado");
   }, 30_000);
 
-  it("não descreve o mesmo ambiente duas vezes", async () => {
-    const comDuplicados = {
-      ...CTX,
-      ambientes: [
-        { id: "1", nome: "CORTE", descricao: "Ambiente interno destinado ao corte." },
-        { id: "2", nome: "CORTE", descricao: "Piso cerâmico, teto em gesso, corte de tecidos." },
-        { id: "3", nome: "SEPARAÇÃO (Cópia)", descricao: "Área de separação de peças." },
-        { id: "4", nome: "SEPARAÇÃO", descricao: "Ambiente interno de separação, organização e preparação." },
-      ],
-    } as PgrPdfContext;
-    const pdf = await render(comDuplicados, { qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false });
-    const texto = Buffer.from(pdf.output("arraybuffer")).toString("latin1");
-    expect((texto.match(/\(CORTE\) Tj/g) || []).length).toBeLessThanOrEqual(1);
-    expect(texto).not.toContain("(C\xf3pia)");
-  }, 30_000);
+  /*
+   * O teste que havia aqui conferia que a seção de Ambientes não descrevia o
+   * mesmo lugar duas vezes. Essa seção saiu do PDF, então o teste passaria
+   * por não haver seção nenhuma — um teste que não pode mais falhar não
+   * protege nada. A junção de ambientes repetidos continua testada em
+   * pgrCaracteristicas.test.ts, onde a regra de fato mora.
+   */
 });
