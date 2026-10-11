@@ -10,6 +10,7 @@
  * Função pura: recebe as linhas já lidas e devolve o objeto. Assim ela é
  * testável sem banco, e o teste consegue provar cada regra de conversão.
  */
+import { numeroDaRevisao } from "@/lib/pgrRevisao";
 import type { DadosDocumento, InventarioLinha, PlanoLinha } from "./gerarDocx";
 
 /* ------------------------------------------------------------------ */
@@ -110,6 +111,8 @@ export interface FontesDoDocumento {
   acoes?: AcaoRow[];
   /** Texto do controle de revisões; vem da revisão aberta, quando há uma. */
   descricaoRevisao?: string | null;
+  /** As revisões registradas — é a contagem delas que dá o "REV. 00". */
+  revisoes?: { created_at: string }[] | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -340,7 +343,8 @@ export function montarDadosDocumento(f: FontesDoDocumento): DadosDocumento {
       RESPONSAVEL_REGISTRO: registroProfissional(tecnico) || txt(pgr.resp_tec_registro),
       VIGENCIA_INICIO: dataBr(pgr.data_vigencia_inicio),
       VIGENCIA_FIM: dataBr(pgr.data_vigencia_fim),
-      REVISAO: pgr.versao !== null && pgr.versao !== undefined ? String(pgr.versao).padStart(2, "0") : "",
+      /* Mesma regra do PDF: a primeira emissão é a revisão 00. */
+      REVISAO: numeroDaRevisao(f.revisoes),
       DATA_EMISSAO: emissao,
       DESCRICAO_REVISAO: txt(f.descricaoRevisao),
       ANO: emissao ? emissao.slice(-4) : "",

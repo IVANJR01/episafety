@@ -84,11 +84,26 @@ export function tabela(b: B, colunas: { rotulo: string; x: number; w: number }[]
   };
   desenhaCabecalho();
   /**
-   * Desenha uma linha. `corBarra` pinta uma tarja fina na margem esquerda —
-   * é como a classificação de risco aparece no inventário sem gastar uma
-   * coluna: a mesma cor da legenda da matriz, na altura da linha inteira.
+   * Uma célula pintada por dentro: a cor preenche a coluna inteira e a letra
+   * sai na cor que se lê em cima dela. É assim que a classificação de risco
+   * aparece na tela e no Word; a tarja fina na margem sozinha obrigava a
+   * procurar a cor longe do texto que ela qualifica.
    */
-  return (celulas: string[], corBarra?: [number, number, number]) => {
+  interface CelulaPintada {
+    col: number;
+    fundo: [number, number, number];
+    texto: [number, number, number];
+  }
+
+  /**
+   * Desenha uma linha. `corBarra` pinta uma tarja fina na margem esquerda —
+   * a mesma cor da legenda da matriz, na altura da linha inteira.
+   */
+  return (
+    celulas: string[],
+    corBarra?: [number, number, number],
+    pintada?: CelulaPintada,
+  ) => {
     const textos = colunas.map((c, i) => b.doc.splitTextToSize(celulas[i] ?? "—", c.w));
     const h = Math.max(...textos.map((t) => t.length)) * 3.4 + 3;
     if (b.y + h > 278) { b.doc.addPage(); b.y = 15; desenhaCabecalho(); }
@@ -97,8 +112,18 @@ export function tabela(b: B, colunas: { rotulo: string; x: number; w: number }[]
       b.doc.setFillColor(...corBarra);
       b.doc.rect(10, b.y, 1.8, h, "F");
     }
+    if (pintada) {
+      const c = colunas[pintada.col];
+      b.doc.setFillColor(...pintada.fundo);
+      b.doc.rect(c.x - 1.5, b.y + 0.6, c.w + 3, h - 1.2, "F");
+    }
     b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(7.5);
-    textos.forEach((t, i) => b.doc.text(t, colunas[i].x, b.y + 3.5));
+    textos.forEach((t, i) => {
+      if (pintada && i === pintada.col) b.doc.setTextColor(...pintada.texto);
+      else b.doc.setTextColor(0);
+      b.doc.text(t, colunas[i].x, b.y + 3.5);
+    });
+    b.doc.setTextColor(0);
     b.y += h;
   };
 }
@@ -380,8 +405,31 @@ export async function rodapePaginas(pdf: jsPDF, opts: RodapeOpts) {
        */
       const anyDoc = pdf as any;
       if (typeof anyDoc.GState === "function") { anyDoc.setGState(new anyDoc.GState({ opacity: 0.08 })); }
-      pdf.setTextColor(150, 40, 40); pdf.setFont("helvetica", "bold"); pdf.setFontSize(78);
-      pdf.text(opts.marca, 105, 165, { align: "center", angle: 35 } as any);
+      pdf.setTextColor(150, 40, 40); pdf.setFont("helvetica", "bold");
+      if (p === 1) {
+        /*
+         * Na CAPA a marca é horizontal, na faixa vazia entre o título e o
+         * painel da empresa.
+         *
+         * Na diagonal ela subia pela direita e cortava a sigla do documento e
+         * o subtítulo — as duas coisas que a capa existe para dizer. E, de
+         * quebra, aquela faixa era o buraco branco da página. Deitada ali, a
+         * marca não disputa com nada e ainda ocupa o vazio.
+         */
+        pdf.setFontSize(40);
+        /*
+         * Centralizada na mão: o `align: "center"` do jsPDF mede o texto sem
+         * contar o `charSpace`, então a palavra saía deslocada para a direita
+         * pela soma dos espaços entre as letras.
+         */
+        const ESPACO_ENTRE_LETRAS = 3;
+        const largura =
+          pdf.getTextWidth(opts.marca) + ESPACO_ENTRE_LETRAS * Math.max(0, opts.marca.length - 1);
+        pdf.text(opts.marca, 105 - largura / 2, 168, { charSpace: ESPACO_ENTRE_LETRAS } as any);
+      } else {
+        pdf.setFontSize(78);
+        pdf.text(opts.marca, 105, 165, { align: "center", angle: 35 } as any);
+      }
       if (typeof anyDoc.GState === "function") { anyDoc.setGState(new anyDoc.GState({ opacity: 1 })); }
       pdf.setTextColor(0);
     }

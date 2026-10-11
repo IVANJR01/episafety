@@ -21,6 +21,7 @@ const BASE: FontesDoDocumento = {
     { papel: "responsavel_organizacao", nome: "João Diretor" },
   ],
   descricaoRevisao: "Revisão bienal",
+  revisoes: [{ created_at: "2026-03-15" }],
 };
 
 describe("dados da empresa", () => {
@@ -68,8 +69,15 @@ describe("dados da empresa", () => {
     expect(d.DATA_EMISSAO).toBe("15/03/2026");
     expect(d.VIGENCIA_INICIO).toBe("15/03/2026");
     expect(d.VIGENCIA_FIM).toBe("14/03/2028");
-    expect(d.REVISAO).toBe("02");
+    /* Primeira emissão é REV. 00; uma revisão registrada é REV. 01 — a mesma
+       regra do PDF, para o mesmo PGR não sair com dois números. */
+    expect(d.REVISAO).toBe("01");
     expect(d.ANO).toBe("2026");
+  });
+
+  it("sem revisão registrada, é a revisão 00 (elaboração)", () => {
+    expect(montarDadosDocumento({ ...BASE, revisoes: [] }).empresa.REVISAO).toBe("00");
+    expect(montarDadosDocumento({ empresa: {}, pgr: {} }).empresa.REVISAO).toBe("00");
   });
 
   it("campo ausente fica vazio — nunca inventado", () => {

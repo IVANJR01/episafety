@@ -16,8 +16,11 @@ import {
   CLASSES_ORDENADAS,
   classeLabel,
   classificarRisco as classificarMatriz,
+  CLASSE_TEXTO_HEX,
+  GRUPO_LABEL,
   PgrClasse,
 } from "@/lib/pgrMatriz";
+import { ACAO_STATUS_LABEL, type PgrAcaoStatus } from "@/lib/pgrAcoes";
 
 export interface PgrInventarioItem {
   id: string;
@@ -114,16 +117,12 @@ export interface PgrResponsavelItem {
   ordem: number;
 }
 
-/**
- * O número de revisão impresso na capa.
- *
- * Sem revisão registrada o documento está na elaboração, que é a revisão 00 —
- * e é assim que o Controle de Revisões logo adiante já a chama. Duas casas
- * porque é como a norma pede e como o mercado imprime: "REV. 00".
+/*
+ * A regra do número de revisão mora em pgrRevisao.ts, porque o gerador de
+ * Word usa a mesma. Reexportada para não quebrar quem já importava daqui.
  */
-export function numeroDaRevisao(revisoes?: { created_at: string }[] | null): string {
-  return String(revisoes?.length ?? 0).padStart(2, "0");
-}
+import { numeroDaRevisao } from "./pgrRevisao";
+export { numeroDaRevisao };
 
 export interface PgrPdfContext {
   doc: PgrDocumento;
@@ -195,7 +194,15 @@ function drawMatriz(b: B) {
       const px = x0 + (p - 1) * cs;
       const py = y0 + (5 - s) * cs;
       b.doc.rect(px, py, cs, cs, "F");
-      b.doc.setTextColor(255); b.doc.setFontSize(8);
+      /*
+       * O numero sai na cor que se le em cima do fundo — nao sempre em branco.
+       * Com as cores oficiais da planilha (amarelo FFFF00, laranja FFC000,
+       * verde 92D050, azul 00B0F0) o branco sumia: a matriz saia com metade
+       * dos numeros invisiveis. Mesma regra do gerador de Word: so o
+       * Intoleravel (C00000) leva letra branca.
+       */
+      const [tr, tg, tb] = (c && CLASSE_TEXTO_HEX[c]) || [0, 0, 0];
+      b.doc.setTextColor(tr, tg, tb); b.doc.setFontSize(8);
       b.doc.text(String(s * p), px + cs / 2, py + cs / 2 + 1, { align: "center" });
     }
   }
@@ -608,7 +615,14 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       const expostos = i.trabalhadores_expostos != null ? `${i.trabalhadores_expostos} expostos` : "";
 
       const colGes = [ges, expostos, setor].filter(Boolean).join("\n");
-      const colPerigo = [`[${i.grupo}] ${i.perigo_descricao}`, i.fonte_geradora ? `Fonte: ${i.fonte_geradora}` : ""].filter(Boolean).join("\n");
+      /*
+       * O grupo sai pelo rótulo, não pelo valor do banco. Saía "[fisico]",
+       * "[quimico]", "[psicossocial]" — minúsculo, sem acento e entre
+       * colchetes, que é o nome do enum, não português. Num documento que vai
+       * para fiscalização isso é o sistema aparecendo por baixo do documento.
+       */
+      const agente = GRUPO_LABEL[i.grupo] || i.grupo;
+      const colPerigo = [`${agente} — ${i.perigo_descricao}`, i.fonte_geradora ? `Fonte: ${i.fonte_geradora}` : ""].filter(Boolean).join("\n");
       const colLesoes = (i as any).lesoes || "—";
 
       const controlesStr = Array.isArray(i.controles_existentes)
@@ -623,8 +637,13 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
 
       // A cor é a mesma da legenda da matriz, logo acima: quem lê o inventário
       // enxerga o nível de risco antes de ler a conta que levou até ele.
-      const cor = i.classificacao ? CLASSE_HEX[i.classificacao as PgrClasse] : undefined;
-      addLinha([colGes, colPerigo, colLesoes, controlesStr, avalStr], cor);
+      const classe = i.classificacao as PgrClasse | undefined;
+      const cor = classe ? CLASSE_HEX[classe] : undefined;
+      addLinha(
+        [colGes, colPerigo, colLesoes, controlesStr, avalStr],
+        cor,
+        cor && classe ? { col: 4, fundo: cor, texto: CLASSE_TEXTO_HEX[classe] } : undefined,
+      );
     });
     b.y += 2;
   }
@@ -637,7 +656,16 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     ensure(b, 22);
     pdf.setDrawColor(200); pdf.rect(10, b.y, 190, 0.2, "F");
     pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-    pdf.text(`• ${a.descricao}`, 12, b.y + 4);
+    /*
+     * Título da ação: o "o quê" do 5W2H quando existe, senão a descrição.
+     *
+     * Saíam os dois, um debaixo do outro — "• Enclausurar as máquinas" e
+     * logo abaixo "O que será feito: Enclausurar as máquinas de costura". É a
+     * mesma medida escrita duas vezes, e a repetição fazia a ação parecer
+     * duas.
+     */
+    const tituloAcao = a.what || a.descricao;
+    pdf.text(`• ${tituloAcao}`, 12, b.y + 4);
     pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
     const risco = a.classe_risco ? classeLabel(a.classe_risco) : "—";
     // Um ponto na cor da classe: a mesma legenda da matriz e do inventário,
@@ -647,10 +675,22 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       pdf.setFillColor(cr, cg, cb);
       pdf.circle(13.2, b.y + 6.9, 1.1, "F");
     }
-    pdf.text(
-      `Status: ${a.status}  ·  Risco: ${risco}  ·  Prazo: ${fmtDate(a.prazo)}  ·  Conclusão: ${fmtDate(a.data_conclusao)}`,
-      a.classe_risco ? 16 : 12, b.y + 8,
-    );
+    /*
+     * A linha de situação só mostra o que existe.
+     *
+     * Antes ela era fixa e saía "Status: programada · Risco: — · Prazo:
+     * 30/06/2026 · Conclusão: —": metade travessão, e o status com o nome do
+     * enum do banco em vez do rótulo em português. Travessão em documento
+     * técnico não é "vazio", é "não se aplica" — e aqui só queria dizer que a
+     * ação ainda não acabou.
+     */
+    const situacao = [
+      `Status: ${ACAO_STATUS_LABEL[a.status as PgrAcaoStatus] || a.status}`,
+      a.classe_risco ? `Risco: ${risco}` : "",
+      a.prazo ? `Prazo: ${fmtDate(a.prazo)}` : "",
+      a.data_conclusao ? `Concluída em ${fmtDate(a.data_conclusao)}` : "",
+    ].filter(Boolean).join("  ·  ");
+    pdf.text(situacao, a.classe_risco ? 16 : 12, b.y + 8);
     /*
      * 5W2H com os rótulos em português.
      *
@@ -660,7 +700,8 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
      * fica no título da seção; as linhas dizem o que perguntam.
      */
     const linhas = [
-      a.what && `O que será feito: ${a.what}`,
+      /* O "o quê" já é o título da ação, logo acima. */
+      a.what && a.descricao && a.what !== a.descricao ? `Medida registrada: ${a.descricao}` : "",
       a.why && `Por quê: ${a.why}`,
       a.who && `Responsável: ${a.who}`,
       a.where_local && `Onde: ${a.where_local}`,
@@ -671,7 +712,9 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       // errado — o ponto vira separador de milhar aos olhos de quem assina.
       a.how_much != null && `Quanto custa: ${fmtMoeda(a.how_much)}`,
     ].filter(Boolean) as string[];
-    b.y += 11;
+    /* Folga entre a linha de situação (desenhada em b.y + 8) e o 5W2H: com
+       11 as duas quase se tocavam. */
+    b.y += 13;
     linhas.forEach((l) => {
       const ll = pdf.splitTextToSize(l, 186);
       ensure(b, ll.length * 3.5 + 2);

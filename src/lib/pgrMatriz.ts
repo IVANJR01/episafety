@@ -124,6 +124,15 @@ const paraRgb = (hex: string): [number, number, number] => [
   parseInt(hex.slice(4, 6), 16),
 ];
 
+/** A letra que se lê em cima da cor, em RGB — para o PDF. */
+export const CLASSE_TEXTO_HEX: Record<PgrClasse, [number, number, number]> = {
+  trivial: paraRgb(CLASSE_TEXTO_SOBRE.trivial.slice(1)),
+  toleravel: paraRgb(CLASSE_TEXTO_SOBRE.toleravel.slice(1)),
+  moderado: paraRgb(CLASSE_TEXTO_SOBRE.moderado.slice(1)),
+  substancial: paraRgb(CLASSE_TEXTO_SOBRE.substancial.slice(1)),
+  intoleravel: paraRgb(CLASSE_TEXTO_SOBRE.intoleravel.slice(1)),
+};
+
 export const CLASSE_HEX: Record<PgrClasse, [number, number, number]> = {
   trivial: paraRgb(CLASSE_HEX_OFICIAL.trivial),
   toleravel: paraRgb(CLASSE_HEX_OFICIAL.toleravel),

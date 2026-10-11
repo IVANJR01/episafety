@@ -77,6 +77,7 @@ export async function buscarFontesDoPgr(
       ges_codigo: porItem[a.inventario_item_id]?.ges_codigo ?? "",
     })),
     descricaoRevisao: (revisoes.data || [])[0]?.descricao ?? null,
+    revisoes: revisoes.data || [],
   };
 }
 
