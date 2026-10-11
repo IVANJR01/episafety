@@ -1,8 +1,17 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, AlertTriangle, Info, ShieldCheck } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import {
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Info,
+  ShieldCheck,
+  BookMarked,
+  ListChecks,
+} from "lucide-react";
 import { PgrDocumento, PgrStatus } from "@/lib/pgrTypes";
 import { isAtrasada } from "@/lib/pgrAcoes";
 import { necessitaAcao, PgrClasse } from "@/lib/pgrMatriz";
@@ -28,56 +37,158 @@ interface Item {
   norma?: string;
 }
 
-const ICONE: Record<Severidade, typeof CheckCircle2> = {
-  bloqueante: XCircle,
-  alerta: AlertTriangle,
-  recomendacao: Info,
-  ok: CheckCircle2,
-  info: Info,
+/*
+ * Um estilo por severidade, num só lugar: o ícone, o quadrado que o envolve e
+ * a etiqueta. Antes eram quatro mapas separados (ICONE/COR/BADGE/SEV_LABEL),
+ * e as cores saturadas (bg-red-100 + border-red-300) deixavam a tela com cara
+ * de alerta de sistema antigo. Aqui a cor é superfície clara com anel fino.
+ */
+const ESTILO: Record<
+  Severidade,
+  { icone: typeof CheckCircle2; tile: string; chip: string; label: string; plural: string; barra: string }
+> = {
+  bloqueante: {
+    icone: XCircle,
+    tile: "bg-rose-50 text-rose-600 ring-rose-100",
+    chip: "bg-rose-50 text-rose-700 ring-rose-200",
+    label: "Bloqueante",
+    plural: "Bloqueantes",
+    barra: "bg-rose-500",
+  },
+  alerta: {
+    icone: AlertTriangle,
+    tile: "bg-amber-50 text-amber-600 ring-amber-100",
+    chip: "bg-amber-50 text-amber-700 ring-amber-200",
+    label: "Alerta",
+    plural: "Alertas",
+    barra: "bg-amber-500",
+  },
+  recomendacao: {
+    icone: Info,
+    tile: "bg-sky-50 text-sky-600 ring-sky-100",
+    chip: "bg-sky-50 text-sky-700 ring-sky-200",
+    label: "Recomendação",
+    plural: "Recomendações",
+    barra: "bg-sky-500",
+  },
+  ok: {
+    icone: CheckCircle2,
+    tile: "bg-emerald-50 text-emerald-600 ring-emerald-100",
+    chip: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    label: "Conforme",
+    plural: "Conformes",
+    barra: "bg-emerald-500",
+  },
+  info: {
+    icone: Info,
+    tile: "bg-slate-50 text-slate-500 ring-slate-100",
+    chip: "bg-slate-50 text-slate-600 ring-slate-200",
+    label: "Contexto",
+    plural: "Contexto",
+    barra: "bg-slate-400",
+  },
 };
 
-const COR: Record<Severidade, string> = {
-  bloqueante: "text-red-600",
-  alerta: "text-amber-600",
-  recomendacao: "text-blue-600",
-  ok: "text-emerald-600",
-  info: "text-slate-500",
-};
-
-const BADGE: Record<Severidade, string> = {
-  bloqueante: "bg-red-100 text-red-800 border-red-300",
-  alerta: "bg-amber-100 text-amber-800 border-amber-300",
-  recomendacao: "bg-blue-100 text-blue-800 border-blue-300",
-  ok: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  info: "bg-slate-100 text-slate-700 border-slate-300",
-};
-
-const SEV_LABEL: Record<Severidade, string> = {
-  bloqueante: "Bloqueante",
-  alerta: "Alerta",
-  recomendacao: "Recomendação",
-  ok: "OK",
-  info: "Info",
-};
+/** Pendência é o que o responsável técnico precisa resolver; ok/info, não. */
+const ehPendencia = (i: Item) => i.sev !== "ok" && i.sev !== "info";
 
 function Row({ item }: { item: Item }) {
-  const Icon = ICONE[item.sev];
+  const estilo = ESTILO[item.sev];
+  const Icon = estilo.icone;
   return (
-    <li className="flex items-start gap-2 py-1.5 border-b last:border-0">
-      <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${COR[item.sev]}`} />
-      <div className="flex-1 min-w-0">
-        <div className="text-sm flex flex-wrap items-center gap-2">
-          {item.label}
-          {item.sev !== "ok" && item.sev !== "info" && (
-            <Badge variant="outline" className={`${BADGE[item.sev]} text-[10px]`}>
-              {SEV_LABEL[item.sev]}
-            </Badge>
+    <li className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/40">
+      <span
+        className={`mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-md ring-1 ${estilo.tile}`}
+      >
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-sm font-medium leading-snug">{item.label}</span>
+          {ehPendencia(item) && (
+            <span
+              className={`rounded-full px-2 py-px text-[10px] font-semibold uppercase tracking-wide ring-1 ${estilo.chip}`}
+            >
+              {estilo.label}
+            </span>
           )}
         </div>
-        {item.detail && <div className="text-xs text-muted-foreground">{item.detail}</div>}
-        {item.norma && <div className="text-[10px] text-muted-foreground italic">{item.norma}</div>}
+        {item.detail && (
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{item.detail}</p>
+        )}
+        {item.norma && (
+          <p className="mt-1.5 inline-flex items-center gap-1 rounded bg-muted/70 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <BookMarked className="h-2.5 w-2.5 shrink-0" />
+            {item.norma}
+          </p>
+        )}
       </div>
     </li>
+  );
+}
+
+/*
+ * Cada grupo de conferências. O cabeçalho conta quantas já estão conformes,
+ * para o bloco se ler sem abrir — e, com o filtro em "pendências", um bloco
+ * inteiro resolvido colapsa numa linha em vez de ocupar meia tela de verde.
+ */
+function Bloco({
+  titulo,
+  itens,
+  somentePendencias,
+}: {
+  titulo: string;
+  itens: Item[];
+  somentePendencias: boolean;
+}) {
+  const visiveis = somentePendencias ? itens.filter(ehPendencia) : itens;
+  const conferencias = itens.filter((i) => i.sev !== "info");
+  const conformes = itens.filter((i) => i.sev === "ok").length;
+
+  if (visiveis.length === 0) {
+    return (
+      <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/40 px-4 py-3">
+        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+        <span className="text-sm font-medium text-emerald-800">{titulo}</span>
+        <span className="ml-auto text-xs text-emerald-700">tudo conforme</span>
+      </div>
+    );
+  }
+
+  return (
+    <Card className="overflow-hidden shadow-sm">
+      <CardHeader className="border-b bg-muted/30 px-4 py-3">
+        <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold">
+          <span>{titulo}</span>
+          <span className="text-xs font-normal tabular-nums text-muted-foreground">
+            {conformes} de {conferencias.length} conforme
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <ul className="divide-y">
+          {visiveis.map((it, i) => (
+            <Row key={i} item={it} />
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Contador de severidade no topo — número grande, rótulo pequeno. */
+function Contador({ sev, total }: { sev: Severidade; total: number }) {
+  const estilo = ESTILO[sev];
+  const vazio = total === 0;
+  return (
+    <div
+      className={`rounded-xl px-3 py-2.5 ring-1 ${vazio ? "bg-muted/40 ring-border" : estilo.chip}`}
+    >
+      <div className="text-xl font-semibold leading-none tabular-nums">{total}</div>
+      <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide opacity-80">
+        {total === 1 ? estilo.label : estilo.plural}
+      </div>
+    </div>
   );
 }
 
@@ -365,51 +476,116 @@ export default function PgrChecklistTab({ pgr }: Props) {
   const recomendacoes = todos.filter((i) => i.sev === "recomendacao");
   const podeEmitir = bloqueantes.length === 0;
 
-  const Bloco = ({ titulo, itens }: { titulo: string; itens: Item[] }) => (
-    <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-base">{titulo}</CardTitle></CardHeader>
-      <CardContent><ul>{itens.map((it, i) => <Row key={i} item={it} />)}</ul></CardContent>
-    </Card>
-  );
+  /* "info" é contexto, não conferência: não entra na conta de conformidade. */
+  const conferencias = todos.filter((i) => i.sev !== "info");
+  const conformes = todos.filter((i) => i.sev === "ok").length;
+  const pct = conferencias.length ? Math.round((conformes / conferencias.length) * 100) : 0;
+
+  /*
+     O card do topo repetia, item por item, todas as pendências bloqueantes que
+     já apareciam nos blocos logo abaixo — a mesma linha duas vezes na tela.
+     Em lugar disso: os números no topo e um filtro. Quem abre a tela com
+     pendência cai direto nela; quem quer o laudo inteiro clica em "Tudo".
+  */
+  const [somentePendencias, setSomentePendencias] = useState(!podeEmitir);
+  const pendencias = todos.filter(ehPendencia);
 
   return (
-    <div className="space-y-4">
-      <Card className={podeEmitir ? "border-emerald-300" : "border-red-300"}>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
-            <span className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4" /> O que falta para emitir?
-            </span>
-            <Badge variant="outline" className={podeEmitir ? BADGE.ok : BADGE.bloqueante}>
-              {podeEmitir ? "Sem bloqueios" : `${bloqueantes.length} bloqueante(s)`}
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className={BADGE.bloqueante}>Bloqueantes: {bloqueantes.length}</Badge>
-            <Badge variant="outline" className={BADGE.alerta}>Alertas: {alertas.length}</Badge>
-            <Badge variant="outline" className={BADGE.recomendacao}>Recomendações: {recomendacoes.length}</Badge>
+    <div className="space-y-5">
+      <Card className="overflow-hidden shadow-sm">
+        <div className={`h-1 w-full ${podeEmitir ? "bg-emerald-500" : "bg-rose-500"}`} />
+        <CardContent className="space-y-5 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <span
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ${
+                  podeEmitir ? ESTILO.ok.tile : ESTILO.bloqueante.tile
+                }`}
+              >
+                <ShieldCheck className="h-5 w-5" />
+              </span>
+              <div>
+                <h3 className="text-base font-semibold leading-tight">
+                  Conformidade do documento
+                </h3>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                  {podeEmitir
+                    ? "Nenhuma pendência bloqueante. Alertas e recomendações não impedem a emissão, mas devem ser avaliados pela revisão técnica."
+                    : `${bloqueantes.length} ${
+                        bloqueantes.length === 1 ? "pendência impede" : "pendências impedem"
+                      } a emissão deste PGR.`}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-semibold leading-none tabular-nums">{pct}%</div>
+              <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                conforme
+              </div>
+            </div>
           </div>
-          {bloqueantes.length > 0 ? (
-            <ul className="mt-1">{bloqueantes.map((it, i) => <Row key={i} item={it} />)}</ul>
-          ) : (
-            <p className="text-sm text-emerald-700">
-              Nenhuma pendência bloqueante. Alertas e recomendações não impedem a emissão,
-              mas devem ser avaliados pela revisão técnica.
+
+          <div>
+            <Progress value={pct} className="h-1.5" />
+            <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
+              {conformes} de {conferencias.length} conferências atendidas
             </p>
-          )}
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <Contador sev="bloqueante" total={bloqueantes.length} />
+            <Contador sev="alerta" total={alertas.length} />
+            <Contador sev="recomendacao" total={recomendacoes.length} />
+          </div>
+
           {status !== "rascunho" && status !== "em_revisao" && (
-            <p className="text-xs text-muted-foreground">
-              PGR <b>{status}</b> — abra uma revisão para alterar o conteúdo.
+            <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+              PGR <b className="font-semibold text-foreground">{status}</b> — abra uma revisão para
+              alterar o conteúdo.
             </p>
           )}
         </CardContent>
       </Card>
 
-      <Bloco titulo="Campos mínimos do inventário (NR-01)" itens={normativos} />
-      <Bloco titulo="Plano de ação" itens={plano} />
-      <Bloco titulo="Governança e emissão" itens={governanca} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h4 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <ListChecks className="h-3.5 w-3.5" />
+          Conferência item a item
+        </h4>
+        <div className="inline-flex rounded-lg bg-muted p-0.5">
+          {[
+            { id: true, texto: `Pendências (${pendencias.length})` },
+            { id: false, texto: `Tudo (${todos.length})` },
+          ].map((opcao) => (
+            <button
+              key={String(opcao.id)}
+              type="button"
+              onClick={() => setSomentePendencias(opcao.id)}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                somentePendencias === opcao.id
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {opcao.texto}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Bloco
+          titulo="Campos mínimos do inventário (NR-01)"
+          itens={normativos}
+          somentePendencias={somentePendencias}
+        />
+        <Bloco titulo="Plano de ação" itens={plano} somentePendencias={somentePendencias} />
+        <Bloco
+          titulo="Governança e emissão"
+          itens={governanca}
+          somentePendencias={somentePendencias}
+        />
+      </div>
 
       {/*
         A frase dizia que o sistema não implementa ICP-Brasil. Implementa: a
@@ -418,11 +594,11 @@ export default function PgrChecklistTab({ pgr }: Props) {
         ainda não passa por essa assinatura — e é isso que precisa estar
         escrito, em vez de uma negativa geral que ficou velha.
       */}
-      <div className="text-[11px] text-muted-foreground">
-        O PGR é documento técnico interno: a validação é por assinatura visual e hash SHA-256.
-        A assinatura digital ICP-Brasil já existe no sistema — hoje aplicada à Ficha de EPI —, mas
-        ainda <b>não</b> é aplicada a este documento.
-      </div>
+      <p className="rounded-xl border bg-muted/30 px-4 py-3 text-[11px] leading-relaxed text-muted-foreground">
+        O PGR é documento técnico interno: a validação é por assinatura visual e hash SHA-256. A
+        assinatura digital ICP-Brasil já existe no sistema — hoje aplicada à Ficha de EPI —, mas
+        ainda <b className="font-semibold">não</b> é aplicada a este documento.
+      </p>
     </div>
   );
 }
