@@ -508,17 +508,17 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
      * se ajusta sozinha, e sobra ou falta acaba desenhado fora do papel.
      */
     const COLS: { rotulo: string; chave: string; w: number }[] = [
-      { rotulo: "AGENTE", chave: "agente", w: 16 },
-      { rotulo: "PERIGO", chave: "perigo", w: 23 },
-      { rotulo: "FONTE / CIRCUNSTÂNCIA", chave: "fonte", w: 24 },
-      { rotulo: "POSSÍVEIS LESÕES OU AGRAVOS", chave: "lesoes", w: 30 },
-      { rotulo: "LIMITE DE EXPOSIÇÃO", chave: "limite", w: 15 },
-      { rotulo: "INTENS. / CONC.", chave: "intensidade", w: 14 },
-      { rotulo: "TIPO / TEMPO DE EXPOSIÇÃO", chave: "exposicao", w: 17 },
-      { rotulo: "TÉCNICA UTILIZADA", chave: "tecnica", w: 18 },
-      { rotulo: "EPC / PROCEDIMENTO ADMINISTRATIVO", chave: "medidas", w: 36 },
-      { rotulo: "EPI", chave: "epi", w: 19 },
-      { rotulo: "ATENUAÇÃO / FP", chave: "atenuacao", w: 15 },
+      { rotulo: "AGENTE", chave: "agente", w: 15 },
+      { rotulo: "PERIGO", chave: "perigo", w: 22 },
+      { rotulo: "FONTE / CIRCUNSTÂNCIA", chave: "fonte", w: 22 },
+      { rotulo: "POSSÍVEIS LESÕES OU AGRAVOS", chave: "lesoes", w: 28 },
+      { rotulo: "LIMITE DE EXPOSIÇÃO", chave: "limite", w: 14 },
+      { rotulo: "INTENS. / CONC.", chave: "intensidade", w: 13 },
+      { rotulo: "TIPO / TEMPO DE EXPOSIÇÃO", chave: "exposicao", w: 16 },
+      { rotulo: "TÉCNICA UTILIZADA", chave: "tecnica", w: 17 },
+      { rotulo: "EPC / PROCEDIMENTO ADMINISTRATIVO", chave: "medidas", w: 32 },
+      { rotulo: "EPI", chave: "epi", w: 18 },
+      { rotulo: "ATENUAÇÃO / FP", chave: "atenuacao", w: 14 },
       { rotulo: "P", chave: "probabilidade", w: 5 },
       { rotulo: "S", chave: "severidade", w: 5 },
       { rotulo: "NÍVEL", chave: "nivel", w: 8 },
@@ -530,14 +530,19 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
      * saem desenhadas fora do papel — foi o que aconteceu com
      * CLASSIFICAÇÃO, que saía cortada na metade.
      */
+    /*
+     * 2 mm de vão entre colunas: é nele que a linha da grade passa, com 1 mm
+     * de folga de cada lado. Com 0,8 mm o texto encostava na linha.
+     */
     let xAcumulado = 12;
     const colunas = COLS.map((c) => {
       const col = { rotulo: c.rotulo, x: xAcumulado, w: c.w };
-      xAcumulado += c.w + 0.8;
+      xAcumulado += c.w + 2;
       return col;
     });
-    /* Quinze colunas: letra menor, senão a célula encosta na vizinha. */
-    const addLinha = tabela(b, colunas, { fonte: 6.3, fonteCabecalho: 6 });
+    const addLinha = tabela(b, colunas, {
+      fonte: 6.3, fonteCabecalho: 6, grade: true, cabecalhoEscuro: true,
+    });
 
     const mapaGes: Record<string, string> = (ctx.ghes as any) || {};
     const nomeGes = (i: any) => mapaGes[i.ges_id] || mapaGes[i.ghe_id] || "";
@@ -668,10 +673,15 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
           return valorDaColuna(i, c.chave);
         });
 
+        /*
+         * Sem a tarja na margem: com a célula de classificação pintada dentro
+         * da grade, a tarja ficava do lado de fora da moldura, repetindo a
+         * mesma informação e parecendo sobra de desenho.
+         */
         const cor = classe ? CLASSE_HEX[classe] : undefined;
         addLinha(
           celulas,
-          cor,
+          undefined,
           cor && classe
             ? { col: COLS.length - 1, fundo: cor, texto: CLASSE_TEXTO_HEX[classe] }
             : undefined,
@@ -707,29 +717,30 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
      * de caber nos 287 mm da borda. Estourando, as últimas são desenhadas
      * fora do papel — e no PDF não há aviso: elas simplesmente somem.
      */
-    const MES_W = 4.2;
+    const MES_W = 3.8;
     const COLS_PLANO: { rotulo: string; chave: string; w: number }[] = [
-      { rotulo: "SETOR", chave: "setor", w: 19 },
+      { rotulo: "SETOR", chave: "setor", w: 17 },
       { rotulo: "GES", chave: "ges", w: 8 },
-      { rotulo: "O QUÊ? (MEDIDA)", chave: "oque", w: 30 },
-      { rotulo: "POR QUÊ?", chave: "porque", w: 24 },
-      { rotulo: "COMO?", chave: "como", w: 26 },
-      { rotulo: "ONDE?", chave: "onde", w: 14 },
-      { rotulo: "QUANTO?", chave: "quanto", w: 14 },
+      { rotulo: "O QUÊ? (MEDIDA)", chave: "oque", w: 27 },
+      { rotulo: "POR QUÊ?", chave: "porque", w: 21 },
+      { rotulo: "COMO?", chave: "como", w: 23 },
+      { rotulo: "ONDE?", chave: "onde", w: 13 },
+      { rotulo: "QUANTO?", chave: "quanto", w: 13 },
       { rotulo: "PRIOR.", chave: "prioridade", w: 10 },
       ...MESES_PDF.map((m) => ({ rotulo: m[0], chave: `mes_${m}`, w: MES_W })),
-      { rotulo: "RESPONSÁVEL", chave: "responsavel", w: 17 },
-      { rotulo: "STATUS", chave: "status", w: 18 },
-      { rotulo: "ACOMPANHAMENTO E AFERIÇÃO", chave: "afericao", w: 26 },
+      { rotulo: "RESPONSÁVEL", chave: "responsavel", w: 16 },
+      { rotulo: "STATUS", chave: "status", w: 17 },
+      { rotulo: "ACOMPANHAMENTO E AFERIÇÃO", chave: "afericao", w: 20 },
     ];
     let xPlano = 12;
     const colunasPlano = COLS_PLANO.map((c) => {
       const col = { rotulo: c.rotulo, x: xPlano, w: c.w };
-      xPlano += c.w + 0.8;
+      xPlano += c.w + 2;
       return col;
     });
-    /* Vinte e três colunas: menor ainda. */
-    const addAcao = tabela(b, colunasPlano, { fonte: 6, fonteCabecalho: 5.6 });
+    const addAcao = tabela(b, colunasPlano, {
+      fonte: 6, fonteCabecalho: 5.6, grade: true, cabecalhoEscuro: true,
+    });
 
     const setorDaAcao = (a: any) => {
       const item = (ctx.inventario as any[]).find((i) => i.id === a.inventario_item_id);
@@ -771,19 +782,27 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
         }
       });
 
-      const cor = a.classe_risco ? CLASSE_HEX[a.classe_risco as PgrClasse] : undefined;
+      /*
+       * O mês previsto é CÉLULA PINTADA, como na planilha — não um "X" solto.
+       * É o que faz o cronograma se ler de cima a baixo numa olhada.
+       */
+      const pintadas: { col: number; fundo: [number, number, number]; texto: [number, number, number] }[] = [];
+      COLS_PLANO.forEach((c, i) => {
+        if (!c.chave.startsWith("mes_")) return;
+        const indice = MESES_PDF.indexOf(c.chave.slice(4));
+        if (meses.includes(indice + 1)) {
+          pintadas.push({ col: i, fundo: [15, 42, 68], texto: [255, 255, 255] });
+        }
+      });
       const corStatus = STATUS_PDF_COR[statusLabel];
-      addAcao(
-        celulas,
-        cor,
-        corStatus
-          ? {
-              col: COLS_PLANO.findIndex((c) => c.chave === "status"),
-              fundo: corStatus,
-              texto: [0, 0, 0],
-            }
-          : undefined,
-      );
+      if (corStatus) {
+        pintadas.push({
+          col: COLS_PLANO.findIndex((c) => c.chave === "status"),
+          fundo: corStatus,
+          texto: [0, 0, 0],
+        });
+      }
+      addAcao(celulas, undefined, pintadas);
     });
 
     /* Legenda do status e do cronograma, como na planilha. */

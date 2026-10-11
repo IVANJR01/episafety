@@ -106,6 +106,18 @@ export function sub(b: B, t: string) {
 export interface OpcoesTabela {
   fonte?: number;
   fonteCabecalho?: number;
+  /**
+   * Grade completa: linha entre todas as colunas e moldura em volta.
+   *
+   * Sem ela, uma tabela de cinco colunas ainda se lê; uma de quinze, não. No
+   * inventário do PGR o texto de uma célula terminava exatamente onde
+   * começava o da próxima — "Mobiliário; Computador" colado em "Pressão por
+   * metas" —, e não havia como saber onde uma coluna acabava. É a grade que
+   * o documento em Word da SafetySoluções sempre teve.
+   */
+  grade?: boolean;
+  /** Cabeçalho azul-marinho com letra branca, como no Word. */
+  cabecalhoEscuro?: boolean;
 }
 
 export function tabela(
@@ -115,6 +127,25 @@ export function tabela(
 ) {
   const FONTE = opcoes.fonte ?? 7.5;
   const FONTE_CAB = opcoes.fonteCabecalho ?? 7;
+  const GRADE = opcoes.grade ?? false;
+
+  /** Onde cai cada linha vertical: no meio do vão entre duas colunas. */
+  const separadores = (): number[] => {
+    if (!GRADE) return [];
+    const xs = [10];
+    colunas.forEach((c, i) => {
+      const prox = colunas[i + 1];
+      xs.push(prox ? (c.x + c.w + prox.x) / 2 : direitaDe(b));
+    });
+    return xs;
+  };
+
+  const verticais = (yTopo: number, altura: number) => {
+    if (!GRADE) return;
+    b.doc.setDrawColor(200);
+    b.doc.setLineWidth(0.2);
+    separadores().forEach((x) => b.doc.line(x, yTopo, x, yTopo + altura));
+  };
   /*
    * O cabeçalho QUEBRA dentro da própria coluna.
    *
@@ -128,14 +159,21 @@ export function tabela(
     const rotulos = colunas.map((c) => b.doc.splitTextToSize(c.rotulo, c.w) as string[]);
     const linhas = Math.max(...rotulos.map((r) => r.length));
     const altura = Math.max(6, linhas * (FONTE_CAB * 0.4) + 2);
-    b.doc.setFillColor(240, 240, 240);
-    b.doc.rect(10, b.y, direitaDe(b) - 10, altura, "F");
-    b.doc.setTextColor(30);
+    if (opcoes.cabecalhoEscuro) {
+      b.doc.setFillColor(15, 42, 68);
+      b.doc.rect(10, b.y, direitaDe(b) - 10, altura, "F");
+      b.doc.setTextColor(255);
+    } else {
+      b.doc.setFillColor(240, 240, 240);
+      b.doc.rect(10, b.y, direitaDe(b) - 10, altura, "F");
+      b.doc.setTextColor(30);
+    }
     rotulos.forEach((partes, i) =>
       partes.forEach((parte, j) => b.doc.text(parte, colunas[i].x, b.y + 3 + j * (FONTE_CAB * 0.4))),
     );
+    verticais(b.y, altura);
     b.doc.setTextColor(0);
-    b.y += altura + 1;
+    b.y += altura + (GRADE ? 0 : 1);
   };
   desenhaCabecalho();
   /**
@@ -157,29 +195,47 @@ export function tabela(
   const adicionar = (
     celulas: string[],
     corBarra?: [number, number, number],
-    pintada?: CelulaPintada,
+    /* Uma ou várias: o cronograma do plano de ação pinta um mês por célula. */
+    pintadas?: CelulaPintada | CelulaPintada[],
   ) => {
+    const listaPintada: CelulaPintada[] = pintadas
+      ? (Array.isArray(pintadas) ? pintadas : [pintadas])
+      : [];
     b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(FONTE);
     const textos = colunas.map((c, i) => b.doc.splitTextToSize(celulas[i] ?? "—", c.w));
     const alturaLinha = FONTE * 0.45;
     const h = Math.max(...textos.map((t) => t.length)) * alturaLinha + 3;
     if (b.y + h > limiteYDe(b)) { b.doc.addPage(); b.y = 15; desenhaCabecalho(); }
-    b.doc.setDrawColor(225); b.doc.setLineWidth(0.2); b.doc.line(10, b.y, direitaDe(b), b.y);
+    b.doc.setDrawColor(GRADE ? 200 : 225); b.doc.setLineWidth(0.2);
+    b.doc.line(10, b.y, direitaDe(b), b.y);
+    /* Com grade, a linha de baixo também: senão a última fica em aberto. */
+    if (GRADE) b.doc.line(10, b.y + h, direitaDe(b), b.y + h);
     if (corBarra) {
       b.doc.setFillColor(...corBarra);
       b.doc.rect(10, b.y, 1.8, h, "F");
     }
-    if (pintada) {
+    /*
+     * A célula pintada vai de uma linha da grade à outra.
+     *
+     * Antes era a largura do texto mais 1,5 mm para cada lado — um palpite
+     * que, na última coluna, pintava para fora da moldura da tabela.
+     */
+    const xs = separadores();
+    listaPintada.forEach((pintada) => {
       const c = colunas[pintada.col];
+      const x0 = GRADE ? xs[pintada.col] : c.x - 1.5;
+      const x1 = GRADE ? xs[pintada.col + 1] : c.x + c.w + 1.5;
       b.doc.setFillColor(...pintada.fundo);
-      b.doc.rect(c.x - 1.5, b.y + 0.6, c.w + 3, h - 1.2, "F");
-    }
+      b.doc.rect(x0, b.y, x1 - x0, h, "F");
+    });
     b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(FONTE);
     textos.forEach((t, i) => {
-      if (pintada && i === pintada.col) b.doc.setTextColor(...pintada.texto);
+      const pintada = listaPintada.find((x) => x.col === i);
+      if (pintada) b.doc.setTextColor(...pintada.texto);
       else b.doc.setTextColor(0);
       b.doc.text(t, colunas[i].x, b.y + 3.5);
     });
+    verticais(b.y, h);
     b.doc.setTextColor(0);
     b.y += h;
   };
