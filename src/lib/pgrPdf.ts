@@ -9,7 +9,7 @@ import {
   B, type CampoCapa, MARGEM, LARGURA, capaTimbrada, ensure, fmtDT, fmtDate, kv, para,
   rodapePaginas, sub, sumario, tabela, title,
 } from "@/lib/pdfTimbrado";
-import { caracteristicasNaoRepetidas } from "@/lib/pgrCaracteristicas";
+import { ambientesSemRepeticao, caracteristicasNaoRepetidas } from "@/lib/pgrCaracteristicas";
 import {
   CLASSE_LABEL as CLASSIF_LABEL,
   CLASSE_HEX,
@@ -441,7 +441,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       { rotulo: "Ambiente", x: 12, w: 32 },
       { rotulo: "Características e descrição", x: 46, w: 152 },
     ]);
-    ctx.ambientes.forEach((a: any) => {
+    ambientesSemRepeticao(ctx.ambientes as any[]).forEach((a: any) => {
       const campos: [string, any][] = [
         ["Tipo", a.tipo_ambiente], ["Localização", a.localizacao],
         ["Área", a.area_m2 ? `${a.area_m2} m²` : null],
@@ -612,7 +612,20 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     itensOrdenados.forEach((i) => {
       const ges = nomeGes(i.ghe_id) || "Sem GES";
       const setor = nomeSetor((i as any).setor_id);
-      const expostos = i.trabalhadores_expostos != null ? `${i.trabalhadores_expostos} expostos` : "";
+      /*
+       * "0 expostos" não é informação: é uma afirmação falsa.
+       *
+       * O PGR real saiu com "0 expostos" em TODAS as linhas, porque o campo
+       * fica em zero enquanto ninguém o preenche. A NR-01 1.5.7.3.2 "e" pede
+       * os grupos de trabalhadores expostos; imprimir zero diz à fiscalização
+       * que aquele risco não atinge ninguém — o contrário do que o
+       * inventário existe para registrar. Sem número, o documento diz que o
+       * número não foi informado, que é a verdade.
+       */
+      const n = i.trabalhadores_expostos;
+      const expostos = n != null && n > 0
+        ? `${n} ${n === 1 ? "exposto" : "expostos"}`
+        : "expostos não informados";
 
       const colGes = [ges, expostos, setor].filter(Boolean).join("\n");
       /*
@@ -655,6 +668,20 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   ctx.acoes.forEach((a) => {
     ensure(b, 22);
     pdf.setDrawColor(200); pdf.rect(10, b.y, 190, 0.2, "F");
+    /*
+     * O cabeçalho da ação FLUI pela altura que ocupa — nada é desenhado em
+     * deslocamento fixo.
+     *
+     * Era `b.y + 4` para o título e `b.y + 8` para a situação, com um
+     * `b.y += 13` no fim. Isso só funciona com título de uma linha. Num PGR
+     * real apareceu uma ação cujo "o quê" tinha quebra de linha no cadastro
+     * ("Implantar controle do risco ...\n\nKit Ergonômico- Suporte Para
+     * Notebook..."): o jsPDF quebra em \n, desenhou três linhas, e as duas
+     * de baixo saíram POR CIMA do 5W2H. Texto impresso sobre texto, num
+     * documento que vai para fiscalização.
+     *
+     * Agora mede-se o que se escreve, e o resto desce.
+     */
     pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
     /*
      * Título da ação: o "o quê" do 5W2H quando existe, senão a descrição.
@@ -664,8 +691,16 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
      * mesma medida escrita duas vezes, e a repetição fazia a ação parecer
      * duas.
      */
-    const tituloAcao = a.what || a.descricao;
-    pdf.text(`• ${tituloAcao}`, 12, b.y + 4);
+    const tituloAcao = (a.what || a.descricao || "").replace(/\s*\n+\s*/g, " ").trim();
+    const linhasTitulo = pdf.splitTextToSize(`• ${tituloAcao}`, 186) as string[];
+    b.y += 4;
+    linhasTitulo.forEach((linha) => {
+      ensure(b, 5);
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
+      pdf.text(linha, 12, b.y);
+      b.y += 4;
+    });
+
     pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
     const risco = a.classe_risco ? classeLabel(a.classe_risco) : "—";
     // Um ponto na cor da classe: a mesma legenda da matriz e do inventário,
@@ -673,7 +708,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     if (a.classe_risco && CLASSE_HEX[a.classe_risco as PgrClasse]) {
       const [cr, cg, cb] = CLASSE_HEX[a.classe_risco as PgrClasse];
       pdf.setFillColor(cr, cg, cb);
-      pdf.circle(13.2, b.y + 6.9, 1.1, "F");
+      pdf.circle(13.2, b.y - 1, 1.1, "F");
     }
     /*
      * A linha de situação só mostra o que existe.
@@ -690,7 +725,9 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       a.prazo ? `Prazo: ${fmtDate(a.prazo)}` : "",
       a.data_conclusao ? `Concluída em ${fmtDate(a.data_conclusao)}` : "",
     ].filter(Boolean).join("  ·  ");
-    pdf.text(situacao, a.classe_risco ? 16 : 12, b.y + 8);
+    ensure(b, 5);
+    pdf.text(situacao, a.classe_risco ? 16 : 12, b.y);
+    b.y += 5;
     /*
      * 5W2H com os rótulos em português.
      *
@@ -712,9 +749,6 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       // errado — o ponto vira separador de milhar aos olhos de quem assina.
       a.how_much != null && `Quanto custa: ${fmtMoeda(a.how_much)}`,
     ].filter(Boolean) as string[];
-    /* Folga entre a linha de situação (desenhada em b.y + 8) e o 5W2H: com
-       11 as duas quase se tocavam. */
-    b.y += 13;
     linhas.forEach((l) => {
       const ll = pdf.splitTextToSize(l, 186);
       ensure(b, ll.length * 3.5 + 2);

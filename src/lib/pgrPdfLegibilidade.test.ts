@@ -130,3 +130,146 @@ describe("a marca d'água não atravessa o título da capa", () => {
     expect(timbrado).toContain("105 - largura / 2");
   });
 });
+
+describe("defeitos vistos num PGR real de 14 páginas", () => {
+  /**
+   * Uma ação cujo "o quê" tem quebra de linha no cadastro.
+   *
+   * O jsPDF quebra em \n: o título virou três linhas, mas só uma altura era
+   * reservada, e as duas de baixo saíram POR CIMA do 5W2H. Texto impresso
+   * sobre texto, num documento que vai para fiscalização.
+   */
+  const acaoComQuebra = {
+    id: "a9",
+    descricao: "Controle para: Mobiliário; Computador",
+    what: 'Implantar controle do risco "Mobiliário; Computador"\n\nKit Ergonômico- Suporte Para Notebook, Apoios Para pés, Mousepad e Apoio Para Teclado',
+    why: "Risco classificado como MODERADO no inventário.",
+    where_local: "01", prazo: "2026-12-22", how: "Será por meio de compra e instalar",
+    status: "pendente", who: "Verificar", classe_risco: "moderado", data_conclusao: null,
+  };
+
+  /**
+   * Onde cada texto foi desenhado.
+   *
+   * O PDF escreve em blocos "BT ... x y Td (texto) Tj ... ET": o Td que vale
+   * para um texto é o último antes dele DENTRO do mesmo BT. Pegar o último Td
+   * do arquivo inteiro, como eu tinha feito antes, lia a posição de outro
+   * bloco — e o teste passava mesmo com o defeito de volta.
+   */
+  function posicoesDoTexto(pdf: { output: (t: string) => ArrayBuffer }) {
+    const bruto = Buffer.from(pdf.output("arraybuffer")).toString("latin1");
+    const achados: { texto: string; y: number }[] = [];
+    for (const bloco of bruto.split("BT").slice(1)) {
+      const corpo = bloco.split("ET")[0];
+      let y = NaN;
+      let entrelinha = 0;
+      for (const m of corpo.matchAll(
+        /(-?[\d.]+) TL|(-?[\d.]+) (-?[\d.]+) Td|(T\*)|\((.*?)\) Tj/g,
+      )) {
+        if (m[1] !== undefined) entrelinha = Number(m[1]);
+        else if (m[3] !== undefined) y = Number(m[3]);
+        /* T* desce uma entrelinha: é assim que o jsPDF escreve a 2ª linha de
+           um texto de várias linhas, sem emitir outro Td. Sem contar isto, o
+           extrator dava a TODAS as linhas a altura da primeira — e o teste
+           passava com o defeito de volta. */
+        else if (m[4] !== undefined) y -= entrelinha;
+        else achados.push({ texto: m[5]!, y });
+      }
+    }
+    return achados;
+  }
+
+  const alturaDe = (pos: { texto: string; y: number }[], trecho: string) => {
+    const achado = pos.find((p) => p.texto.includes(trecho));
+    expect(achado, `"${trecho}" não foi impresso`).toBeTruthy();
+    return achado!.y;
+  };
+
+  it("título de várias linhas não escreve por cima do 5W2H", async () => {
+    /* Longo de propósito: precisa quebrar em mais de uma linha para o
+       defeito aparecer — com título de uma linha ele fica escondido. */
+    const longa = {
+      ...acaoComQuebra,
+      what:
+        'Implantar controle do risco "Mobiliário; Computador" com fornecimento de ' +
+        "Kit Ergonômico composto por suporte para notebook, apoio para os pés, mousepad " +
+        "com apoio de punho e apoio para teclado em todos os postos administrativos da " +
+        "empresa, incluindo escritório, marketing, comercial e recepção, conforme " +
+        "levantamento ergonômico preliminar realizado pelo responsável técnico",
+    };
+    const pdf = await render({ ...CTX, acoes: [longa] as never }, {
+      qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false,
+    });
+    const pos = posicoesDoTexto(pdf);
+
+    /* O título precisa mesmo ter quebrado, senão o teste não prova nada. */
+    const linhasTitulo = pos.filter((p) =>
+      /Implantar controle|mousepad|levantamento ergon/i.test(p.texto),
+    );
+    /* Com uma ou duas linhas o defeito não aparece: a sobreposição começa na
+       terceira. O caso de teste precisa ser pelo menos tão grande quanto o
+       que apareceu no PGR real. */
+    expect(linhasTitulo.length, "o título deveria ocupar 3 linhas ou mais").toBeGreaterThanOrEqual(3);
+
+    /* No PDF o y cresce para CIMA: cada linha seguinte tem y MENOR. */
+    const yUltimaLinhaTitulo = Math.min(...linhasTitulo.map((p) => p.y));
+    const ySituacao = alturaDe(pos, "Status:");
+    const y5w2h = alturaDe(pos, "Medida registrada");
+    /* Uma entrelinha inteira de folga, não "qualquer coisa positiva": duas
+       frases a um ponto de distância já se tocam na página. */
+    expect(yUltimaLinhaTitulo - ySituacao, "situação saiu em cima do título").toBeGreaterThan(8);
+    expect(ySituacao - y5w2h, "5W2H saiu em cima da situação").toBeGreaterThan(8);
+  }, 30_000);
+
+  it("quebra de linha no cadastro não vira linha solta no documento", async () => {
+    /* O jsPDF quebra em \n: o título virava três linhas sem altura reservada. */
+    const pdf = await render({ ...CTX, acoes: [acaoComQuebra] as never }, {
+      qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false,
+    });
+    const pos = posicoesDoTexto(pdf);
+    const comKit = pos.filter((p) => p.texto.includes("Kit Ergon"));
+    expect(comKit).toHaveLength(1);
+    expect(comKit[0].texto).toContain("Implantar controle");
+  }, 30_000);
+
+  it("o inventário não afirma que ninguém está exposto", async () => {
+    const semExpostos = {
+      ...CTX,
+      inventario: (CTX.inventario as never as Record<string, unknown>[]).map((i) => ({
+        ...i, trabalhadores_expostos: 0,
+      })),
+    } as PgrPdfContext;
+    const pdf = await render(semExpostos, { qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false });
+    const texto = Buffer.from(pdf.output("arraybuffer")).toString("latin1");
+    /* Saía "0 expostos" em todas as linhas — o contrário do que o inventário registra. */
+    expect(texto).not.toContain("0 expostos");
+    expect(texto).toContain("expostos n");
+  }, 30_000);
+
+  it("conta os expostos no singular quando é um só", async () => {
+    const umExposto = {
+      ...CTX,
+      inventario: [{ ...(CTX.inventario as never as Record<string, unknown>[])[0], trabalhadores_expostos: 1 }],
+    } as PgrPdfContext;
+    const pdf = await render(umExposto, { qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false });
+    const texto = Buffer.from(pdf.output("arraybuffer")).toString("latin1");
+    expect(texto).toContain("1 exposto");
+    expect(texto).not.toContain("1 expostos");
+  }, 30_000);
+
+  it("não descreve o mesmo ambiente duas vezes", async () => {
+    const comDuplicados = {
+      ...CTX,
+      ambientes: [
+        { id: "1", nome: "CORTE", descricao: "Ambiente interno destinado ao corte." },
+        { id: "2", nome: "CORTE", descricao: "Piso cerâmico, teto em gesso, corte de tecidos." },
+        { id: "3", nome: "SEPARAÇÃO (Cópia)", descricao: "Área de separação de peças." },
+        { id: "4", nome: "SEPARAÇÃO", descricao: "Ambiente interno de separação, organização e preparação." },
+      ],
+    } as PgrPdfContext;
+    const pdf = await render(comDuplicados, { qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false });
+    const texto = Buffer.from(pdf.output("arraybuffer")).toString("latin1");
+    expect((texto.match(/\(CORTE\) Tj/g) || []).length).toBeLessThanOrEqual(1);
+    expect(texto).not.toContain("(C\xf3pia)");
+  }, 30_000);
+});
