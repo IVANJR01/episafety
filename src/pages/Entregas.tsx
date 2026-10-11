@@ -2222,23 +2222,21 @@ export default function Entregas() {
               </div>
             )}
           </div>
+          {/*
+            Não há mais "Pular (Assinar Depois)".
+            O botão gravava a entrega sem assinatura e seguia em frente, e foi
+            de onde vieram todas as pendências do histórico. Sobraram as duas
+            saídas que não deixam registro pela metade: assinar agora, ou
+            cancelar — e cancelar apaga a entrega, não a deixa pendurada.
+
+            Fechar o diálogo tem o mesmo efeito de cancelar
+            (`onOpenChange` chama o mesmo handler), então sair sem querer
+            também não cria pendência.
+          */}
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => void handleCancelSignatureFlow()} disabled={savingConfirmation}>
               Cancelar Entrega
             </Button>
-            {signMode === "new" && (
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={savingConfirmation}
-                onClick={() => {
-                  toast({ title: "Registrado como Pendente", description: "O EPI foi entregue, mas aguarda a assinatura. Envie o link!" });
-                  resetSignState();
-                }}
-              >
-                Pular (Assinar Depois)
-              </Button>
-            )}
             <Button
               onClick={handleSaveSignature}
               disabled={savingConfirmation || (signMode === "existing" && selectedUnsigned.length === 0)}
