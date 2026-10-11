@@ -24,6 +24,9 @@ export interface EmpresaRow {
   cnae_secundario?: string[] | null;
   grau_risco?: number | null;
   endereco?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
   bairro?: string | null;
   cidade?: string | null;
   uf?: string | null;
@@ -40,11 +43,14 @@ export interface PgrRow {
   resp_tec_registro?: string | null;
 }
 
+/** Colunas reais de public.pgr_responsaveis. */
 export interface ResponsavelRow {
   papel?: string | null;
   nome?: string | null;
-  formacao?: string | null;
-  registro?: string | null;
+  profissao?: string | null;
+  registro_profissional?: string | null;
+  uf_registro?: string | null;
+  numero_art?: string | null;
 }
 
 export interface InventarioRow {
@@ -211,6 +217,25 @@ export function sufixoArquivo(nome?: string | null): string {
 /* Montagem                                                            */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Endereço: o cadastro tem o texto livre `endereco` e também os campos
+ * separados. O texto livre ganha, por ser o que a pessoa escreveu; os campos
+ * separados só entram quando ele está vazio.
+ */
+export function enderecoCompleto(e: EmpresaRow): string {
+  if (txt(e.endereco)) return txt(e.endereco);
+  const partes = [txt(e.logradouro), txt(e.numero), txt(e.complemento)].filter(Boolean);
+  return partes.length ? partes.join(", ") : "";
+}
+
+/** "CREA 12345" + "/CE" quando a UF do registro está cadastrada. */
+export function registroProfissional(r?: ResponsavelRow): string {
+  const reg = txt(r?.registro_profissional);
+  if (!reg) return "";
+  const uf = txt(r?.uf_registro);
+  return uf && !reg.toUpperCase().includes(uf.toUpperCase()) ? `${reg}/${uf}` : reg;
+}
+
 function papel(responsaveis: ResponsavelRow[] | undefined, ...papeis: string[]) {
   return (responsaveis || []).find((r) => papeis.includes(txt(r.papel)));
 }
@@ -303,7 +328,7 @@ export function montarDadosDocumento(f: FontesDoDocumento): DadosDocumento {
       CNAE_PRINCIPAL: txt(empresa.cnae_principal),
       CNAE_SECUNDARIO: (empresa.cnae_secundario || []).filter(Boolean).join("; "),
       GRAU_RISCO: grauRisco(empresa.grau_risco),
-      ENDERECO: txt(empresa.endereco),
+      ENDERECO: enderecoCompleto(empresa),
       BAIRRO: txt(empresa.bairro),
       CIDADE: cidade,
       UF: uf,
@@ -311,8 +336,8 @@ export function montarDadosDocumento(f: FontesDoDocumento): DadosDocumento {
       CEP: txt(empresa.cep),
       TELEFONE: txt(empresa.telefone),
       RESPONSAVEL_NOME: txt(tecnico?.nome) || txt(pgr.resp_tec_nome),
-      RESPONSAVEL_FORMACAO: txt(tecnico?.formacao),
-      RESPONSAVEL_REGISTRO: txt(tecnico?.registro) || txt(pgr.resp_tec_registro),
+      RESPONSAVEL_FORMACAO: txt(tecnico?.profissao),
+      RESPONSAVEL_REGISTRO: registroProfissional(tecnico) || txt(pgr.resp_tec_registro),
       VIGENCIA_INICIO: dataBr(pgr.data_vigencia_inicio),
       VIGENCIA_FIM: dataBr(pgr.data_vigencia_fim),
       REVISAO: pgr.versao !== null && pgr.versao !== undefined ? String(pgr.versao).padStart(2, "0") : "",

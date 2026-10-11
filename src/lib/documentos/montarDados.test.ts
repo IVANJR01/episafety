@@ -17,7 +17,7 @@ const BASE: FontesDoDocumento = {
     data_vigencia_fim: "2028-03-14", resp_tec_nome: "Fallback", resp_tec_registro: "999",
   },
   responsaveis: [
-    { papel: "responsavel_tecnico", nome: "Maria Souza", formacao: "Engenheira de Segurança", registro: "CREA 12345/CE" },
+    { papel: "responsavel_tecnico", nome: "Maria Souza", profissao: "Engenheira de Segurança", registro_profissional: "CREA 12345", uf_registro: "CE" },
     { papel: "responsavel_organizacao", nome: "João Diretor" },
   ],
   descricaoRevisao: "Revisão bienal",
@@ -36,6 +36,8 @@ describe("dados da empresa", () => {
 
   it("usa o responsável técnico cadastrado, não o nome solto do PGR", () => {
     expect(d.RESPONSAVEL_NOME).toBe("Maria Souza");
+    expect(d.RESPONSAVEL_FORMACAO).toBe("Engenheira de Segurança");
+    /* A UF do registro é anexada, e não duplicada se já estiver no número. */
     expect(d.RESPONSAVEL_REGISTRO).toBe("CREA 12345/CE");
     expect(d.REPRESENTANTE_EMPRESA).toBe("João Diretor");
   });
@@ -44,6 +46,22 @@ describe("dados da empresa", () => {
     const sem = montarDadosDocumento({ ...BASE, responsaveis: [] }).empresa;
     expect(sem.RESPONSAVEL_NOME).toBe("Fallback");
     expect(sem.RESPONSAVEL_REGISTRO).toBe("999");
+  });
+
+  it("não duplica a UF já escrita no número do registro", () => {
+    const d2 = montarDadosDocumento({
+      ...BASE,
+      responsaveis: [{ papel: "responsavel_tecnico", nome: "X", registro_profissional: "CREA 777/CE", uf_registro: "CE" }],
+    }).empresa;
+    expect(d2.RESPONSAVEL_REGISTRO).toBe("CREA 777/CE");
+  });
+
+  it("monta o endereço dos campos separados quando não há texto livre", () => {
+    const d2 = montarDadosDocumento({
+      ...BASE,
+      empresa: { ...BASE.empresa, endereco: null, logradouro: "Av. Brasil", numero: "1200", complemento: "Galpão B" },
+    }).empresa;
+    expect(d2.ENDERECO).toBe("Av. Brasil, 1200, Galpão B");
   });
 
   it("formata datas, revisão e ano", () => {

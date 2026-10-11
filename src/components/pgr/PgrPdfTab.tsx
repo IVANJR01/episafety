@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { FileText, Download, RefreshCw, PenLine, ExternalLink, AlertTriangle, ShieldCheck, Eye } from "lucide-react";
 import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
+import { FileType2 } from "lucide-react";
 import { PgrDocumento, PgrStatus } from "@/lib/pgrTypes";
 import { generateAndUploadPgrPdf, previsualizarPgrPdf } from "@/lib/pgrPdf";
 import { resolveDocumentoUrl } from "@/lib/secureStorage";
@@ -271,6 +272,53 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     } finally { setBusy(false); }
   }
 
+  /*
+   * PGR em Word, no formato do pacote da SafetySoluções.
+   *
+   * Roda inteiro no navegador: não há servidor neste projeto, e Edge Function
+   * é Deno — sem python3 nem processo filho. É a mesma biblioteca e o mesmo
+   * código do gerador original (ver gerarDocx.fidelidade.test.ts).
+   *
+   * Não grava versão nem hash: isto é um rascunho editável para o técnico
+   * trabalhar em cima. O documento que vale, numerado e rastreável, continua
+   * sendo o PDF gerado acima.
+   */
+  async function handleGerarWord() {
+    setBusy(true);
+    try {
+      /*
+       * Carregado só agora, e não junto com a tela: a biblioteca `docx` pesa
+       * quase um megabyte, e isso entraria no pacote que todo mundo baixa ao
+       * abrir o sistema — inclusive quem nunca gera Word, inclusive no
+       * celular com internet ruim. Aqui ela vira um arquivo separado, pedido
+       * no clique.
+       */
+      const [{ dadosDoPgr }, { gerarDocumentoDocx, nomeArquivo }] = await Promise.all([
+        import("@/lib/documentos/buscarDados"),
+        import("@/lib/documentos/gerarDocx"),
+      ]);
+      const dados = await dadosDoPgr(pgr.id, pgr.empresa_id);
+      if (!dados.inventario?.length) {
+        toast.warning("O inventário está vazio — o Word sai com a tabela em branco.");
+      }
+      const blob = await gerarDocumentoDocx("PGR", dados);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nomeArquivo("PGR", dados);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      /* O navegador ainda está lendo o blob no instante do clique. */
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      toast.success("PGR em Word gerado");
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao gerar o Word");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleAssinar() {
     if (!ultima) { toast.error("Gere o PDF antes de assinar"); return; }
     if (ultima.com_marca_dagua) { toast.error("Gere a versão final (sem marca d'água) antes de assinar"); return; }
@@ -320,6 +368,11 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
                   {ultima ? "Regenerar PDF" : "Gerar PDF"}
                 </MfaActionButton>
               )}
+              {!bloqueado && canExport && (
+                <Button size="sm" variant="outline" onClick={handleGerarWord} disabled={busy}>
+                  <FileType2 className="h-4 w-4 mr-1" /> Gerar PGR (Word)
+                </Button>
+              )}
               {ultima && !ultima.com_marca_dagua && canAssinar && (
                 <MfaActionButton size="sm" variant="outline" onClick={() => setShowSig(true)} disabled={busy}>
                   <PenLine className="h-4 w-4 mr-1" /> Assinar (visual)
@@ -338,6 +391,8 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
           <p className="text-xs text-muted-foreground">
             <b>Ver como vai sair</b> abre o documento para conferência e não grava nada.
             {" "}<b>Gerar PDF</b> cria a versão numerada e rastreável — é a que vale como documento.
+            {" "}<b>Gerar PGR (Word)</b> baixa um .docx editável, no formato da SafetySoluções,
+            para você ajustar antes de entregar; ele não gera versão nem fica guardado.
             {status === "rascunho" || status === "em_revisao"
               ? " Enquanto o PGR não for publicado, os dois saem com marca d'água de rascunho."
               : ""}

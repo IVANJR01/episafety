@@ -49,3 +49,6 @@ supabase/.temp/
 *.pfx.base64
 *.p12.base64
 *.key
+
+# Amostras geradas para conferência — não versionadas.
+/amostra/
