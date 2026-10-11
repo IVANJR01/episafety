@@ -13,7 +13,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { FileText, Download, RefreshCw, PenLine, ExternalLink, AlertTriangle, ShieldCheck, Eye } from "lucide-react";
 import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
-import { FileType2 } from "lucide-react";
+import { FileType2, FileSpreadsheet, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PgrDocumento, PgrStatus } from "@/lib/pgrTypes";
 import { generateAndUploadPgrPdf, previsualizarPgrPdf } from "@/lib/pgrPdf";
 import { resolveDocumentoUrl } from "@/lib/secureStorage";
@@ -43,6 +47,21 @@ interface Props {
   canExport: boolean;
   canAssinar: boolean;
 }
+
+/*
+ * Os outros cinco documentos do pacote.
+ *
+ * O PGR e a planilha têm botão próprio porque saem do inventário desta tela;
+ * estes cinco usam só os dados da empresa e a mesma capa, e ficam num menu
+ * para o cartão não virar uma fileira de oito botões.
+ */
+const OUTROS_DOCUMENTOS: { sigla: string; nome: string }[] = [
+  { sigla: "PCMSO", nome: "PCMSO — Controle Médico" },
+  { sigla: "AET", nome: "AET — Análise Ergonômica" },
+  { sigla: "AEP", nome: "AEP — Avaliação Ergonômica Preliminar" },
+  { sigla: "LTI", nome: "Laudo de Insalubridade (NR-15)" },
+  { sigla: "LTP", nome: "Laudo de Periculosidade (NR-16)" },
+];
 
 export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props) {
   const qc = useQueryClient();
@@ -283,37 +302,65 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
    * trabalhar em cima. O documento que vale, numerado e rastreável, continua
    * sendo o PDF gerado acima.
    */
-  async function handleGerarWord() {
+  /**
+   * Baixa um arquivo gerado no navegador.
+   *
+   * O endereço do blob só é solto depois, porque o navegador ainda está
+   * lendo o arquivo no instante do clique.
+   */
+  function baixar(blob: Blob, nome: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  }
+
+  /*
+   * Documentos da SafetySoluções, no formato do pacote.
+   *
+   * Rodam inteiros no navegador: não há servidor neste projeto, e Edge
+   * Function é Deno — sem python3 nem processo filho. São a mesma biblioteca
+   * e o mesmo código dos geradores originais (ver gerarDocx.fidelidade.test.ts
+   * e gerarPlanilha.fidelidade.test.ts).
+   *
+   * Não gravam versão nem hash: são rascunhos editáveis para o técnico
+   * trabalhar em cima. O documento que vale, numerado e rastreável, continua
+   * sendo o PDF gerado acima.
+   */
+  async function handleGerarDocumento(sigla: string) {
     setBusy(true);
     try {
       /*
-       * Carregado só agora, e não junto com a tela: a biblioteca `docx` pesa
-       * quase um megabyte, e isso entraria no pacote que todo mundo baixa ao
-       * abrir o sistema — inclusive quem nunca gera Word, inclusive no
-       * celular com internet ruim. Aqui ela vira um arquivo separado, pedido
-       * no clique.
+       * Carregadas só agora, e não junto com a tela: `docx` e `exceljs` somam
+       * mais de um megabyte, e isso entraria no pacote que todo mundo baixa
+       * ao abrir o sistema — inclusive quem nunca gera documento, inclusive
+       * no celular com internet ruim.
        */
-      const [{ dadosDoPgr }, { gerarDocumentoDocx, nomeArquivo }] = await Promise.all([
-        import("@/lib/documentos/buscarDados"),
-        import("@/lib/documentos/gerarDocx"),
-      ]);
+      const { dadosDoPgr } = await import("@/lib/documentos/buscarDados");
       const dados = await dadosDoPgr(pgr.id, pgr.empresa_id);
-      if (!dados.inventario?.length) {
+
+      if (sigla === "XLSX") {
+        if (!dados.inventario?.length) {
+          toast.warning("O inventário está vazio — a planilha sai com as linhas em branco.");
+        }
+        const { gerarPlanilhaBlob, nomePlanilha } = await import("@/lib/documentos/gerarPlanilha");
+        baixar(await gerarPlanilhaBlob(dados), nomePlanilha(dados));
+        toast.success("Planilha gerada");
+        return;
+      }
+
+      const { gerarDocumentoDocx, nomeArquivo } = await import("@/lib/documentos/gerarDocx");
+      if (sigla === "PGR" && !dados.inventario?.length) {
         toast.warning("O inventário está vazio — o Word sai com a tabela em branco.");
       }
-      const blob = await gerarDocumentoDocx("PGR", dados);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = nomeArquivo("PGR", dados);
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      /* O navegador ainda está lendo o blob no instante do clique. */
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
-      toast.success("PGR em Word gerado");
+      baixar(await gerarDocumentoDocx(sigla, dados), nomeArquivo(sigla, dados));
+      toast.success(`${sigla} gerado em Word`);
     } catch (e: any) {
-      toast.error(e?.message || "Falha ao gerar o Word");
+      toast.error(e?.message || "Falha ao gerar o documento");
     } finally {
       setBusy(false);
     }
@@ -369,9 +416,35 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
                 </MfaActionButton>
               )}
               {!bloqueado && canExport && (
-                <Button size="sm" variant="outline" onClick={handleGerarWord} disabled={busy}>
+                <Button size="sm" variant="outline" onClick={() => handleGerarDocumento("PGR")} disabled={busy}>
                   <FileType2 className="h-4 w-4 mr-1" /> Gerar PGR (Word)
                 </Button>
+              )}
+              {!bloqueado && canExport && (
+                <Button size="sm" variant="outline" onClick={() => handleGerarDocumento("XLSX")} disabled={busy}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Gerar Planilha (Excel)
+                </Button>
+              )}
+              {!bloqueado && canExport && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline" disabled={busy}>
+                      Outros documentos <ChevronDown className="h-4 w-4 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                      Mesma capa e os dados desta empresa
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {OUTROS_DOCUMENTOS.map((d) => (
+                      <DropdownMenuItem key={d.sigla} onClick={() => handleGerarDocumento(d.sigla)}>
+                        <FileType2 className="h-4 w-4 mr-2 shrink-0" />
+                        <span className="truncate">{d.nome}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               {ultima && !ultima.com_marca_dagua && canAssinar && (
                 <MfaActionButton size="sm" variant="outline" onClick={() => setShowSig(true)} disabled={busy}>
@@ -391,8 +464,9 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
           <p className="text-xs text-muted-foreground">
             <b>Ver como vai sair</b> abre o documento para conferência e não grava nada.
             {" "}<b>Gerar PDF</b> cria a versão numerada e rastreável — é a que vale como documento.
-            {" "}<b>Gerar PGR (Word)</b> baixa um .docx editável, no formato da SafetySoluções,
-            para você ajustar antes de entregar; ele não gera versão nem fica guardado.
+            {" "}<b>Gerar PGR (Word)</b>, <b>Gerar Planilha (Excel)</b> e os <b>outros documentos</b>
+            baixam arquivos editáveis no formato da SafetySoluções, para você ajustar antes de
+            entregar; eles não geram versão nem ficam guardados.
             {status === "rascunho" || status === "em_revisao"
               ? " Enquanto o PGR não for publicado, os dois saem com marca d'água de rascunho."
               : ""}
