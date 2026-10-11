@@ -250,15 +250,15 @@ export default function PgrChecklistTab({ pgr }: Props) {
     { label: "Todo risco tem grupo de trabalhadores expostos",
       sev: sevSe(n(semGrupoExposto) > 0, "bloqueante"),
       detail: n(semGrupoExposto) > 0 ? `${n(semGrupoExposto)} risco(s) sem população exposta` : undefined,
-      norma: "NR-01 1.5.7.3.2 alínea f" },
+      norma: "NR-01 1.5.7.3.2" },
     { label: "Todo perigo tem fonte ou circunstância",
       sev: sevSe(n(semFonte) > 0, "bloqueante"),
       detail: n(semFonte) > 0 ? `${n(semFonte)} risco(s) sem fonte` : undefined,
-      norma: "NR-01 1.5.7.3.2 alínea d" },
+      norma: "NR-01 1.5.7.3.2" },
     { label: "Riscos avaliados e classificados",
       sev: sevSe(n(naoAvaliados) > 0, "bloqueante"),
       detail: n(naoAvaliados) > 0 ? `${n(naoAvaliados)} risco(s) sem classificação` : undefined,
-      norma: "NR-01 1.5.7.3.2 alínea k" },
+      norma: "NR-01 1.5.7.3.2" },
     { label: "Justificativa técnica de severidade e probabilidade",
       sev: sevSe(n(semJustificativa) > 0, "alerta"),
       detail: n(semJustificativa) > 0 ? `${n(semJustificativa)} risco(s) sem justificativa registrada` : undefined,
@@ -282,7 +282,7 @@ export default function PgrChecklistTab({ pgr }: Props) {
       detail: n(soEpi) > 0
         ? `${n(soEpi)} risco(s) tratados apenas com EPI/medida administrativa`
         : undefined,
-      norma: "NR-01 1.5.4.4.3 — EPI não é controle suficiente por si só" },
+      norma: "NR-01 1.5.5.1.2 — EPI não é controle suficiente por si só" },
   ];
 
   // ---------------------------------------------------------------------------
@@ -297,7 +297,7 @@ export default function PgrChecklistTab({ pgr }: Props) {
         : n(semAcao) > 0
           ? `${n(semAcao)} de ${exigemAcao.length} risco(s) sem ação`
           : `${exigemAcao.length} risco(s) cobertos`,
-      norma: "NR-01 1.5.5.1" },
+      norma: "NR-01 1.5.5.2.1" },
     { label: "Ações com responsável definido",
       sev: sevSe(n(acoesSemResponsavel) > 0, "bloqueante"),
       detail: n(acoesSemResponsavel) > 0 ? `${n(acoesSemResponsavel)} ação(ões) sem responsável` : undefined },
@@ -325,7 +325,7 @@ export default function PgrChecklistTab({ pgr }: Props) {
   const governanca: Item[] = [
     { label: "Responsável técnico declarado",
       sev: temRT ? "ok" : "bloqueante",
-      norma: "NR-01 1.5.7.3.2 — documento datado e assinado" },
+      norma: "NR-01 1.5.7.2 — documento datado e assinado" },
     { label: "Aprovador / responsável pela organização declarado",
       sev: temAprovador ? "ok" : "recomendacao",
       detail: temAprovador ? undefined : "Nenhum aprovador cadastrado em Responsáveis" },
@@ -334,7 +334,7 @@ export default function PgrChecklistTab({ pgr }: Props) {
       detail: n(gatilhosAbertos) > 0
         ? `${n(gatilhosAbertos)} gatilho(s) em aberto — tratar ou dispensar com justificativa`
         : "Nenhum gatilho pendente",
-      norma: "NR-01 1.5.4.4.5" },
+      norma: "NR-01 1.5.4.4.6" },
     { label: "Revisão da avaliação dentro do prazo",
       sev: !pgr.proxima_revisao ? "recomendacao" : revisaoVencida ? "bloqueante" : "ok",
       detail: !pgr.proxima_revisao
@@ -344,7 +344,7 @@ export default function PgrChecklistTab({ pgr }: Props) {
           : `Até ${pgr.proxima_revisao.split("-").reverse().join("/")}`,
       norma: pgr.sgsst_certificado
         ? "Até 3 anos — organização certificada em SGSST"
-        : "Máx. 2 anos (NR-01 1.5.4.4.4)" },
+        : "Máx. 2 anos (NR-01 1.5.4.4.6)" },
     { label: "PDF gerado", sev: ultimoPdf ? "ok" : "bloqueante",
       detail: ultimoPdf ? `Última versão: PDF v${ultimoPdf.pdf_versao}` : "Nenhum PDF gerado" },
     { label: "PDF atualizado em relação ao conteúdo",
@@ -411,9 +411,17 @@ export default function PgrChecklistTab({ pgr }: Props) {
       <Bloco titulo="Plano de ação" itens={plano} />
       <Bloco titulo="Governança e emissão" itens={governanca} />
 
+      {/*
+        A frase dizia que o sistema não implementa ICP-Brasil. Implementa: a
+        Ficha de EPI sai assinada com certificado A1 e foi aprovada no
+        validador do ITI. O que continua valendo é que ESTE documento, o PGR,
+        ainda não passa por essa assinatura — e é isso que precisa estar
+        escrito, em vez de uma negativa geral que ficou velha.
+      */}
       <div className="text-[11px] text-muted-foreground">
-        Documento técnico interno com assinatura visual e hash SHA-256. Esta fase <b>não</b> implementa
-        ICP-Brasil, certificado digital, eSocial S-2240 ou integração com órgãos externos.
+        O PGR é documento técnico interno: a validação é por assinatura visual e hash SHA-256.
+        A assinatura digital ICP-Brasil já existe no sistema — hoje aplicada à Ficha de EPI —, mas
+        ainda <b>não</b> é aplicada a este documento.
       </div>
     </div>
   );

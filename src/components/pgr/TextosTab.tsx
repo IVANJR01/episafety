@@ -64,7 +64,7 @@ export default function TextosTab({ pgrId, empresaId, canEdit }: Props) {
     <div className="space-y-3">
       <Card>
         <CardContent className="p-3 text-xs text-muted-foreground">
-          Edite os textos padrão do PGR. Eles serão utilizados na geração do PDF, junto com os dados da empresa, inventário de riscos, quadro de EPIs e plano de ação.
+          Textos opcionais do PGR. Só entram no PDF se forem preenchidos, junto com os dados da empresa, o inventário de riscos e o plano de ação. O quadro de EPIs não sai mais no documento — a NR-01 não o exige, e ele ficou como registro de apoio.
         </CardContent>
       </Card>
 

@@ -343,8 +343,9 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
               : ""}
           </p>
           <div className="rounded-md p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-            <b>Documento técnico interno.</b> Assinatura ICP-Brasil não implementada nesta fase:
-            a validação é por hash SHA-256 e QR Code internos.
+            <b>Documento técnico interno.</b> A validação deste PDF é por hash SHA-256 e QR Code
+            internos. A assinatura ICP-Brasil do sistema, hoje aplicada à Ficha de EPI, ainda não
+            é aplicada ao PGR.
           </div>
           {desatualizado && (
             <div className="rounded-md p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm flex items-center gap-2">
