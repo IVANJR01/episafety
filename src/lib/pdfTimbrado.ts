@@ -14,7 +14,7 @@ export const fmtDate = (s?: string | null) =>
   s ? new Date(s.length <= 10 ? s + "T00:00:00" : s).toLocaleDateString("pt-BR") : "—";
 export const fmtDT = (s?: string | null) => s ? new Date(s).toLocaleString("pt-BR") : "—";
 
-export interface ItemSumario { titulo: string; pagina: number; }
+export interface ItemSumario { titulo: string; pagina: number; nivel?: number; }
 /** O bloco em construção: documento, altura corrente e o que já virou seção. */
 export interface B {
   doc: jsPDF;
@@ -22,6 +22,8 @@ export interface B {
   toc: ItemSumario[];
   /** Contador de seções, preenchido por `title()`. Começa em 1. */
   secao?: number;
+  /** Contador de subseções da seção corrente, zerado por `title()`. */
+  sub?: number;
   /*
    * Os limites da página em uso.
    *
@@ -67,19 +69,54 @@ export function title(b: B, t: string) {
   ensure(b, 14);
   const n = b.secao ?? 1;
   b.secao = n + 1;
+  b.sub = 0;
   const numerado = `${n}. ${t}`;
-  b.toc.push({ titulo: numerado, pagina: b.doc.getCurrentPageInfo().pageNumber });
+  b.toc.push({ titulo: numerado, pagina: b.doc.getCurrentPageInfo().pageNumber, nivel: 1 });
 
-  b.y += 2;
-  b.doc.setFillColor(15, 23, 42);
-  b.doc.rect(10, b.y - 0.5, 3, 6, "F");
-  b.doc.setTextColor(15, 23, 42); b.doc.setFontSize(11.5); b.doc.setFont("helvetica", "bold");
-  b.doc.text(numerado, 16, b.y + 4.2);
+  /*
+   * O título no estilo do documento em Word: número, recuo, nome em
+   * azul-marinho e um filete claro embaixo. A barrinha azul que havia à
+   * esquerda não existe no Word e, com o cabeçalho de página novo, somava um
+   * terceiro elemento azul na mesma faixa de dois centímetros.
+   */
+  b.y += 4;
+  b.doc.setTextColor(15, 42, 68); b.doc.setFontSize(13); b.doc.setFont("helvetica", "bold");
+  b.doc.text(`${n}.`, 10, b.y + 4.2);
+  b.doc.text(t, 19, b.y + 4.2);
   b.y += 7;
-  b.doc.setDrawColor(200); b.doc.setLineWidth(0.3);
+  b.doc.setDrawColor(210); b.doc.setLineWidth(0.3);
   b.doc.line(10, b.y, direitaDe(b), b.y);
   b.doc.setTextColor(0);
-  b.y += 4;
+  b.y += 5;
+}
+
+/**
+ * Subtítulo numerado dentro de uma seção — "4.1. Critérios...".
+ *
+ * Entra no sumário com recuo, como no Word.
+ */
+export function subNumerado(b: B, t: string) {
+  ensure(b, 10);
+  b.sub = (b.sub ?? 0) + 1;
+  const n = (b.secao ?? 2) - 1;
+  const numerado = `${n}.${b.sub}. ${t}`;
+  b.toc.push({ titulo: numerado, pagina: b.doc.getCurrentPageInfo().pageNumber, nivel: 2 });
+  b.y += 2;
+  b.doc.setTextColor(27, 63, 99); b.doc.setFontSize(10.5); b.doc.setFont("helvetica", "bold");
+  b.doc.text(`${n}.${b.sub}.`, 12, b.y + 3.6);
+  b.doc.text(t, 25, b.y + 3.6);
+  b.doc.setTextColor(0);
+  b.y += 7;
+}
+
+/** A referência normativa, em verde miúdo acima do texto — como no Word. */
+export function refNorma(b: B, texto: string) {
+  ensure(b, 6);
+  b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(7);
+  b.doc.setTextColor(30, 158, 106);
+  b.doc.text(texto, 12, b.y + 3);
+  b.doc.setTextColor(0);
+  b.y += 5;
 }
 
 /** Subtítulo dentro de uma seção — não entra no sumário. */
@@ -259,6 +296,34 @@ export function tabela(
  * Avaliação guarda um texto de vários parágrafos, e ele saía por cima do
  * rodapé.
  */
+/**
+ * Tabela de duas colunas: rótulo com fundo claro, valor ao lado.
+ *
+ * É o formato da "Identificação da Empresa" e do "Responsável Técnico" no
+ * documento em Word. Em rótulo-em-cima-valor-embaixo, como estava, a mesma
+ * informação ocupava o dobro da altura e não se lia como ficha.
+ */
+export function tabelaFicha(b: B, linhas: [string, string][], larguraRotulo = 48) {
+  const direita = direitaDe(b);
+  for (const [rotulo, valor] of linhas) {
+    b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(8.5);
+    const texto = b.doc.splitTextToSize(valor || "—", direita - 10 - larguraRotulo - 5) as string[];
+    const altura = Math.max(6.5, texto.length * 3.8 + 2.8);
+    ensure(b, altura);
+    b.doc.setFillColor(238, 242, 246);
+    b.doc.rect(10, b.y, larguraRotulo, altura, "F");
+    b.doc.setDrawColor(201, 211, 221); b.doc.setLineWidth(0.2);
+    b.doc.rect(10, b.y, larguraRotulo, altura);
+    b.doc.rect(10 + larguraRotulo, b.y, direita - 10 - larguraRotulo, altura);
+    b.doc.setFont("helvetica", "bold"); b.doc.setTextColor(15, 42, 68);
+    b.doc.text(rotulo, 12.5, b.y + 4.4);
+    b.doc.setFont("helvetica", "normal"); b.doc.setTextColor(0);
+    texto.forEach((linha, i) => b.doc.text(linha, 12.5 + larguraRotulo, b.y + 4.4 + i * 3.8));
+    b.y += altura;
+  }
+  b.y += 3;
+}
+
 export function kv(b: B, label: string, value: string, full = false) {
   ensure(b, 9);
   b.doc.setFontSize(7); b.doc.setFont("helvetica", "normal"); b.doc.setTextColor(110);
@@ -319,149 +384,126 @@ export interface CapaTimbrada {
   subtitulo?: string | null;
   nota?: string | null;
   empresaNome: string;
-  /** CNPJ e unidade, logo abaixo do nome, dentro do painel. */
+  /** CNPJ e unidade, logo abaixo do nome. */
   identificacao: string[];
-  /** Emissão, vigência, responsável técnico — em duas colunas no painel. */
+  /** Emissão, vigência, responsável técnico. */
   campos: CampoCapa[];
+  /** Cidade / UF e ano, no pé da capa. */
+  rodapeLocal?: string | null;
+  /** As linhas da tabela de identificação, quando se quer ditá-las. */
+  linhasTabela?: [string, string][];
 }
 
+/*
+ * Medidas da capa, em milímetros. São as do pacote (gerador/niveis.js),
+ * convertidas de DXA: 1418 dxa = 25 mm de margem.
+ */
+const CAPA_MARGEM = 25;
+const CAPA_LARGURA = LARGURA - 2 * CAPA_MARGEM;
 
 /**
- * A capa: papel timbrado, não banner.
+ * A capa "Simples" com moldura — a mesma dos seis documentos em Word.
  *
- * Marca e revisão no alto, título no corpo, identificação da empresa no pé.
- * A faixa azul-marinho que ocupava o terço superior empurrava tudo para baixo
- * e não dizia nada — o espaço passou a ser do título.
+ * O PDF tinha uma capa só dele: faixa azul-marinho no topo, título à
+ * esquerda e um painel de identificação no pé. Era outra capa, e a regra do
+ * pacote é uma só para todos os documentos, mudando apenas o nome. Quem
+ * recebia o PGR em Word e o mesmo PGR em PDF recebia dois documentos de cara
+ * diferente.
  */
 export function capaTimbrada(pdf: jsPDF, capa: CapaTimbrada) {
-  /*
-   * Faixa no topo, de margem a margem.
-   *
-   * A capa dependia inteiramente dos dados para ter alguma presença: sem logo
-   * cadastrada, o terço superior ficava literalmente em branco, e a página
-   * abria com um vazio. A faixa não precisa de dado nenhum e dá à capa um
-   * começo — é o que um papel timbrado faz com a marca impressa.
-   */
-  pdf.setFillColor(15, 23, 42);
-  pdf.rect(0, 0, LARGURA, 10, "F");
+  const PRETO = 34, CINZA = 102;
 
+  /* A moldura da página, 1 mm para fora da margem do texto. */
+  pdf.setDrawColor(PRETO);
+  pdf.setLineWidth(0.6);
+  pdf.rect(CAPA_MARGEM - 1, CAPA_MARGEM - 1, CAPA_LARGURA + 2, 297 - 2 * (CAPA_MARGEM - 1));
+
+  /* Caixa da logo: tracejada e centralizada, como no Word. */
+  const LOGO_W = 49, LOGO_H = 17.6;
+  const logoX = (LARGURA - LOGO_W) / 2;
+  const logoY = CAPA_MARGEM + 4;
   if (capa.logoDataUrl) {
-    // Falha de imagem não pode derrubar a geração do documento inteiro: o
-    // documento sai sem logo, e sai.
-    try { pdf.addImage(capa.logoDataUrl, "PNG", MARGEM, 20, 24, 24); }
-    catch { /* logo inválida: segue sem ela */ }
+    try { pdf.addImage(capa.logoDataUrl, "PNG", logoX, logoY, LOGO_W, LOGO_H); }
+    catch { /* logo inválida: segue com a caixa vazia */ }
+  } else {
+    pdf.setDrawColor(170);
+    pdf.setLineWidth(0.3);
+    const anyPdf = pdf as unknown as { setLineDash?: (p: number[], f: number) => void };
+    anyPdf.setLineDash?.([1.2, 1.2], 0);
+    pdf.rect(logoX, logoY, LOGO_W, LOGO_H);
+    anyPdf.setLineDash?.([], 0);
+    pdf.setFontSize(8); pdf.setTextColor(31, 111, 178); pdf.setFont("helvetica", "normal");
+    pdf.text("{{LOGO_EMPRESA}}", LARGURA / 2, logoY + LOGO_H / 2 + 1, { align: "center" });
   }
 
+  /* Revisão e situação: não existem no Word, mas o PDF é versionado e a
+     versão precisa estar impressa em algum lugar da capa. */
   if (capa.revisao) {
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(30);
-    pdf.text(capa.revisao, LARGURA - MARGEM, 28, { align: "right" });
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(9); pdf.setTextColor(PRETO);
+    pdf.text(capa.revisao, LARGURA - CAPA_MARGEM, logoY + 3, { align: "right" });
   }
   if (capa.meta) {
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(120);
-    pdf.text(capa.meta, LARGURA - MARGEM, 33, { align: "right" });
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(7); pdf.setTextColor(CINZA);
+    pdf.text(capa.meta, LARGURA - CAPA_MARGEM, logoY + 7, { align: "right" });
   }
 
-  pdf.setDrawColor(200); pdf.setLineWidth(0.4);
-  pdf.line(MARGEM, 48, LARGURA - MARGEM, 48);
+  /* ── Título ──────────────────────────────────────────────────────────
+     Sigla curta ganha letra gigante; nome longo, letra menor — é o
+     `grande(d)` do niveis.js. */
+  const grande = capa.sigla.length <= 6;
+  let y = 108;
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(grande ? 48 : 24);
+  pdf.setTextColor(PRETO);
+  pdf.text(capa.sigla, LARGURA / 2, y, { align: "center" });
 
-  // ── Título ────────────────────────────────────────────────────────────────
-  pdf.setTextColor(15, 23, 42); pdf.setFont("helvetica", "bold"); pdf.setFontSize(52);
-  pdf.text(capa.sigla, MARGEM, 92);
-  // Régua curta sob a sigla: ancora o título, que antes flutuava sozinho no
-  // meio de uma página em branco.
-  pdf.setFillColor(15, 23, 42);
-  pdf.rect(MARGEM, 98, 26, 1.6, "F");
+  y += 12;
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(15);
+  pdf.text(capa.titulo, LARGURA / 2, y, { align: "center" });
 
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(15); pdf.setTextColor(40);
-  pdf.text(capa.titulo, MARGEM, 110);
   if (capa.subtitulo) {
-    pdf.setFontSize(11); pdf.setTextColor(110);
-    pdf.text(capa.subtitulo, MARGEM, 118);
+    y += 7;
+    pdf.setFontSize(11); pdf.setTextColor(CINZA);
+    pdf.text(capa.subtitulo, LARGURA / 2, y, { align: "center" });
   }
   if (capa.nota) {
-    pdf.setFontSize(9); pdf.setTextColor(130);
-    pdf.text(capa.nota, MARGEM, 125);
+    y += 7;
+    pdf.setFontSize(11); pdf.setTextColor(CINZA);
+    pdf.text(capa.nota, LARGURA / 2, y, { align: "center" });
   }
 
-  /*
-   * ── Painel de identificação ───────────────────────────────────────────────
-   *
-   * A capa tinha o título no terço de cima, a empresa no pé e setecentos
-   * pixels de nada no meio — a marca d'água era a única coisa ali. Não era
-   * respiro, era buraco: quem abre um PGR procura justamente estes dados, e
-   * eles estavam espremidos em linhas corridas no rodapé.
-   *
-   * Agora o miolo é o painel que identifica o documento: empresa no alto,
-   * depois os campos em duas colunas, cada um com rótulo miúdo e valor em
-   * destaque. Campo sem dado não entra — quem monta a lista já filtra.
-   */
-  /*
-   * O painel é ancorado pelo PÉ, não pelo topo.
-   *
-   * Preso no topo, ele terminava a dois terços da altura e o resto da página
-   * descia vazio até a borda — a capa ficava com todo o peso em cima e nada
-   * embaixo. Ancorado embaixo, o branco fica entre o título e o painel, que é
-   * onde respiro é respiro, e a página fecha.
-   */
-  const PAINEL_BASE = 262;
+  /* ── Tabela de identificação ────────────────────────────────────── */
+  const linhas: [string, string][] = capa.linhasTabela ?? [
+    ["Empresa", capa.empresaNome],
+    ...capa.identificacao.map((t) => ["", t] as [string, string]),
+    ...capa.campos.map((c) => [c.rotulo, c.valor] as [string, string]),
+  ];
 
-  /*
-   * Os campos são distribuídos em linhas de duas colunas ANTES de desenhar.
-   *
-   * Contar a altura de um jeito e desenhar de outro, como estava, produzia os
-   * dois erros juntos: sobrava uma faixa vazia no pé do painel, e a segunda
-   * coluna nunca era usada quando havia um campo largo no meio da lista.
-   */
-  const linhasDeCampos: CampoCapa[][] = [];
-  capa.campos.forEach((campo) => {
-    const ultima = linhasDeCampos[linhasDeCampos.length - 1];
-    if (!campo.largo && ultima && ultima.length === 1 && !ultima[0].largo) ultima.push(campo);
-    else linhasDeCampos.push([campo]);
-  });
+  const TAB_Y = 196;
+  const COL1 = 46;
+  pdf.setDrawColor(187);
+  pdf.setLineWidth(0.2);
+  let ty = TAB_Y;
+  for (const [rotulo, valor] of linhas) {
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(9);
+    const texto = pdf.splitTextToSize(valor || "—", CAPA_LARGURA - COL1 - 6) as string[];
+    const altura = Math.max(7, texto.length * 4 + 3);
+    pdf.rect(CAPA_MARGEM, ty, COL1, altura);
+    pdf.rect(CAPA_MARGEM + COL1, ty, CAPA_LARGURA - COL1, altura);
+    pdf.setFont("helvetica", "bold"); pdf.setTextColor(PRETO);
+    pdf.text(rotulo, CAPA_MARGEM + 2.5, ty + 4.8);
+    pdf.setFont("helvetica", "normal");
+    texto.forEach((linha, i) => pdf.text(linha, CAPA_MARGEM + COL1 + 2.5, ty + 4.8 + i * 4));
+    ty += altura;
+  }
 
-  const PAINEL_X = MARGEM;
-  const PAINEL_L = LARGURA - MARGEM * 2;
-  const larguraCol = (PAINEL_L - 16) / 2;
-
-  pdf.setFont("helvetica", "bold"); pdf.setFontSize(16);
-  const nomeEmpresa = pdf.splitTextToSize(capa.empresaNome || "Empresa", PAINEL_L - 16) as string[];
-
-  const alturaPainel =
-    11 + nomeEmpresa.length * 7 + capa.identificacao.length * 5 + 6 + linhasDeCampos.length * 13 + 2;
-  const PAINEL_Y = PAINEL_BASE - alturaPainel;
-
-  pdf.setFillColor(248, 249, 251);
-  pdf.setDrawColor(222);
-  pdf.setLineWidth(0.3);
-  pdf.rect(PAINEL_X, PAINEL_Y, PAINEL_L, alturaPainel, "FD");
-  // Faixa na borda esquerda, na cor do documento: liga o painel ao título.
-  pdf.setFillColor(15, 23, 42);
-  pdf.rect(PAINEL_X, PAINEL_Y, 1.8, alturaPainel, "F");
-
-  let y = PAINEL_Y + 11;
-  pdf.setFont("helvetica", "bold"); pdf.setFontSize(16); pdf.setTextColor(15, 23, 42);
-  pdf.text(nomeEmpresa, PAINEL_X + 8, y);
-  y += nomeEmpresa.length * 7;
-
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(9.5); pdf.setTextColor(90);
-  capa.identificacao.forEach((linha) => { pdf.text(linha, PAINEL_X + 8, y); y += 5; });
-
-  y += 6;
-  linhasDeCampos.forEach((linha) => {
-    linha.forEach((campo, i) => {
-      const x = PAINEL_X + 8 + i * larguraCol;
-      const largura = campo.largo ? PAINEL_L - 16 : larguraCol - 6;
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7); pdf.setTextColor(130);
-      pdf.text(campo.rotulo.toUpperCase(), x, y);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(10.5); pdf.setTextColor(25);
-      pdf.text(pdf.splitTextToSize(campo.valor, largura)[0], x, y + 5);
-    });
-    y += 13;
-  });
-
+  /* ── Local e ano ─────────────────────────────────────────────────── */
+  if (capa.rodapeLocal) {
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(CINZA);
+    pdf.text(capa.rodapeLocal, LARGURA / 2, 258, { align: "center" });
+  }
   pdf.setTextColor(0);
 }
-
 
 /** Sumário, inserido como página 2 — só dá para montar depois de tudo desenhado. */
 export function sumario(pdf: jsPDF, toc: ItemSumario[]) {
@@ -469,10 +511,11 @@ export function sumario(pdf: jsPDF, toc: ItemSumario[]) {
   pdf.insertPage(2);
   pdf.setPage(2);
   let y = 15;
-  pdf.setTextColor(15, 23, 42); pdf.setFontSize(13); pdf.setFont("helvetica", "bold");
-  pdf.text("Sumário", 10, y + 4);
-  y += 7;
-  pdf.setDrawColor(200); pdf.setLineWidth(0.3); pdf.line(10, y, 200, y);
+  /* "SUMÁRIO" em caixa alta com filete laranja, como no documento em Word. */
+  pdf.setTextColor(15, 42, 68); pdf.setFontSize(15); pdf.setFont("helvetica", "bold");
+  pdf.text("SUMÁRIO", 10, y + 9);
+  y += 13;
+  pdf.setDrawColor(242, 169, 0); pdf.setLineWidth(0.7); pdf.line(10, y, 200, y);
   pdf.setTextColor(0); y += 7;
 
   toc.forEach((item) => {
@@ -481,13 +524,14 @@ export function sumario(pdf: jsPDF, toc: ItemSumario[]) {
     // desenho vale um a menos do que a página final.
     const pagina = String(item.pagina + 1);
     pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(30);
+    const recuo = item.nivel === 2 ? 20 : 12;
     const titulo = pdf.splitTextToSize(item.titulo, 160)[0];
-    pdf.text(titulo, 12, y);
+    pdf.text(titulo, recuo, y);
     const larguraTitulo = pdf.getTextWidth(titulo);
     const larguraPagina = pdf.getTextWidth(pagina);
     // Linha pontilhada ligando título e página, para o olho não se perder.
     pdf.setTextColor(170);
-    const inicio = 12 + larguraTitulo + 2;
+    const inicio = recuo + larguraTitulo + 2;
     const fim = 198 - larguraPagina - 2;
     if (fim > inicio) {
       const pontos = ".".repeat(Math.max(0, Math.floor((fim - inicio) / pdf.getTextWidth("."))));
@@ -506,6 +550,11 @@ export interface RodapeOpts {
   linhas: (pagina: number, total: number) => string[];
   /** Texto da marca d'água; `null` imprime o documento sem marca. */
   marca?: string | null;
+  /** Cabeçalho do miolo: "PGR – Programa de Gerenciamento de Riscos". */
+  tituloCabecalho?: string;
+  /** Segunda linha do cabeçalho: empresa e vigência. */
+  subtituloCabecalho?: string;
+  logoDataUrl?: string | null;
 }
 
 /**
@@ -518,6 +567,10 @@ export interface RodapeOpts {
 export async function rodapePaginas(pdf: jsPDF, opts: RodapeOpts) {
   const qrDataUrl = await QRCode.toDataURL(opts.qrUrl, { margin: 0, width: 220 });
   const total = pdf.getNumberOfPages();
+  const NAVY = [15, 42, 68] as const;
+  const LARANJA = [242, 169, 0] as const;
+  const CINZA = 110;
+
   for (let p = 1; p <= total; p++) {
     pdf.setPage(p);
     if (opts.marca) {
@@ -529,57 +582,114 @@ export async function rodapePaginas(pdf: jsPDF, opts: RodapeOpts) {
       const anyDoc = pdf as any;
       if (typeof anyDoc.GState === "function") { anyDoc.setGState(new anyDoc.GState({ opacity: 0.08 })); }
       pdf.setTextColor(150, 40, 40); pdf.setFont("helvetica", "bold");
+      const larguraPagina = pdf.internal.pageSize.getWidth();
       if (p === 1) {
         /*
-         * Na CAPA a marca é horizontal, na faixa vazia entre o título e o
-         * painel da empresa.
-         *
-         * Na diagonal ela subia pela direita e cortava a sigla do documento e
-         * o subtítulo — as duas coisas que a capa existe para dizer. E, de
-         * quebra, aquela faixa era o buraco branco da página. Deitada ali, a
-         * marca não disputa com nada e ainda ocupa o vazio.
+         * Na CAPA a marca é horizontal, na faixa vazia entre o título e a
+         * tabela de identificação. Na diagonal ela cortava a sigla do
+         * documento — a coisa que a capa existe para dizer.
          */
-        pdf.setFontSize(40);
-        /*
-         * Centralizada na mão: o `align: "center"` do jsPDF mede o texto sem
-         * contar o `charSpace`, então a palavra saía deslocada para a direita
-         * pela soma dos espaços entre as letras.
-         */
-        const ESPACO_ENTRE_LETRAS = 3;
-        const largura =
-          pdf.getTextWidth(opts.marca) + ESPACO_ENTRE_LETRAS * Math.max(0, opts.marca.length - 1);
-        pdf.text(opts.marca, 105 - largura / 2, 168, { charSpace: ESPACO_ENTRE_LETRAS } as any);
+        pdf.setFontSize(34);
+        const ESPACO = 3;
+        const larg = pdf.getTextWidth(opts.marca) + ESPACO * Math.max(0, opts.marca.length - 1);
+        pdf.text(opts.marca, larguraPagina / 2 - larg / 2, 170, { charSpace: ESPACO } as any);
       } else {
         pdf.setFontSize(78);
-        pdf.text(opts.marca, 105, 165, { align: "center", angle: 35 } as any);
+        pdf.text(opts.marca, larguraPagina / 2, 150, { align: "center", angle: 35 } as any);
       }
       if (typeof anyDoc.GState === "function") { anyDoc.setGState(new anyDoc.GState({ opacity: 1 })); }
       pdf.setTextColor(0);
     }
     if (p === 1) continue;
-    /*
-     * O rodapé segue o tamanho REAL da página.
-     *
-     * Estava fixo em 284/295 de altura e 200 de borda — A4 em pé. Nas
-     * páginas deitadas do inventário isso desenharia o QR Code e o número da
-     * página muito abaixo do papel, isto é, fora dele.
-     */
+
     const larguraPg = pdf.internal.pageSize.getWidth();
     const alturaPg = pdf.internal.pageSize.getHeight();
-    const borda = larguraPg - 10;
-    const linhaRodape = alturaPg - 13;
-    pdf.setDrawColor(215); pdf.setLineWidth(0.3); pdf.line(10, linhaRodape, borda, linhaRodape);
-    pdf.addImage(qrDataUrl, "PNG", 10, linhaRodape + 2, 11, 11);
-    pdf.setFontSize(6.5); pdf.setFont("helvetica", "normal"); pdf.setTextColor(110);
+    const esquerda = 10;
+    const direita = larguraPg - 10;
+
     /*
-     * Três linhas, não quatro, e a numeração fora delas: a página é o que
-     * mais se procura num documento impresso, e estava no meio de uma frase
-     * de 6,5pt entre o hash e o aviso de assinatura.
+     * ── Cabeçalho ──────────────────────────────────────────────────────
+     * Logo à esquerda, identificação do documento à direita e o filete
+     * laranja fechando — o mesmo do documento em Word. O miolo do PDF não
+     * tinha cabeçalho nenhum: solta da capa, a folha não dizia de que
+     * documento era.
      */
-    opts.linhas(p, total).slice(0, 3).forEach((linha, i) =>
-      pdf.text(linha, 24, linhaRodape + 4 + i * 3));
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.setTextColor(60);
-    pdf.text(`Página ${p} de ${total}`, borda, linhaRodape + 10, { align: "right" });
+    if (opts.tituloCabecalho) {
+      if (opts.logoDataUrl) {
+        try { pdf.addImage(opts.logoDataUrl, "PNG", esquerda, 6, 16, 8); }
+        catch { /* logo inválida: segue sem ela */ }
+      } else {
+        pdf.setFont("helvetica", "normal"); pdf.setFontSize(6.5);
+        pdf.setTextColor(31, 111, 178);
+        pdf.text("{{LOGO_EMPRESA}}", esquerda, 11);
+      }
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5);
+      pdf.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+      pdf.text(opts.tituloCabecalho, direita, 9.5, { align: "right" });
+      if (opts.subtituloCabecalho) {
+        pdf.setFont("helvetica", "normal"); pdf.setFontSize(6.5); pdf.setTextColor(CINZA);
+        pdf.text(opts.subtituloCabecalho, direita, 13, { align: "right" });
+      }
+      pdf.setDrawColor(LARANJA[0], LARANJA[1], LARANJA[2]);
+      pdf.setLineWidth(0.7);
+      pdf.line(esquerda, 15.5, direita, 15.5);
+    }
+
+    /*
+     * ── Rodapé ─────────────────────────────────────────────────────────
+     * Marca à esquerda, página à direita. O QR e o hash saíram daqui e
+     * foram para a última página: são do sistema, não do documento, e
+     * repetidos em toda folha davam ao PGR cara de protocolo interno.
+     */
+    const linhaRodape = alturaPg - 14;
+    pdf.setDrawColor(215); pdf.setLineWidth(0.3);
+    pdf.line(esquerda, linhaRodape, direita, linhaRodape);
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5);
+    pdf.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+    pdf.text("SafetySoluções", esquerda, linhaRodape + 4.5);
+    const larguraMarca = pdf.getTextWidth("SafetySoluções");
+    pdf.setFont("helvetica", "normal"); pdf.setTextColor(CINZA);
+    pdf.text("•  Segurança e Saúde no Trabalho", esquerda + larguraMarca + 2, linhaRodape + 4.5);
+
+    /*
+     * "Página 3 de 19" com o número em destaque, medido pedaço a pedaço.
+     * Posicionar cada parte por conta saía "Página3 de 6", sem o espaço.
+     */
+    pdf.setFontSize(7.5);
+    const parte1 = "Página ";
+    const parte2 = String(p);
+    const parte3 = ` de ${total}`;
+    pdf.setFont("helvetica", "normal");
+    const w1 = pdf.getTextWidth(parte1);
+    const w3 = pdf.getTextWidth(parte3);
+    pdf.setFont("helvetica", "bold");
+    const w2 = pdf.getTextWidth(parte2);
+    let x = direita - (w1 + w2 + w3);
+    pdf.setFont("helvetica", "normal"); pdf.setTextColor(CINZA);
+    pdf.text(parte1, x, linhaRodape + 4.5);
+    x += w1;
+    pdf.setFont("helvetica", "bold"); pdf.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+    pdf.text(parte2, x, linhaRodape + 4.5);
+    x += w2;
+    pdf.setFont("helvetica", "normal"); pdf.setTextColor(CINZA);
+    pdf.text(parte3, x, linhaRodape + 4.5);
     pdf.setTextColor(0);
   }
+
+  /*
+   * Validação do sistema, só na ÚLTIMA página: QR, endereço de conferência,
+   * hash e a nota sobre assinatura. É o que torna o PDF rastreável, e não
+   * existe no Word — por isso fica reunido num lugar só, no fim.
+   */
+  pdf.setPage(total);
+  const larguraUltima = pdf.internal.pageSize.getWidth();
+  const alturaUltima = pdf.internal.pageSize.getHeight();
+  const yBloco = alturaUltima - 36;
+  pdf.setDrawColor(225); pdf.setLineWidth(0.2);
+  pdf.line(10, yBloco, larguraUltima - 10, yBloco);
+  pdf.addImage(qrDataUrl, "PNG", 10, yBloco + 2, 14, 14);
+  pdf.setFontSize(6.5); pdf.setFont("helvetica", "normal"); pdf.setTextColor(CINZA);
+  opts.linhas(total, total).slice(0, 3).forEach((linha, i) =>
+    pdf.text(linha, 27, yBloco + 5 + i * 3));
+  pdf.setTextColor(0);
 }

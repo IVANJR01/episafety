@@ -9,6 +9,12 @@ import { render, type PgrPdfContext } from "./pgrPdf";
  * dos processos e ambientes, caracterização das atividades, grupos expostos,
  * avaliação e critérios) e 1.5.7.2 (documentos datados e assinados).
  *
+ * A estrutura das seções vem de src/lib/documentos/docsSst.ts, o MESMO
+ * arquivo que gera o PGR em Word — e ele é gerado a partir do pacote. Antes
+ * o PDF tinha a sua própria lista, escrita à mão: o Word trazia "4.2.
+ * Conteúdo Mínimo do Inventário" com as letras "a" a "i" do item 1.5.7.3.2 e
+ * o PDF nem tinha essa seção.
+ *
  * O conteúdo das letras "a", "b" e "e" — ambientes, atividades e grupos
  * expostos — vive DENTRO do inventário, no cabeçalho de cada GES. É onde a
  * norma o pede e é como a planilha e o documento em Word da SafetySoluções
@@ -79,10 +85,14 @@ describe("seções do PGR", () => {
     const texto = await gerar();
     [
       "Controle de Revisões",                       // 1.5.7.3.3.1 — histórico
-      "Identificação da Empresa e do Estabelecimento", // 1.5.3.1 — por estabelecimento
-      "Metodologia de Avaliação",                   // 1.5.7.3.2 "f"
+      "Identificação da Empresa",                   // 1.5.3.1 — por estabelecimento
+      "Responsável Técnico",                        // 1.5.7.2 — quem assina
       "Inventário de Riscos Ocupacionais",          // 1.5.7.1 "a"
+      "Critérios de Avaliação e Classificação dos Riscos", // 1.5.4.4.2 e 1.5.4.4.3
+      "Conteúdo Mínimo do Inventário",              // 1.5.7.3.2 "a" a "i"
       "Plano de Ação",                              // 1.5.7.1 "b"
+      "Revisão do PGR",                             // 1.5.4.4.6
+      "Encerramento",                               // 1.5.7.2
       "Assinaturas",                                // 1.5.7.2
     ].forEach((secao) => expect(texto, `faltou "${secao}"`).toContain(secao));
   });
@@ -122,6 +132,58 @@ describe("seções do PGR", () => {
       "Setores e Grupos de Exposição Semelhante",
       "Funções e Atividades",
     ].forEach((secao) => expect(texto, `"${secao}" voltou ao documento`).not.toContain(secao));
+  });
+});
+
+describe("o PDF e o Word têm a MESMA estrutura", () => {
+  /*
+   * Os dois são gerados da mesma definição (src/lib/documentos/docsSst.ts,
+   * que por sua vez é gerada do pacote). Este teste cobra que o PDF imprima
+   * cada seção e subseção dessa definição — é o que impede o PDF de voltar a
+   * ter uma lista de seções própria, escrita à mão, como tinha.
+   */
+  it("imprime todas as seções e subseções definidas para o PGR", async () => {
+    const { DOCUMENTOS_SST } = await import("@/lib/documentos/docsSst");
+    const def = DOCUMENTOS_SST.find((d) => d.sigla === "PGR")!;
+    const texto = await gerar();
+
+    for (const secao of def.secoes) {
+      expect(texto, `faltou a seção "${secao.t}"`).toContain(secao.t);
+      for (const filho of secao.sub || []) {
+        expect(texto, `faltou a subseção "${filho.t}"`).toContain(filho.t);
+      }
+    }
+  });
+
+  it("imprime as referências normativas de cada seção", async () => {
+    const { DOCUMENTOS_SST } = await import("@/lib/documentos/docsSst");
+    const def = DOCUMENTOS_SST.find((d) => d.sigla === "PGR")!;
+    const texto = await gerar();
+
+    const refs = [
+      ...def.secoes.map((x) => x.ref),
+      ...def.secoes.flatMap((x) => (x.sub || []).map((f) => f.ref)),
+    ].filter(Boolean) as string[];
+    expect(refs.length, "a definição deveria trazer referências").toBeGreaterThan(3);
+    for (const ref of refs) {
+      /* O travessão e as aspas saem em WinAnsi; compara pelo número do item. */
+      const itens = ref.match(/\d+(?:\.\d+)+/g) || [];
+      for (const item of itens) {
+        expect(texto, `faltou a citação ${item}`).toContain(item);
+      }
+    }
+  });
+
+  it("imprime as alíneas da revisão, uma a uma", async () => {
+    const { DOCUMENTOS_SST } = await import("@/lib/documentos/docsSst");
+    const def = DOCUMENTOS_SST.find((d) => d.sigla === "PGR")!;
+    const revisao = def.secoes.find((x) => x.t === "Revisão do PGR")!;
+    const texto = await gerar();
+    expect(revisao.itens?.length, "a revisão deveria ter alíneas").toBeGreaterThan(3);
+    for (const item of revisao.itens || []) {
+      /* O texto quebra em linhas; confere pelo começo da alínea. */
+      expect(texto, `faltou a alínea "${item.slice(0, 20)}"`).toContain(item.slice(3, 40));
+    }
   });
 });
 

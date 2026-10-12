@@ -7,8 +7,10 @@ import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 import { PgrDocumento, PGR_STATUS_LABEL } from "@/lib/pgrTypes";
 import {
   B, type CampoCapa, MARGEM, LARGURA, capaTimbrada, ensure, fmtDT, fmtDate, kv, para,
+  refNorma, subNumerado, tabelaFicha,
   rodapePaginas, sub, sumario, tabela, title,
 } from "@/lib/pdfTimbrado";
+import { DOCUMENTOS_SST } from "@/lib/documentos/docsSst";
 import {
   CLASSE_LABEL as CLASSIF_LABEL,
   CLASSE_HEX,
@@ -315,39 +317,47 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   const b: B = { doc: pdf, y: 12, toc: [] };
 
+  /*
+   * A capa é a Simples com moldura do pacote — a mesma dos seis documentos
+   * em Word. As linhas da tabela são as de niveis.js: Empresa, CNPJ,
+   * Endereço, Responsável Técnico e Revisão / Data.
+   */
+  const matriz = (ctx.unidades || [])[0] as PgrUnidadeItem | undefined;
+  const enderecoCapa = [
+    matriz?.endereco || [matriz?.logradouro, matriz?.numero].filter(Boolean).join(", "),
+    [matriz?.cidade, matriz?.uf].filter(Boolean).join("/"),
+  ].filter(Boolean).join(" – ");
+  const respCapa = [pgr.resp_tec_nome, pgr.resp_tec_registro].filter(Boolean).join(" – ");
+  const anoCapa = (pgr.data_emissao || new Date().toISOString()).slice(0, 4);
+
   capaTimbrada(pdf, {
     logoDataUrl: ctx.logoDataUrl,
     revisao: `REV. ${numeroDaRevisao(ctx.revisoes)}`,
     meta: `PGR v${pgr.versao} · PDF v${opts.pdfVersao} · ${PGR_STATUS_LABEL[pgr.status]}`,
     sigla: "PGR",
     titulo: "Programa de Gerenciamento de Riscos",
-    subtitulo: "Inventário de Riscos e Plano de Ação",
-    nota: "Documento técnico — NR-01",
+    subtitulo: "NR-01",
+    nota: pgr.data_vigencia_inicio && pgr.data_vigencia_fim
+      ? `Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`
+      : null,
     empresaNome: ctx.empresaNome || "Empresa",
-    identificacao: [
-      ctx.empresaCnpj ? `CNPJ ${ctx.empresaCnpj}` : null,
-      ctx.unidadeNome ? `Unidade: ${ctx.unidadeNome}` : null,
-    ].filter(Boolean) as string[],
+    identificacao: [],
+    campos: [],
     /*
-     * Campo sem dado não vai para a capa.
-     *
-     * Saía "Vigência: — a —" e "Registro Profissional: —" na primeira página
-     * de um documento que vai para fiscalização: travessão ali não informa
-     * nada e faz o documento parecer abandonado no meio do preenchimento. O
-     * que falta aparece nas pendências, antes de publicar.
+     * Campo sem dado não vai para a capa, mas a LINHA fica: a tabela da capa
+     * do Word tem sempre as mesmas cinco linhas, e tirar uma delas mudaria o
+     * desenho da capa de uma empresa para outra.
      */
-    campos: [
-      { rotulo: "Emitido em", valor: fmtDate(pgr.data_emissao || new Date().toISOString()) },
-      pgr.data_vigencia_inicio && pgr.data_vigencia_fim
-        ? { rotulo: "Vigência", valor: `${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}` }
-        : null,
-      pgr.resp_tec_nome ? { rotulo: "Responsável técnico", valor: pgr.resp_tec_nome } : null,
-      pgr.resp_tec_registro ? { rotulo: "Registro profissional", valor: pgr.resp_tec_registro } : null,
-      pgr.qtd_trabalhadores != null
-        ? { rotulo: "Trabalhadores abrangidos", valor: String(pgr.qtd_trabalhadores) }
-        : null,
-      ctx.codigoDocumento ? { rotulo: "Código do documento", valor: ctx.codigoDocumento } : null,
-    ].filter(Boolean) as CampoCapa[],
+    linhasTabela: [
+      ["Empresa", ctx.empresaNome || ""],
+      ["CNPJ", ctx.empresaCnpj || ""],
+      ["Endereço", enderecoCapa],
+      ["Responsável Técnico", respCapa],
+      ["Revisão / Data", `${numeroDaRevisao(ctx.revisoes)} – ${fmtDate(pgr.data_emissao)}`],
+    ],
+    rodapeLocal: [matriz?.cidade, matriz?.uf].filter(Boolean).join(" / ")
+      ? `${[matriz?.cidade, matriz?.uf].filter(Boolean).join(" / ")} – ${anoCapa}`
+      : anoCapa,
   });
 
   pdf.addPage(); b.y = 15;
@@ -370,460 +380,465 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   // Identificação da empresa e dos estabelecimentos abrangidos.
   // Fica logo após o controle de revisões porque é o que identifica o documento;
   // vem dos campos de escopo travados na emissão, não do cadastro atual.
-  title(b, "Identificação da Empresa e do Estabelecimento");
-  const unidades = ctx.unidades && ctx.unidades.length > 0 ? ctx.unidades : null;
-  if (!unidades) {
-    kv(b, "Razão social", ctx.empresaNome || "—");
-    kv(b, "CNPJ", ctx.empresaCnpj || "—");
-  } else {
-    unidades.forEach((u, idx) => {
-      ensure(b, 26);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-      pdf.setTextColor(15, 23, 42);
-      pdf.text(
-        `${u.empresa_pai_id ? "Filial" : "Matriz"}: ${u.nome_fantasia || u.nome}`,
-        12, b.y + 4,
-      );
-      pdf.setTextColor(0); b.y += 6;
-      if (u.nome_fantasia && u.nome_fantasia !== u.nome) kv(b, "Razão social", u.nome);
-      kv(b, "CNPJ", u.cnpj || "—");
-      if (u.cnae_principal || u.grau_risco != null) {
-        kv(b, "CNAE / Grau de risco",
-          `${u.cnae_principal || "—"}${u.grau_risco != null ? `  ·  Grau ${u.grau_risco}` : ""}`);
-      }
-      const linha1 = [u.logradouro, u.numero].filter(Boolean).join(", ");
-      const endDecomposto = [
-        [linha1, u.complemento].filter(Boolean).join(" - "),
-        u.bairro,
-        [u.cidade, u.uf].filter(Boolean).join("/"),
-        u.cep,
-      ].filter((x) => x && String(x).trim()).join(" · ");
-      kv(b, "Endereço", endDecomposto || u.endereco || "—", true);
-      if (u.telefone || u.email) {
-        kv(b, "Contato", [u.telefone, u.email].filter(Boolean).join("  ·  ") || "—");
-      }
-      if (idx < unidades.length - 1) b.y += 2;
-    });
-  }
-  if (pgr.qtd_trabalhadores != null) kv(b, "Trabalhadores", String(pgr.qtd_trabalhadores));
-  if (pgr.jornada_turnos) kv(b, "Jornada / turnos", pgr.jornada_turnos, true);
-  if (pgr.cno) kv(b, "CNO", pgr.cno);
-  if (pgr.contratante_nome) {
-    kv(b, "Contratante", `${pgr.contratante_nome}${pgr.contratante_cnpj ? ` (${pgr.contratante_cnpj})` : ""}`);
-    if (pgr.contrato_numero) kv(b, "Contrato", pgr.contrato_numero);
-    if (pgr.local_prestacao) kv(b, "Local de prestação", pgr.local_prestacao, true);
-  }
-  if (pgr.periodo_ref_inicio || pgr.periodo_ref_fim) {
-    kv(b, "Período de referência", `${fmtDate(pgr.periodo_ref_inicio)} a ${fmtDate(pgr.periodo_ref_fim)}`);
-  }
-  if (pgr.data_levantamento) kv(b, "Data do levantamento", fmtDate(pgr.data_levantamento));
-  if (pgr.proxima_revisao) {
-    kv(b, "Próxima revisão", `${fmtDate(pgr.proxima_revisao)}${
-      pgr.sgsst_certificado ? "  (prazo de 3 anos — organização certificada em SGSST)" : ""}`, true);
-  }
-  if (pgr.sgsst_certificado) {
-    kv(b, "Certificação SGSST",
-      [pgr.sgsst_norma, pgr.sgsst_certificadora, pgr.sgsst_validade ? `válida até ${fmtDate(pgr.sgsst_validade)}` : null]
-        .filter(Boolean).join("  ·  ") || "Sim", true);
-  }
+  /*
+   * Identificação da empresa e responsável técnico, no formato de ficha do
+   * documento em Word: rótulo à esquerda com fundo claro, valor ao lado.
+   */
+  title(b, "Identificação da Empresa");
+  const unidades = (ctx.unidades && ctx.unidades.length > 0 ? ctx.unidades : []) as any[];
+  const principal = unidades[0];
+  const enderecoDe = (u: any) => {
+    const rua = [u?.logradouro, u?.numero].filter(Boolean).join(", ");
+    return [rua, u?.complemento].filter(Boolean).join(" - ") || u?.endereco || "";
+  };
+  const cnaeSecundario = Array.isArray(principal?.cnae_secundario)
+    ? principal.cnae_secundario.filter(Boolean).join("; ")
+    : (principal?.cnae_secundario || "");
 
-  const T = ctx.textos || {};
+  tabelaFicha(b, [
+    ["Razão Social", principal?.nome || ctx.empresaNome || ""],
+    ["Nome Fantasia", principal?.nome_fantasia || ""],
+    ["CNPJ", principal?.cnpj || ctx.empresaCnpj || ""],
+    ["CNAE Principal", principal?.cnae_principal || ""],
+    ["CNAE Secundário", cnaeSecundario],
+    ["Grau de Risco (NR-04)", principal?.grau_risco != null ? String(principal.grau_risco) : ""],
+    ["Endereço", enderecoDe(principal)],
+    ["Bairro", principal?.bairro || ""],
+    ["Cidade / UF", [principal?.cidade, principal?.uf].filter(Boolean).join(" – ")],
+    ["CEP", principal?.cep || ""],
+    ["Telefone", principal?.telefone || ""],
+  ]);
 
-  // Textos institucionais editáveis, na ordem do documento oficial.
-  // "registro_divulgacao" saiu daqui e foi para o fim: divulgar é o que se faz
-  // DEPOIS de o programa existir, não antes de apresentá-lo.
-  const secoesTexto: Array<[string, string]> = [
-    ["introducao", "Introdução"],
-    ["apresentacao", "Apresentação"],
-    ["objetivos", "Objetivos"],
-    ["objetivo_geral", "Objetivo geral"],
-    ["objetivos_especificos", "Objetivos específicos"],
-    ["politica_seguranca", "Política de segurança"],
-    ["resp_empregador", "Cabe ao empregador"],
-    ["resp_empregados", "Cabe aos empregados"],
-    ["seguranca_trabalho", "Segurança do Trabalho"],
-    ["cipa", "CIPA, quando aplicável"],
-    ["consideracoes_preliminares", "Considerações preliminares"],
-  ];
-  secoesTexto.forEach(([k, tit]) => {
-    const conteudo = (T[k] || "").trim();
-    if (!conteudo) return;
-    title(b, tit);
-    para(b, conteudo, 9, [40, 40, 40]);
+  /* As filiais, quando existem, seguem na mesma ficha, uma por bloco. */
+  unidades.slice(1).forEach((u: any) => {
+    sub(b, `Filial: ${u.nome_fantasia || u.nome}`);
+    tabelaFicha(b, [
+      ["Razão Social", u.nome || ""],
+      ["CNPJ", u.cnpj || ""],
+      ["Endereço", enderecoDe(u)],
+      ["Cidade / UF", [u.cidade, u.uf].filter(Boolean).join(" – ")],
+    ]);
   });
 
-  /*
-   * ── Caracterização da estrutura ───────────────────────────────────────────
-   *
-   * Aqui havia quatro seções inteiras — Caracterização dos Ambientes de
-   * Trabalho, Processos de Trabalho, Setores e Grupos de Exposição Semelhante,
-   * e Funções e Atividades. Num PGR real elas ocupavam 8 das 14 páginas,
-   * enquanto o inventário e o plano de ação — o que a NR-01 de fato exige —
-   * couberam em 3.
-   *
-   * A informação não foi jogada fora: ela é exigida pelo item 1.5.7.3.2,
-   * letras "a" (caracterização dos processos e ambientes), "b" (caracterização
-   * das atividades) e "e" (grupos de trabalhadores expostos). O que mudou é
-   * ONDE ela aparece. A norma pede esse conteúdo DENTRO do inventário, e é
-   * assim que a planilha e o documento em Word da SafetySoluções sempre
-   * fizeram: um cabeçalho por GES, com setor, funções, ambiente e processo,
-   * seguido das linhas de risco daquele grupo.
-   *
-   * Em seção separada o mesmo ambiente era descrito longe dos riscos que
-   * acontecem nele, e quem lê tinha de folhear para ligar os dois.
-   */
-
-  title(b, "Metodologia de Avaliação");
-  kv(b, "Método", pgr.metodologia_avaliacao || "Matriz 5×5 (Severidade × Probabilidade)", true);
-  title(b, "Critérios da Matriz");
-  drawMatriz(b);
+  title(b, "Responsável Técnico");
+  const respTecnico = (ctx.responsaveis || []).find(
+    (r: any) => r.papel === "responsavel_tecnico" || r.papel === "elaborador",
+  ) as any;
+  tabelaFicha(b, [
+    ["Nome", respTecnico?.nome || pgr.resp_tec_nome || ""],
+    ["Formação / Especialidade", respTecnico?.profissao || ""],
+    [
+      "Registro Profissional",
+      [respTecnico?.registro_profissional, respTecnico?.uf_registro].filter(Boolean).join("/")
+        || pgr.resp_tec_registro || "",
+    ],
+  ]);
 
   /*
-   * ── Inventário de riscos — 1.5.7.1 "a" e 1.5.7.3.2 da NR-01 ───────────────
+   * ── O corpo do documento vem de docsSst.ts ───────────────────────────────
    *
-   * Em PÁGINA DEITADA e com as MESMAS QUINZE COLUNAS da planilha e do
-   * documento em Word da SafetySoluções.
+   * É o MESMO arquivo que gera o PGR em Word, e ele é gerado a partir do
+   * pacote (ferramentas/documentos/gerador/docs.js). Antes o PDF tinha a sua
+   * própria lista de seções, escrita à mão: o Word dizia "4.2. Conteúdo
+   * Mínimo do Inventário" com as letras "a" a "i" do item 1.5.7.3.2, e o PDF
+   * nem tinha essa seção. Dois documentos com o mesmo nome e conteúdos
+   * diferentes.
    *
-   * Antes eram cinco colunas em página em pé, e o que não coube simplesmente
-   * não saía: limite de exposição, intensidade/concentração, tipo e tempo de
-   * exposição e técnica utilizada — as letras "g" e "h" do 1.5.7.3.2 —, e o
-   * EPI e a atenuação, que são parte da letra "f". O PDF não era só diferente
-   * do Word: era incompleto perante a norma.
-   *
-   * Deitar a página é o que torna as quinze colunas possíveis, e é por isso
-   * que o pacote sempre imprimiu esta seção assim.
+   * Agora a estrutura é uma só. O que o PDF acrescenta — e o Word não tem —
+   * é o aparato de rastreio: marca d'água, QR, hash e numeração de versão.
    */
-  pdf.addPage([297, 210], "landscape");
-  b.y = 15;
-  b.direita = 287;
-  b.limiteY = 190;
-  title(b, "Inventário de Riscos Ocupacionais");
+  const DEF_PGR = DOCUMENTOS_SST.find((d) => d.sigla === "PGR")!;
 
+  /** Abre uma página deitada e ajusta os limites da folha. */
+  const paisagem = () => {
+    pdf.addPage([297, 210], "landscape");
+    b.y = 15;
+    b.direita = 287;
+    b.limiteY = 190;
+  };
+  /** Volta ao retrato. */
+  const retrato = () => {
+    pdf.addPage("a4", "portrait");
+    b.y = 15;
+    b.direita = undefined;
+    b.limiteY = undefined;
+  };
+
+  const desenharInventario = () => {
   if (ctx.inventario.length === 0) {
-    para(b, "Nenhum item de inventário registrado.");
-  } else {
-    /*
-     * As larguras são as do pacote, proporcionais, cabendo nos 277 mm úteis
-     * da página deitada. Mexer numa exige recalcular o conjunto: a tabela não
-     * se ajusta sozinha, e sobra ou falta acaba desenhado fora do papel.
-     */
-    const COLS: { rotulo: string; chave: string; w: number }[] = [
-      { rotulo: "AGENTE", chave: "agente", w: 15 },
-      { rotulo: "PERIGO", chave: "perigo", w: 22 },
-      { rotulo: "FONTE / CIRCUNSTÂNCIA", chave: "fonte", w: 22 },
-      { rotulo: "POSSÍVEIS LESÕES OU AGRAVOS", chave: "lesoes", w: 28 },
-      { rotulo: "LIMITE DE EXPOSIÇÃO", chave: "limite", w: 14 },
-      { rotulo: "INTENS. / CONC.", chave: "intensidade", w: 13 },
-      { rotulo: "TIPO / TEMPO DE EXPOSIÇÃO", chave: "exposicao", w: 16 },
-      { rotulo: "TÉCNICA UTILIZADA", chave: "tecnica", w: 17 },
-      { rotulo: "EPC / PROCEDIMENTO ADMINISTRATIVO", chave: "medidas", w: 32 },
-      { rotulo: "EPI", chave: "epi", w: 18 },
-      { rotulo: "ATENUAÇÃO / FP", chave: "atenuacao", w: 14 },
-      { rotulo: "P", chave: "probabilidade", w: 5 },
-      { rotulo: "S", chave: "severidade", w: 5 },
-      { rotulo: "NÍVEL", chave: "nivel", w: 8 },
-      { rotulo: "CLASSIFICAÇÃO", chave: "classificacao", w: 18 },
-    ];
-    /*
-     * 12 mm de margem + as larguras + 0,8 mm entre colunas tem de caber nos
-     * 287 mm da borda direita. Somando mais do que isso, as últimas colunas
-     * saem desenhadas fora do papel — foi o que aconteceu com
-     * CLASSIFICAÇÃO, que saía cortada na metade.
-     */
-    /*
-     * 2 mm de vão entre colunas: é nele que a linha da grade passa, com 1 mm
-     * de folga de cada lado. Com 0,8 mm o texto encostava na linha.
-     */
-    let xAcumulado = 12;
-    const colunas = COLS.map((c) => {
-      const col = { rotulo: c.rotulo, x: xAcumulado, w: c.w };
-      xAcumulado += c.w + 2;
-      return col;
-    });
-    const addLinha = tabela(b, colunas, {
-      fonte: 6.3, fonteCabecalho: 6, grade: true, cabecalhoEscuro: true,
-    });
+      para(b, "Nenhum item de inventário registrado.");
+    } else {
+      /*
+       * As larguras são as do pacote, proporcionais, cabendo nos 277 mm úteis
+       * da página deitada. Mexer numa exige recalcular o conjunto: a tabela não
+       * se ajusta sozinha, e sobra ou falta acaba desenhado fora do papel.
+       */
+      const COLS: { rotulo: string; chave: string; w: number }[] = [
+        { rotulo: "AGENTE", chave: "agente", w: 15 },
+        { rotulo: "PERIGO", chave: "perigo", w: 22 },
+        { rotulo: "FONTE / CIRCUNSTÂNCIA", chave: "fonte", w: 22 },
+        { rotulo: "POSSÍVEIS LESÕES OU AGRAVOS", chave: "lesoes", w: 28 },
+        { rotulo: "LIMITE DE EXPOSIÇÃO", chave: "limite", w: 14 },
+        { rotulo: "INTENS. / CONC.", chave: "intensidade", w: 13 },
+        { rotulo: "TIPO / TEMPO DE EXPOSIÇÃO", chave: "exposicao", w: 16 },
+        { rotulo: "TÉCNICA UTILIZADA", chave: "tecnica", w: 17 },
+        { rotulo: "EPC / PROCEDIMENTO ADMINISTRATIVO", chave: "medidas", w: 32 },
+        { rotulo: "EPI", chave: "epi", w: 18 },
+        { rotulo: "ATENUAÇÃO / FP", chave: "atenuacao", w: 14 },
+        { rotulo: "P", chave: "probabilidade", w: 5 },
+        { rotulo: "S", chave: "severidade", w: 5 },
+        { rotulo: "NÍVEL", chave: "nivel", w: 8 },
+        { rotulo: "CLASSIFICAÇÃO", chave: "classificacao", w: 18 },
+      ];
+      /*
+       * 12 mm de margem + as larguras + 0,8 mm entre colunas tem de caber nos
+       * 287 mm da borda direita. Somando mais do que isso, as últimas colunas
+       * saem desenhadas fora do papel — foi o que aconteceu com
+       * CLASSIFICAÇÃO, que saía cortada na metade.
+       */
+      /*
+       * 2 mm de vão entre colunas: é nele que a linha da grade passa, com 1 mm
+       * de folga de cada lado. Com 0,8 mm o texto encostava na linha.
+       */
+      let xAcumulado = 12;
+      const colunas = COLS.map((c) => {
+        const col = { rotulo: c.rotulo, x: xAcumulado, w: c.w };
+        xAcumulado += c.w + 2;
+        return col;
+      });
+      const addLinha = tabela(b, colunas, {
+        fonte: 6.3, fonteCabecalho: 6, grade: true, cabecalhoEscuro: true,
+      });
 
-    const mapaGes: Record<string, string> = (ctx.ghes as any) || {};
-    const nomeGes = (i: any) => mapaGes[i.ges_id] || mapaGes[i.ghe_id] || "";
-    const nomeSetor = (i: any) =>
-      i.setor || ((ctx.setores as any[]) || []).find((s: any) => s.id === i.setor_id)?.nome || "";
+      const mapaGes: Record<string, string> = (ctx.ghes as any) || {};
+      const nomeGes = (i: any) => mapaGes[i.ges_id] || mapaGes[i.ghe_id] || "";
+      const nomeSetor = (i: any) =>
+        i.setor || ((ctx.setores as any[]) || []).find((s: any) => s.id === i.setor_id)?.nome || "";
 
-    /* Um grupo por GES, na ordem do nome; sem GES fica por último. */
-    const grupos = new Map<string, any[]>();
-    for (const i of ctx.inventario as any[]) {
-      const chave = i.ges_id || i.ghe_id || "__sem_ges__";
-      if (!grupos.has(chave)) grupos.set(chave, []);
-      grupos.get(chave)!.push(i);
-    }
-    const chavesOrdenadas = [...grupos.keys()].sort((a, c) => {
-      if (a === "__sem_ges__") return 1;
-      if (c === "__sem_ges__") return -1;
-      return (mapaGes[a] || "").localeCompare(mapaGes[c] || "");
-    });
-
-    /**
-     * A faixa que abre cada GES — letras "a", "b" e "e" do 1.5.7.3.2.
-     *
-     * Desenhada fora do fluxo da tabela, então ela mesma cuida da quebra de
-     * página — e manda redesenhar o cabeçalho das colunas quando quebra,
-     * senão a página seguinte começaria com linhas sem dizer o que é cada uma.
-     */
-    const faixaDoGes = (itens: any[]) => {
-      const primeiro = itens[0];
-      const ges = nomeGes(primeiro) || "Sem GES";
-      const setor = nomeSetor(primeiro);
-      const funcoes = (primeiro.funcoes_snapshot || []).filter(Boolean).join(", ");
-      const expostosGrupo = itens
-        .map((i) => i.trabalhadores_expostos)
-        .filter((n) => n != null && n > 0) as number[];
-      const maior = expostosGrupo.length ? Math.max(...expostosGrupo) : 0;
-
-      const cabecalho = [
-        `GES: ${ges}`,
-        setor && `Setor: ${setor}`,
-        funcoes && `Funções: ${funcoes}`,
-        maior > 0 ? `Trabalhadores expostos: ${maior}` : "Trabalhadores expostos: não informado",
-      ].filter(Boolean).join("    ·    ");
-      const detalhes = [
-        primeiro.descricao_ambiente && `Ambiente: ${primeiro.descricao_ambiente}`,
-        primeiro.processo && `Processo / atividades: ${primeiro.processo}`,
-      ].filter(Boolean) as string[];
-
-      const larguraUtil = (b.direita ?? 200) - 14;
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5);
-      const linhasCab = pdf.splitTextToSize(cabecalho, larguraUtil) as string[];
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7);
-      const linhasDet = detalhes.flatMap((d) => pdf.splitTextToSize(d, larguraUtil) as string[]);
-      const altura = linhasCab.length * 3.6 + linhasDet.length * 3.2 + 3;
-
-      if (b.y + altura + 8 > (b.limiteY ?? 278)) {
-        pdf.addPage([297, 210], "landscape");
-        b.y = 15;
-        addLinha.cabecalho();
+      /* Um grupo por GES, na ordem do nome; sem GES fica por último. */
+      const grupos = new Map<string, any[]>();
+      for (const i of ctx.inventario as any[]) {
+        const chave = i.ges_id || i.ghe_id || "__sem_ges__";
+        if (!grupos.has(chave)) grupos.set(chave, []);
+        grupos.get(chave)!.push(i);
       }
-      pdf.setFillColor(227, 234, 242);
-      pdf.rect(10, b.y, (b.direita ?? 200) - 10, altura, "F");
-      let yTexto = b.y + 3.4;
-      pdf.setTextColor(15, 23, 42);
-      linhasCab.forEach((l) => {
+      const chavesOrdenadas = [...grupos.keys()].sort((a, c) => {
+        if (a === "__sem_ges__") return 1;
+        if (c === "__sem_ges__") return -1;
+        return (mapaGes[a] || "").localeCompare(mapaGes[c] || "");
+      });
+
+      /**
+       * A faixa que abre cada GES — letras "a", "b" e "e" do 1.5.7.3.2.
+       *
+       * Desenhada fora do fluxo da tabela, então ela mesma cuida da quebra de
+       * página — e manda redesenhar o cabeçalho das colunas quando quebra,
+       * senão a página seguinte começaria com linhas sem dizer o que é cada uma.
+       */
+      const faixaDoGes = (itens: any[]) => {
+        const primeiro = itens[0];
+        const ges = nomeGes(primeiro) || "Sem GES";
+        const setor = nomeSetor(primeiro);
+        const funcoes = (primeiro.funcoes_snapshot || []).filter(Boolean).join(", ");
+        const expostosGrupo = itens
+          .map((i) => i.trabalhadores_expostos)
+          .filter((n) => n != null && n > 0) as number[];
+        const maior = expostosGrupo.length ? Math.max(...expostosGrupo) : 0;
+
+        const cabecalho = [
+          `GES: ${ges}`,
+          setor && `Setor: ${setor}`,
+          funcoes && `Funções: ${funcoes}`,
+          maior > 0 ? `Trabalhadores expostos: ${maior}` : "Trabalhadores expostos: não informado",
+        ].filter(Boolean).join("    ·    ");
+        const detalhes = [
+          primeiro.descricao_ambiente && `Ambiente: ${primeiro.descricao_ambiente}`,
+          primeiro.processo && `Processo / atividades: ${primeiro.processo}`,
+        ].filter(Boolean) as string[];
+
+        const larguraUtil = (b.direita ?? 200) - 14;
         pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5);
-        pdf.text(l, 12, yTexto);
-        yTexto += 3.6;
-      });
-      linhasDet.forEach((l) => {
+        const linhasCab = pdf.splitTextToSize(cabecalho, larguraUtil) as string[];
         pdf.setFont("helvetica", "normal"); pdf.setFontSize(7);
-        pdf.text(l, 12, yTexto);
-        yTexto += 3.2;
-      });
-      pdf.setTextColor(0);
-      b.y += altura;
-    };
+        const linhasDet = detalhes.flatMap((d) => pdf.splitTextToSize(d, larguraUtil) as string[]);
+        const altura = linhasCab.length * 3.6 + linhasDet.length * 3.2 + 3;
 
-    /** O valor de cada coluna, do jeito que a planilha escreve. */
-    const valorDaColuna = (i: any, chave: string): string => {
-      switch (chave) {
-        /*
-         * O agente sai pelo rótulo, não pelo valor do banco. Saía "[fisico]",
-         * "[quimico]", "[psicossocial]" — minúsculo, sem acento e entre
-         * colchetes, que é o nome do enum, não português.
-         */
-        case "agente": return GRUPO_LABEL[i.grupo] || i.grupo || "";
-        case "perigo": return i.perigo_descricao || "";
-        case "fonte": return i.fonte_geradora || "";
-        case "lesoes": return i.lesoes || "";
-        case "limite": return i.limite_tolerancia || "";
-        case "intensidade":
-          return i.intensidade
-            || (i.medicao_valor != null
-              ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}`
-              : "");
-        /* O tempo descrito diz mais que o tipo; na falta dele, o tipo. */
-        case "exposicao": return i.tempo_exposicao || EXPOSICAO_PDF[i.tipo_exposicao] || "";
-        case "tecnica": return i.tecnica_utilizada || "";
-        case "medidas":
-          return Array.isArray(i.controles_existentes)
-            ? i.controles_existentes.filter(Boolean).join("; ")
-            : (i.controles_existentes || "");
-        case "epi": return i.epi || "";
-        case "atenuacao": return i.atenuacao || "";
-        case "probabilidade": return i.probabilidade != null ? String(i.probabilidade) : "";
-        case "severidade": return i.severidade != null ? String(i.severidade) : "";
-        default: return "";
-      }
-    };
-
-    for (const chave of chavesOrdenadas) {
-      const itens = grupos.get(chave)!;
-      faixaDoGes(itens);
-
-      itens.forEach((i: any) => {
-        /*
-         * Nível e classificação são CALCULADOS aqui, nunca lidos do dado —
-         * a mesma regra do Word e da planilha.
-         */
-        const temAval = i.probabilidade != null && i.severidade != null;
-        const nivel = temAval ? Number(i.probabilidade) * Number(i.severidade) : null;
-        const classe: PgrClasse | null =
-          nivel != null ? classificarMatriz(i.severidade, i.probabilidade) : null;
-
-        const celulas = COLS.map((c) => {
-          if (c.chave === "nivel") return nivel != null ? String(nivel) : "";
-          if (c.chave === "classificacao") return classe ? CLASSIF_LABEL[classe].toUpperCase() : "";
-          return valorDaColuna(i, c.chave);
-        });
-
-        /*
-         * Sem a tarja na margem: com a célula de classificação pintada dentro
-         * da grade, a tarja ficava do lado de fora da moldura, repetindo a
-         * mesma informação e parecendo sobra de desenho.
-         */
-        const cor = classe ? CLASSE_HEX[classe] : undefined;
-        addLinha(
-          celulas,
-          undefined,
-          cor && classe
-            ? { col: COLS.length - 1, fundo: cor, texto: CLASSE_TEXTO_HEX[classe] }
-            : undefined,
-        );
-      });
-    }
-  }
-
-  /*
-   * ── Plano de ação — 1.5.7.1 "b" e 1.5.5.2 da NR-01 ────────────────────────
-   *
-   * Também em página deitada e no formato 5W2H da planilha: setor, GES, o
-   * quê, por quê, como, onde, quanto, prioridade, os doze meses do
-   * cronograma, responsável, status colorido e acompanhamento/aferição.
-   *
-   * Antes era uma lista de parágrafos, um bloco por ação. Dava para ler, mas
-   * não era o documento do pacote — e o cronograma, que é o que mostra
-   * QUANDO cada medida entra, ficava escondido numa mini-tabela no fim de
-   * cada bloco em vez de numa coluna que se compara de cima a baixo.
-   */
-  pdf.addPage([297, 210], "landscape");
-  b.y = 15;
-  b.direita = 287;
-  b.limiteY = 190;
-  title(b, "Plano de Ação (5W2H)");
-
-  if (ctx.acoes.length === 0) {
-    para(b, "Nenhuma ação registrada.");
-  } else {
-    /*
-     * Vinte e três colunas: as oito do 5W2H, os doze meses do cronograma e
-     * mais três. A soma, com a margem de 12 mm e 0,8 mm entre colunas, tem
-     * de caber nos 287 mm da borda. Estourando, as últimas são desenhadas
-     * fora do papel — e no PDF não há aviso: elas simplesmente somem.
-     */
-    const MES_W = 3.8;
-    const COLS_PLANO: { rotulo: string; chave: string; w: number }[] = [
-      { rotulo: "SETOR", chave: "setor", w: 17 },
-      { rotulo: "GES", chave: "ges", w: 8 },
-      { rotulo: "O QUÊ? (MEDIDA)", chave: "oque", w: 27 },
-      { rotulo: "POR QUÊ?", chave: "porque", w: 21 },
-      { rotulo: "COMO?", chave: "como", w: 23 },
-      { rotulo: "ONDE?", chave: "onde", w: 13 },
-      { rotulo: "QUANTO?", chave: "quanto", w: 13 },
-      { rotulo: "PRIOR.", chave: "prioridade", w: 10 },
-      ...MESES_PDF.map((m) => ({ rotulo: m[0], chave: `mes_${m}`, w: MES_W })),
-      { rotulo: "RESPONSÁVEL", chave: "responsavel", w: 16 },
-      { rotulo: "STATUS", chave: "status", w: 17 },
-      { rotulo: "ACOMPANHAMENTO E AFERIÇÃO", chave: "afericao", w: 20 },
-    ];
-    let xPlano = 12;
-    const colunasPlano = COLS_PLANO.map((c) => {
-      const col = { rotulo: c.rotulo, x: xPlano, w: c.w };
-      xPlano += c.w + 2;
-      return col;
-    });
-    const addAcao = tabela(b, colunasPlano, {
-      fonte: 6, fonteCabecalho: 5.6, grade: true, cabecalhoEscuro: true,
-    });
-
-    const setorDaAcao = (a: any) => {
-      const item = (ctx.inventario as any[]).find((i) => i.id === a.inventario_item_id);
-      return item?.setor
-        || ((ctx.setores as any[]) || []).find((s: any) => s.id === item?.setor_id)?.nome
-        || "";
-    };
-    const gesDaAcao = (a: any) => {
-      const item = (ctx.inventario as any[]).find((i) => i.id === a.inventario_item_id);
-      const mapa: Record<string, string> = (ctx.ghes as any) || {};
-      return item ? (mapa[item.ges_id] || mapa[item.ghe_id] || "") : "";
-    };
-
-    ctx.acoes.forEach((a: any) => {
-      const meses: number[] = a.meses_execucao || [];
-      const statusLabel = ACAO_STATUS_LABEL[a.status as PgrAcaoStatus] || a.status || "";
-
-      const celulas = COLS_PLANO.map((c) => {
-        if (c.chave.startsWith("mes_")) {
-          const indice = MESES_PDF.indexOf(c.chave.slice(4));
-          return meses.includes(indice + 1) ? "X" : "";
+        if (b.y + altura + 8 > (b.limiteY ?? 278)) {
+          pdf.addPage([297, 210], "landscape");
+          b.y = 15;
+          addLinha.cabecalho();
         }
-        switch (c.chave) {
-          case "setor": return setorDaAcao(a);
-          case "ges": return gesDaAcao(a);
-          /* A quebra de linha vinda do cadastro vira espaço: o jsPDF quebra
-             em \n e a célula sairia mais alta do que a linha reservada. */
-          case "oque": return String(a.what || a.descricao || "").replace(/\s*\n+\s*/g, " ");
-          case "porque": return a.why || "";
-          case "como": return a.how || "";
-          case "onde": return a.where_local || "";
-          case "quanto": return a.how_much != null ? fmtMoeda(a.how_much) : (a.quanto_texto || "");
-          case "prioridade": return prioridadePdf(a.prioridade);
-          case "responsavel": return a.who || a.responsavel_nome || "";
-          case "status": return statusLabel;
-          case "afericao":
-            return [a.forma_acompanhamento, a.indicador].filter(Boolean).join("; ");
+        pdf.setFillColor(227, 234, 242);
+        pdf.rect(10, b.y, (b.direita ?? 200) - 10, altura, "F");
+        let yTexto = b.y + 3.4;
+        pdf.setTextColor(15, 23, 42);
+        linhasCab.forEach((l) => {
+          pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5);
+          pdf.text(l, 12, yTexto);
+          yTexto += 3.6;
+        });
+        linhasDet.forEach((l) => {
+          pdf.setFont("helvetica", "normal"); pdf.setFontSize(7);
+          pdf.text(l, 12, yTexto);
+          yTexto += 3.2;
+        });
+        pdf.setTextColor(0);
+        b.y += altura;
+      };
+
+      /** O valor de cada coluna, do jeito que a planilha escreve. */
+      const valorDaColuna = (i: any, chave: string): string => {
+        switch (chave) {
+          /*
+           * O agente sai pelo rótulo, não pelo valor do banco. Saía "[fisico]",
+           * "[quimico]", "[psicossocial]" — minúsculo, sem acento e entre
+           * colchetes, que é o nome do enum, não português.
+           */
+          case "agente": return GRUPO_LABEL[i.grupo] || i.grupo || "";
+          case "perigo": return i.perigo_descricao || "";
+          case "fonte": return i.fonte_geradora || "";
+          case "lesoes": return i.lesoes || "";
+          case "limite": return i.limite_tolerancia || "";
+          case "intensidade":
+            return i.intensidade
+              || (i.medicao_valor != null
+                ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}`
+                : "");
+          /* O tempo descrito diz mais que o tipo; na falta dele, o tipo. */
+          case "exposicao": return i.tempo_exposicao || EXPOSICAO_PDF[i.tipo_exposicao] || "";
+          case "tecnica": return i.tecnica_utilizada || "";
+          case "medidas":
+            return Array.isArray(i.controles_existentes)
+              ? i.controles_existentes.filter(Boolean).join("; ")
+              : (i.controles_existentes || "");
+          case "epi": return i.epi || "";
+          case "atenuacao": return i.atenuacao || "";
+          case "probabilidade": return i.probabilidade != null ? String(i.probabilidade) : "";
+          case "severidade": return i.severidade != null ? String(i.severidade) : "";
           default: return "";
         }
-      });
+      };
 
-      /*
-       * O mês previsto é CÉLULA PINTADA, como na planilha — não um "X" solto.
-       * É o que faz o cronograma se ler de cima a baixo numa olhada.
-       */
-      const pintadas: { col: number; fundo: [number, number, number]; texto: [number, number, number] }[] = [];
-      COLS_PLANO.forEach((c, i) => {
-        if (!c.chave.startsWith("mes_")) return;
-        const indice = MESES_PDF.indexOf(c.chave.slice(4));
-        if (meses.includes(indice + 1)) {
-          pintadas.push({ col: i, fundo: [15, 42, 68], texto: [255, 255, 255] });
-        }
-      });
-      const corStatus = STATUS_PDF_COR[statusLabel];
-      if (corStatus) {
-        pintadas.push({
-          col: COLS_PLANO.findIndex((c) => c.chave === "status"),
-          fundo: corStatus,
-          texto: [0, 0, 0],
+      for (const chave of chavesOrdenadas) {
+        const itens = grupos.get(chave)!;
+        faixaDoGes(itens);
+
+        itens.forEach((i: any) => {
+          /*
+           * Nível e classificação são CALCULADOS aqui, nunca lidos do dado —
+           * a mesma regra do Word e da planilha.
+           */
+          const temAval = i.probabilidade != null && i.severidade != null;
+          const nivel = temAval ? Number(i.probabilidade) * Number(i.severidade) : null;
+          const classe: PgrClasse | null =
+            nivel != null ? classificarMatriz(i.severidade, i.probabilidade) : null;
+
+          const celulas = COLS.map((c) => {
+            if (c.chave === "nivel") return nivel != null ? String(nivel) : "";
+            if (c.chave === "classificacao") return classe ? CLASSIF_LABEL[classe].toUpperCase() : "";
+            return valorDaColuna(i, c.chave);
+          });
+
+          /*
+           * Sem a tarja na margem: com a célula de classificação pintada dentro
+           * da grade, a tarja ficava do lado de fora da moldura, repetindo a
+           * mesma informação e parecendo sobra de desenho.
+           */
+          const cor = classe ? CLASSE_HEX[classe] : undefined;
+          addLinha(
+            celulas,
+            undefined,
+            cor && classe
+              ? { col: COLS.length - 1, fundo: cor, texto: CLASSE_TEXTO_HEX[classe] }
+              : undefined,
+          );
         });
       }
-      addAcao(celulas, undefined, pintadas);
-    });
+    }
+  };
 
-    /* Legenda do status e do cronograma, como na planilha. */
-    b.y += 2;
-    ensure(b, 8);
-    pdf.setFontSize(6.5); pdf.setFont("helvetica", "normal"); pdf.setTextColor(90);
-    pdf.text(
-      "Mês marcado = prazo previsto para a ação.  ·  Status: "
-        + Object.keys(STATUS_PDF_COR).join("  ·  "),
-      12, b.y,
+  const desenharPlano = () => {
+  if (ctx.acoes.length === 0) {
+      para(b, "Nenhuma ação registrada.");
+    } else {
+      /*
+       * Vinte e três colunas: as oito do 5W2H, os doze meses do cronograma e
+       * mais três. A soma, com a margem de 12 mm e 0,8 mm entre colunas, tem
+       * de caber nos 287 mm da borda. Estourando, as últimas são desenhadas
+       * fora do papel — e no PDF não há aviso: elas simplesmente somem.
+       */
+      const MES_W = 3.8;
+      const COLS_PLANO: { rotulo: string; chave: string; w: number }[] = [
+        { rotulo: "SETOR", chave: "setor", w: 17 },
+        { rotulo: "GES", chave: "ges", w: 8 },
+        { rotulo: "O QUÊ? (MEDIDA)", chave: "oque", w: 27 },
+        { rotulo: "POR QUÊ?", chave: "porque", w: 21 },
+        { rotulo: "COMO?", chave: "como", w: 23 },
+        { rotulo: "ONDE?", chave: "onde", w: 13 },
+        { rotulo: "QUANTO?", chave: "quanto", w: 13 },
+        { rotulo: "PRIOR.", chave: "prioridade", w: 10 },
+        ...MESES_PDF.map((m) => ({ rotulo: m[0], chave: `mes_${m}`, w: MES_W })),
+        { rotulo: "RESPONSÁVEL", chave: "responsavel", w: 16 },
+        { rotulo: "STATUS", chave: "status", w: 17 },
+        { rotulo: "ACOMPANHAMENTO E AFERIÇÃO", chave: "afericao", w: 20 },
+      ];
+      let xPlano = 12;
+      const colunasPlano = COLS_PLANO.map((c) => {
+        const col = { rotulo: c.rotulo, x: xPlano, w: c.w };
+        xPlano += c.w + 2;
+        return col;
+      });
+      const addAcao = tabela(b, colunasPlano, {
+        fonte: 6, fonteCabecalho: 5.6, grade: true, cabecalhoEscuro: true,
+      });
+
+      const setorDaAcao = (a: any) => {
+        const item = (ctx.inventario as any[]).find((i) => i.id === a.inventario_item_id);
+        return item?.setor
+          || ((ctx.setores as any[]) || []).find((s: any) => s.id === item?.setor_id)?.nome
+          || "";
+      };
+      const gesDaAcao = (a: any) => {
+        const item = (ctx.inventario as any[]).find((i) => i.id === a.inventario_item_id);
+        const mapa: Record<string, string> = (ctx.ghes as any) || {};
+        return item ? (mapa[item.ges_id] || mapa[item.ghe_id] || "") : "";
+      };
+
+      ctx.acoes.forEach((a: any) => {
+        const meses: number[] = a.meses_execucao || [];
+        const statusLabel = ACAO_STATUS_LABEL[a.status as PgrAcaoStatus] || a.status || "";
+
+        const celulas = COLS_PLANO.map((c) => {
+          if (c.chave.startsWith("mes_")) {
+            const indice = MESES_PDF.indexOf(c.chave.slice(4));
+            return meses.includes(indice + 1) ? "X" : "";
+          }
+          switch (c.chave) {
+            case "setor": return setorDaAcao(a);
+            case "ges": return gesDaAcao(a);
+            /* A quebra de linha vinda do cadastro vira espaço: o jsPDF quebra
+               em \n e a célula sairia mais alta do que a linha reservada. */
+            case "oque": return String(a.what || a.descricao || "").replace(/\s*\n+\s*/g, " ");
+            case "porque": return a.why || "";
+            case "como": return a.how || "";
+            case "onde": return a.where_local || "";
+            case "quanto": return a.how_much != null ? fmtMoeda(a.how_much) : (a.quanto_texto || "");
+            case "prioridade": return prioridadePdf(a.prioridade);
+            case "responsavel": return a.who || a.responsavel_nome || "";
+            case "status": return statusLabel;
+            case "afericao":
+              return [a.forma_acompanhamento, a.indicador].filter(Boolean).join("; ");
+            default: return "";
+          }
+        });
+
+        /*
+         * O mês previsto é CÉLULA PINTADA, como na planilha — não um "X" solto.
+         * É o que faz o cronograma se ler de cima a baixo numa olhada.
+         */
+        const pintadas: { col: number; fundo: [number, number, number]; texto: [number, number, number] }[] = [];
+        COLS_PLANO.forEach((c, i) => {
+          if (!c.chave.startsWith("mes_")) return;
+          const indice = MESES_PDF.indexOf(c.chave.slice(4));
+          if (meses.includes(indice + 1)) {
+            pintadas.push({ col: i, fundo: [15, 42, 68], texto: [255, 255, 255] });
+          }
+        });
+        const corStatus = STATUS_PDF_COR[statusLabel];
+        if (corStatus) {
+          pintadas.push({
+            col: COLS_PLANO.findIndex((c) => c.chave === "status"),
+            fundo: corStatus,
+            texto: [0, 0, 0],
+          });
+        }
+        addAcao(celulas, undefined, pintadas);
+      });
+
+      /* Legenda do status e do cronograma, como na planilha. */
+      b.y += 2;
+      ensure(b, 8);
+      pdf.setFontSize(6.5); pdf.setFont("helvetica", "normal"); pdf.setTextColor(90);
+      pdf.text(
+        "Mês marcado = prazo previsto para a ação.  ·  Status: "
+          + Object.keys(STATUS_PDF_COR).join("  ·  "),
+        12, b.y,
+      );
+      pdf.setTextColor(0);
+      b.y += 6;
+    }
+  };
+
+  /** A tabela das letras "a" a "i" do item 1.5.7.3.2. */
+  const desenharExigencias = (exig: [string, string, string][]) => {
+    const larguraTotal = (b.direita ?? 200) - 20;
+    const linha = tabela(
+      b,
+      [
+        { rotulo: "ITEM", x: 12, w: 14 },
+        { rotulo: "EXIGÊNCIA DA NR-01", x: 28, w: larguraTotal * 0.45 },
+        { rotulo: "ONDE ESTÁ NO INVENTÁRIO", x: 30 + larguraTotal * 0.45, w: larguraTotal * 0.45 },
+      ],
+      { fonte: 7.5, fonteCabecalho: 7, grade: true, cabecalhoEscuro: true },
     );
-    pdf.setTextColor(0);
-    b.y += 6;
+    exig.forEach(([item, exigencia, onde]) => linha([`"${item}"`, exigencia, onde]));
+    b.y += 3;
+  };
+
+  /** Um bloco de seção, no mesmo formato do gerador de Word. */
+  const bloco = (sec: typeof DEF_PGR.secoes[number]) => {
+    if (sec.ref) refNorma(b, sec.ref);
+    if (sec.texto) para(b, sec.texto, 9, [40, 40, 40]);
+    if (sec.itens) {
+      sec.itens.forEach((it) => {
+        ensure(b, 6);
+        const linhas = pdf.splitTextToSize(it, (b.direita ?? 200) - 24) as string[];
+        pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(40);
+        linhas.forEach((l) => { pdf.text(l, 18, b.y); b.y += 4; });
+        b.y += 1.5;
+      });
+      pdf.setTextColor(0);
+    }
+    if (sec.matriz) drawMatriz(b);
+    if (sec.exig) desenharExigencias(sec.exig);
+    if (sec.inventario) desenharInventario();
+    if (sec.plano) desenharPlano();
+  };
+
+  let emPaisagem = false;
+  for (const sec of DEF_PGR.secoes) {
+    const querPaisagem = Boolean(sec.paisagem);
+    if (querPaisagem !== emPaisagem) {
+      if (querPaisagem) paisagem(); else retrato();
+      emPaisagem = querPaisagem;
+    } else {
+      pdf.addPage(querPaisagem ? [297, 210] : "a4", querPaisagem ? "landscape" : "portrait");
+      b.y = 15;
+    }
+    title(b, sec.t);
+    bloco(sec);
+    (sec.sub || []).forEach((filho) => {
+      subNumerado(b, filho.t);
+      bloco(filho);
+    });
   }
 
-  /* Volta ao retrato: assinatura é página de leitura, não de tabela. Sem
-     dizer "portrait" a página nova herda a orientação da anterior. */
-  pdf.addPage("a4", "portrait");
-  b.y = 15;
-  b.direita = undefined;
-  b.limiteY = undefined;
+  /* O encerramento do pacote, com a data e o local. */
+  if (emPaisagem) { retrato(); emPaisagem = false; }
+  else { pdf.addPage("a4", "portrait"); b.y = 15; }
+  title(b, "Encerramento");
+  para(b, DEF_PGR.encerramento || "", 9, [40, 40, 40]);
+  const cidadeFecho = [principal?.cidade, principal?.uf].filter(Boolean).join(" / ");
+  if (cidadeFecho || pgr.data_emissao) {
+    ensure(b, 10);
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(40);
+    pdf.text(
+      [cidadeFecho, fmtDate(pgr.data_emissao)].filter(Boolean).join(", ") + ".",
+      (b.direita ?? 200), b.y + 4, { align: "right" },
+    );
+    pdf.setTextColor(0);
+    b.y += 12;
+  }
 
   title(b, "Assinaturas");
   // 1.5.7.2 da NR-01: os documentos do PGR são elaborados sob responsabilidade
@@ -896,6 +911,14 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   await rodapePaginas(pdf, {
     qrUrl: opts.qrUrl,
     marca: opts.comMarca ? (pgr.status === "em_revisao" ? "EM REVISÃO" : "RASCUNHO") : null,
+    logoDataUrl: ctx.logoDataUrl,
+    tituloCabecalho: "PGR – Programa de Gerenciamento de Riscos",
+    subtituloCabecalho: [
+      ctx.empresaNome,
+      pgr.data_vigencia_inicio && pgr.data_vigencia_fim
+        ? `Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`
+        : null,
+    ].filter(Boolean).join("   |   "),
     /*
      * Três linhas em vez de quatro: a explicação do que é um QR Code ocupava
      * a linha mais larga do rodapé para dizer o que o próprio QR ao lado já

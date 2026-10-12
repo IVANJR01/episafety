@@ -128,8 +128,13 @@ describe("a marca d'água não atravessa o título da capa", () => {
       .replace(/^\s*\/\/.*$/gm, "");
     /* A diagonal subia pela direita e cortava a sigla do documento. */
     expect(timbrado).toContain("if (p === 1) {");
-    expect(timbrado).toContain("charSpace: ESPACO_ENTRE_LETRAS");
-    expect(timbrado).toContain("105 - largura / 2");
+    expect(timbrado).toContain("charSpace: ESPACO");
+    /*
+     * Centralizada pela largura REAL da página, não pelos 105 mm de um A4 em
+     * pé: o inventário e o plano saem em página deitada, e ali 105 não é o
+     * meio da folha.
+     */
+    expect(timbrado).toContain("larguraPagina / 2 - larg / 2");
   });
 });
 
