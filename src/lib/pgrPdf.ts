@@ -1134,35 +1134,48 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   if (ctx.acoes.length === 0) {
       para(b, "Nenhuma ação registrada.");
     } else {
+      const iniAno = pgr.data_vigencia_inicio ? new Date(pgr.data_vigencia_inicio + "T00:00:00").getFullYear() : null;
+      const fimAno = pgr.data_vigencia_fim ? new Date(pgr.data_vigencia_fim + "T00:00:00").getFullYear() : null;
+      const anoVigencia = (iniAno && fimAno)
+        ? (iniAno === fimAno ? `${iniAno}` : `${iniAno}/${fimAno}`)
+        : (iniAno ? `${iniAno}` : (pgr.data_emissao ? `${new Date(pgr.data_emissao + "T00:00:00").getFullYear()}` : `${new Date().getFullYear()}`));
+
       /*
-       * Vinte e três colunas: as oito do 5W2H, os doze meses do cronograma e
-       * mais três. A soma, com a margem de 12 mm e 0,8 mm entre colunas, tem
-       * de caber nos 287 mm da borda. Estourando, as últimas são desenhadas
-       * fora do papel — e no PDF não há aviso: elas simplesmente somem.
+       * Vinte e duas colunas: as sete do 5W2H (sem Prioridade e sem Aferição),
+       * o Prazo Final (DD/MM/AAAA), os doze meses do cronograma com super-cabeçalho
+       * de vigência, Responsável e Status — idêntico à tabela do sistema.
        */
-      const MES_W = 3.8;
+      const MES_W = 3.6;
       const COLS_PLANO: { rotulo: string; chave: string; w: number }[] = [
-        { rotulo: "SETOR", chave: "setor", w: 17 },
-        { rotulo: "GES", chave: "ges", w: 8 },
-        { rotulo: "O QUÊ? (MEDIDA)", chave: "oque", w: 27 },
-        { rotulo: "POR QUÊ?", chave: "porque", w: 21 },
-        { rotulo: "COMO?", chave: "como", w: 23 },
-        { rotulo: "ONDE?", chave: "onde", w: 13 },
+        { rotulo: "SETOR", chave: "setor", w: 18 },
+        { rotulo: "GES", chave: "ges", w: 9 },
+        { rotulo: "O QUÊ? (MEDIDA)", chave: "oque", w: 34 },
+        { rotulo: "POR QUÊ?", chave: "porque", w: 26 },
+        { rotulo: "COMO?", chave: "como", w: 27 },
+        { rotulo: "ONDE?", chave: "onde", w: 15 },
         { rotulo: "QUANTO?", chave: "quanto", w: 13 },
-        { rotulo: "PRIOR.", chave: "prioridade", w: 10 },
+        { rotulo: "PRAZO FINAL", chave: "prazo", w: 17 },
         ...MESES_PDF.map((m) => ({ rotulo: m[0], chave: `mes_${m}`, w: MES_W })),
-        { rotulo: "RESPONSÁVEL", chave: "responsavel", w: 16 },
+        { rotulo: "RESPONSÁVEL", chave: "responsavel", w: 20 },
         { rotulo: "STATUS", chave: "status", w: 17 },
-        { rotulo: "ACOMPANHAMENTO E AFERIÇÃO", chave: "afericao", w: 20 },
       ];
       let xPlano = 12;
       const colunasPlano = COLS_PLANO.map((c) => {
         const col = { rotulo: c.rotulo, x: xPlano, w: c.w };
-        xPlano += c.w + 2;
+        const gap = c.chave.startsWith("mes_") ? 1.0 : 1.8;
+        xPlano += c.w + gap;
         return col;
       });
       const addAcao = tabela(b, colunasPlano, {
-        fonte: 6, fonteCabecalho: 5.6, grade: true, cabecalhoEscuro: true,
+        fonte: 6,
+        fonteCabecalho: 5.6,
+        grade: true,
+        cabecalhoEscuro: true,
+        superCabecalho: {
+          colInicio: 8,
+          colFim: 19,
+          titulo: `CRONOGRAMA (${anoVigencia})`,
+        },
       });
 
       const setorDaAcao = (a: any) => {
@@ -1176,9 +1189,21 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
         const mapa: Record<string, string> = (ctx.ghes as any) || {};
         return item ? (mapa[item.ges_id] || mapa[item.ghe_id] || "") : "";
       };
+      const obterMesesDaAcao = (a: any): number[] => {
+        if (Array.isArray(a.meses_execucao) && a.meses_execucao.length > 0) {
+          return a.meses_execucao;
+        }
+        if (a.prazo) {
+          const mes = parseInt(String(a.prazo).slice(5, 7), 10);
+          if (!isNaN(mes) && mes >= 1 && mes <= 12) {
+            return [mes];
+          }
+        }
+        return [];
+      };
 
       ctx.acoes.forEach((a: any) => {
-        const meses: number[] = a.meses_execucao || [];
+        const meses: number[] = obterMesesDaAcao(a);
         const statusLabel = ACAO_STATUS_LABEL[a.status as PgrAcaoStatus] || a.status || "";
 
         const celulas = COLS_PLANO.map((c) => {
@@ -1196,11 +1221,9 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
             case "como": return a.how || "";
             case "onde": return a.where_local || "";
             case "quanto": return a.how_much != null ? fmtMoeda(a.how_much) : (a.quanto_texto || "");
-            case "prioridade": return prioridadePdf(a.prioridade);
+            case "prazo": return a.prazo ? fmtDate(a.prazo) : "—";
             case "responsavel": return a.who || a.responsavel_nome || "";
             case "status": return statusLabel;
-            case "afericao":
-              return [a.forma_acompanhamento, a.indicador].filter(Boolean).join("; ");
             default: return "";
           }
         });
@@ -1242,7 +1265,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
           .filter(Boolean),
       )];
       pdf.text(
-        "Mês marcado = prazo previsto para a ação."
+        `Mês marcado no cronograma anual (${anoVigencia}) conforme o prazo final estipulado para a ação.`
           + (statusNaTabela.length ? "  ·  Status: " + statusNaTabela.join("  ·  ") : ""),
         12, b.y,
       );

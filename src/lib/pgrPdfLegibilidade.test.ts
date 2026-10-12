@@ -104,19 +104,19 @@ describe("o plano de ação imprime português, não o banco", () => {
     /* Remontado: cabeçalho de coluna estreita sai partido em dois pedaços. */
     const pdf = [...(await textoDoPdf()).matchAll(/\((.*?)\) Tj/g)]
       .map((m) => m[1]).join(" ").replace(/\s+/g, " ");
-    for (const coluna of ["O QU", "POR QU", "COMO?", "ONDE?", "QUANTO?", "PRIOR.", "RESPON", "STATUS"]) {
+    for (const coluna of ["O QU", "POR QU", "COMO?", "ONDE?", "QUANTO?", "PRAZO", "RESPON", "STATUS"]) {
       expect(pdf, `faltou a coluna ${coluna}`).toContain(coluna);
     }
-    expect(pdf, "faltou o cronograma").toContain("ACOMPANHAMENTO E AFERI");
+    expect(pdf, "faltou o cronograma").toContain("CRONOGRAMA");
   }, 30_000);
 
-  it("a prioridade sai como ALTA, MÉDIA ou BAIXA, não como número", async () => {
-    const comPrioridade = {
+  it("o prazo final sai formatado como DD/MM/AAAA", async () => {
+    const comPrazo = {
       ...CTX,
-      acoes: [{ ...(CTX.acoes as never as Record<string, unknown>[])[0], prioridade: 5 }],
+      acoes: [{ ...(CTX.acoes as never as Record<string, unknown>[])[0], prazo: "2026-10-25" }],
     } as PgrPdfContext;
-    const pdf = await render(comPrioridade, { qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false });
-    expect(Buffer.from(pdf.output("arraybuffer")).toString("latin1")).toContain("ALTA");
+    const pdf = await render(comPrazo, { qrUrl: "https://exemplo/validar", pdfVersao: 1, comMarca: false });
+    expect(Buffer.from(pdf.output("arraybuffer")).toString("latin1")).toContain("25/10/2026");
   }, 30_000);
 });
 

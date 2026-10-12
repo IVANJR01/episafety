@@ -155,6 +155,12 @@ export interface OpcoesTabela {
   grade?: boolean;
   /** Cabeçalho azul-marinho com letra branca, como no Word. */
   cabecalhoEscuro?: boolean;
+  /** Faixa superior que agrupa um intervalo de colunas com um título (ex: CRONOGRAMA). */
+  superCabecalho?: {
+    colInicio: number;
+    colFim: number;
+    titulo: string;
+  };
 }
 
 export function tabela(
@@ -195,7 +201,8 @@ export function tabela(
     b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(FONTE_CAB);
     const rotulos = colunas.map((c) => b.doc.splitTextToSize(c.rotulo, c.w) as string[]);
     const linhas = Math.max(...rotulos.map((r) => r.length));
-    const altura = Math.max(6, linhas * (FONTE_CAB * 0.4) + 2);
+    const hSuper = opcoes.superCabecalho ? 3.5 : 0;
+    const altura = Math.max(6 + hSuper, linhas * (FONTE_CAB * 0.4) + 2 + hSuper);
     if (opcoes.cabecalhoEscuro) {
       b.doc.setFillColor(15, 42, 68);
       b.doc.rect(10, b.y, direitaDe(b) - 10, altura, "F");
@@ -205,9 +212,34 @@ export function tabela(
       b.doc.rect(10, b.y, direitaDe(b) - 10, altura, "F");
       b.doc.setTextColor(30);
     }
-    rotulos.forEach((partes, i) =>
-      partes.forEach((parte, j) => b.doc.text(parte, colunas[i].x, b.y + 3 + j * (FONTE_CAB * 0.4))),
-    );
+
+    if (opcoes.superCabecalho) {
+      const seps = separadores();
+      const xIni = seps[opcoes.superCabecalho.colInicio] ?? colunas[opcoes.superCabecalho.colInicio]?.x;
+      const xFim = seps[opcoes.superCabecalho.colFim + 1] ?? (colunas[opcoes.superCabecalho.colFim]?.x + colunas[opcoes.superCabecalho.colFim]?.w);
+      b.doc.setFillColor(9, 27, 44);
+      b.doc.rect(xIni, b.y, xFim - xIni, hSuper, "F");
+      b.doc.setFont("helvetica", "bold");
+      b.doc.setFontSize(FONTE_CAB * 0.95);
+      b.doc.setTextColor(255, 230, 150);
+      b.doc.text(opcoes.superCabecalho.titulo, (xIni + xFim) / 2, b.y + 2.5, { align: "center" });
+      b.doc.setDrawColor(200);
+      b.doc.setLineWidth(0.2);
+      b.doc.line(xIni, b.y + hSuper, xFim, b.y + hSuper);
+    }
+
+    b.doc.setFont("helvetica", "bold");
+    b.doc.setFontSize(FONTE_CAB);
+    b.doc.setTextColor(opcoes.cabecalhoEscuro ? 255 : 30);
+
+    rotulos.forEach((partes, i) => {
+      const dentroSuper = opcoes.superCabecalho && i >= opcoes.superCabecalho.colInicio && i <= opcoes.superCabecalho.colFim;
+      const yOffset = dentroSuper ? hSuper + 2.8 : 3 + (hSuper > 0 ? (hSuper / 2) : 0);
+      partes.forEach((parte, j) =>
+        b.doc.text(parte, colunas[i].x, b.y + yOffset + j * (FONTE_CAB * 0.4)),
+      );
+    });
+
     verticais(b.y, altura);
     b.doc.setTextColor(0);
     b.y += altura + (GRADE ? 0 : 1);
