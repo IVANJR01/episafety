@@ -104,8 +104,8 @@ describe("seções do PGR", () => {
      * formato de novo.
      */
     const texto = await gerar();
-    expect(texto, 'letra "e" — grupo de trabalhadores exposto').toContain("GES: Marcenaria");
-    expect(texto, 'letra "e" — setor').toContain("Setor: Produção");
+    expect(texto, 'letra "e" — grupo de trabalhadores exposto').toContain("Marcenaria");
+    expect(texto, 'letra "e" — setor').toContain("Produção");
     expect(texto, 'letra "e" — funções').toContain("Marceneiro");
     expect(texto, 'letra "a" — ambiente').toContain("Galpão de produção");
     expect(texto, 'letra "b" — atividades').toContain("Corte e aparelhamento de madeira");

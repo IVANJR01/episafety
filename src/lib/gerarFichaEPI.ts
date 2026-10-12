@@ -119,6 +119,10 @@ export const RODAPE_ASSINATURA = {
 
 export function formatDataDeIso(isoStr: string): string {
   if (!isoStr) return "—";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoStr)) {
+    const [ano, mes, dia] = isoStr.split("-");
+    return `${dia}/${mes}/${ano}`;
+  }
   try {
     const d = new Date(isoStr);
     if (Number.isNaN(d.getTime())) return formatDate(isoStr);

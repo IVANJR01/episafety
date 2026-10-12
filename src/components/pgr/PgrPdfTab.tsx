@@ -109,9 +109,11 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     ]);
     const ghesMap: Record<string, string> = {};
     const ghesInfo: Record<string, { codigo: string; nome: string }> = {};
+    const ghesCodigos: Record<string, string> = {};
     (ghes.data || []).forEach((g: any) => {
       ghesMap[g.id] = g.nome;
       ghesInfo[g.id] = { codigo: g.codigo || "", nome: g.nome || "" };
+      if (g.codigo) ghesCodigos[g.id] = g.codigo;
     });
     const textosMap: Record<string, string> = {};
     (textos.data || []).forEach((t: any) => { textosMap[t.secao] = t.conteudo || ""; });
@@ -235,6 +237,10 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     const emissor = await carregarEmissor();
     const emissorLogoDataUrl = await carregarLogoDataUrl(emissor?.logo_url ?? null);
 
+    (gesCru || []).forEach((g: any) => {
+      if (g?.id && g?.codigo && !ghesCodigos[g.id]) ghesCodigos[g.id] = g.codigo;
+    });
+
     return {
       doc: pgr,
       empresaNome: emp.data?.nome ?? null,
@@ -254,6 +260,7 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
       revisoes: rev.data || [],
       assinaturas: assinaturas as any[],
       ghes: ghesMap,
+      ghesCodigos,
       textos: textosMap,
       unidades,
       responsaveis: respRes.data || [],
