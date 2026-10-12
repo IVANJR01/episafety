@@ -79,7 +79,11 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
 
   const filtradas = useMemo(() => {
     return acoes.filter((a: any) => {
-      if (fStatus !== "todos" && a.status !== fStatus) return false;
+      if (fStatus === "todos") {
+        if (a.status === "cancelada") return false;
+      } else if (a.status !== fStatus) {
+        return false;
+      }
       if (fResp && !(a.responsavel_nome || "").toLowerCase().includes(fResp.toLowerCase())) return false;
       if (fPrio !== "todas" && String(a.prioridade) !== fPrio) return false;
       if (soAtrasadas && !isAtrasada(a)) return false;

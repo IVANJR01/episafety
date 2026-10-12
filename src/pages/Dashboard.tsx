@@ -33,7 +33,7 @@ const staggerContainer = {
 };
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; empresa_id: string | null; tamanho?: string | null; }
-interface Funcionario { id: string; nome: string; empresa_id?: string | null; }
+interface Funcionario { id: string; nome: string; empresa_id?: string | null; data_demissao?: string | null; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; created_by?: string | null; empresa_id?: string | null; }
 interface Profile { id: string; user_id: string; nome: string; email: string | null; empresa_id?: string | null; }
 interface ContratoMovimentacao {
@@ -73,7 +73,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("overview");
 
   const { data: allEpis = [], loading: episLoading, error: episError } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id, tamanho");
-  const { data: allFuncionarios = [], loading: funcionariosLoading, error: funcionariosError } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome, empresa_id");
+  const { data: allFuncionarios = [], loading: funcionariosLoading, error: funcionariosError } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome, empresa_id, data_demissao");
   const { data: allEntregas = [], loading: entregasLoading, error: entregasError } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by, empresa_id");
 
   const { data: allAsos = [], loading: asosLoading, error: asosError } = useSupabaseQuery<Aso>("asos", "created_at", undefined, "id, status, data_emissao, created_at, empresa_id");
@@ -184,6 +184,10 @@ export default function Dashboard() {
     if (!empresaId) return list;
     return list.filter(f => f && (!f.empresa_id || companyTreeIds.has(f.empresa_id)));
   }, [allFuncionarios, empresaId, companyTreeIds]);
+
+  const funcionariosAtivos = useMemo(() => {
+    return funcionarios.filter(f => !f.data_demissao);
+  }, [funcionarios]);
 
   const contratos = useMemo(() => {
     const list = allContratos || [];
@@ -635,7 +639,7 @@ export default function Dashboard() {
     },
     {
       label: "Funcionários Ativos",
-      value: funcionarios.length,
+      value: funcionariosAtivos.length,
       icon: Users,
       gradient: "from-[hsl(199,89%,48%)] to-[hsl(199,89%,35%)]",
       iconBg: "bg-white/20",

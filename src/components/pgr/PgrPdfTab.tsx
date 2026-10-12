@@ -101,7 +101,7 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
         .eq("id", pgr.empresa_id).maybeSingle(),
       pgr.unidade_id ? (supabase.from as any)("empresa_config").select("nome").eq("id", pgr.unidade_id).maybeSingle() : Promise.resolve({ data: null }),
       (supabase.from as any)("pgr_inventario_itens").select("*").eq("pgr_id", pgr.id).order("classificacao"),
-      (supabase.from as any)("pgr_acoes").select("*").eq("pgr_id", pgr.id).order("prazo"),
+      (supabase.from as any)("pgr_acoes").select("*").eq("pgr_id", pgr.id).neq("status", "cancelada").order("prazo"),
       (supabase.from as any)("pgr_acao_evidencias").select("*").eq("pgr_id", pgr.id),
       (supabase.from as any)("pgr_revisoes").select("*").eq("pgr_id", pgr.id).order("created_at", { ascending: false }),
       (supabase.from as any)("ghe_ges").select("id,nome,codigo").eq("empresa_id", pgr.empresa_id),

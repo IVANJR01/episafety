@@ -23,6 +23,7 @@ import {
   PgrClasse,
 } from "@/lib/pgrMatriz";
 import { ACAO_STATUS_LABEL, type PgrAcaoStatus } from "@/lib/pgrAcoes";
+import { pesoDoGrupo } from "@/lib/inventarioOrdem";
 
 export interface PgrInventarioItem {
   id: string;
@@ -737,7 +738,13 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       };
 
       for (const chave of chavesOrdenadas) {
-        const itens = grupos.get(chave)!;
+        const itensBrutos = grupos.get(chave)!;
+        const itens = [...itensBrutos].sort((a: any, b: any) => {
+          const pa = pesoDoGrupo(a.grupo);
+          const pb = pesoDoGrupo(b.grupo);
+          if (pa !== pb) return pa - pb;
+          return (a.perigo_descricao || "").localeCompare(b.perigo_descricao || "");
+        });
         faixaDoGes(itens);
 
         itens.forEach((i: any) => {

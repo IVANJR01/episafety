@@ -47,7 +47,7 @@ export async function buscarFontesDoPgr(
       .eq("pgr_id", pgrId)
       .order("ordem"),
     (supabase.from as any)("pgr_inventario_itens").select("*").eq("pgr_id", pgrId),
-    (supabase.from as any)("pgr_acoes").select("*").eq("pgr_id", pgrId),
+    (supabase.from as any)("pgr_acoes").select("*").eq("pgr_id", pgrId).neq("status", "cancelada"),
     (supabase.from as any)("pgr_revisoes")
       .select("descricao,created_at")
       .eq("pgr_id", pgrId)

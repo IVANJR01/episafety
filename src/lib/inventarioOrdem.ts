@@ -28,8 +28,29 @@ export interface LeituraDaLinha<T> {
   chaveSetor: (linha: T) => string;
   /** Código do GES da linha ("01", "02"…). */
   codigoGes: (linha: T) => string | null | undefined;
+  /** Grupo de risco ("fisico", "quimico", "biologico", "ergonomico", "acidente"). */
+  grupo?: (linha: T) => string | null | undefined;
   /** Desempate final dentro do mesmo GES (grupo de risco, perigo, id). */
   desempate: (linha: T) => string;
+}
+
+/**
+ * Peso de ordenação oficial dos grupos de agentes de risco (NR-01 / NR-09 / CIPA):
+ * 1 - FÍSICO (Verde)
+ * 2 - QUÍMICO (Vermelho)
+ * 3 - BIOLÓGICO (Marrom)
+ * 4 - ERGONÔMICO (Amarelo)
+ * 5 - ACIDENTES / MECÂNICO (Azul)
+ */
+export function pesoDoGrupo(grupo?: string | null): number {
+  const g = (grupo || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  if (g.startsWith("fisic")) return 1;
+  if (g.startsWith("quimic")) return 2;
+  if (g.startsWith("biolog")) return 3;
+  if (g.startsWith("ergon")) return 4;
+  if (g.startsWith("acident") || g.startsWith("mecanic")) return 5;
+  if (g.startsWith("psico")) return 6;
+  return 7;
 }
 
 export function ordenarInventario<T>(linhas: T[], ler: LeituraDaLinha<T>): T[] {
@@ -56,6 +77,14 @@ export function ordenarInventario<T>(linhas: T[], ler: LeituraDaLinha<T>): T[] {
     }
     const ga = numeroDoGes(ler.codigoGes(a)); const gb = numeroDoGes(ler.codigoGes(b));
     if (ga !== gb) return ga - gb;
+
+    // Ordem oficial dos grupos de risco: FÍSICO, QUÍMICO, BIOLÓGICO, ERGONÔMICO, ACIDENTES
+    if (ler.grupo) {
+      const pa = pesoDoGrupo(ler.grupo(a));
+      const pb = pesoDoGrupo(ler.grupo(b));
+      if (pa !== pb) return pa - pb;
+    }
+
     return ler.desempate(a).localeCompare(ler.desempate(b));
   });
 }

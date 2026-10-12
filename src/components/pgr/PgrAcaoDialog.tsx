@@ -249,6 +249,20 @@ export default function PgrAcaoDialog({
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };
 
+  const excluirAcao = async () => {
+    if (!confirm("Tem certeza que deseja excluir esta ação do plano de ação?")) return;
+    setBusy(true);
+    try {
+      const { error } = await (supabase.from as any)("pgr_acoes").delete().eq("id", acaoId);
+      if (error) throw error;
+      toast.success("Ação excluída com sucesso");
+      onSaved();
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao excluir ação");
+    } finally { setBusy(false); }
+  };
+
   const uploadEvidencia = async (file: File) => {
     if (!acaoId) { toast.error("Salve a ação antes de anexar evidências"); return; }
     setBusy(true);
@@ -707,6 +721,9 @@ export default function PgrAcaoDialog({
             {(status === "concluida" || status === "cancelada") && (
               <Button size="sm" variant="outline" onClick={() => trocarStatus("pendente")} disabled={busy}>Reabrir</Button>
             )}
+            <Button size="sm" variant="ghost" onClick={excluirAcao} disabled={busy} className="ml-auto text-destructive hover:text-destructive hover:bg-destructive/10">
+              <Trash2 className="h-4 w-4 mr-1" /> Excluir ação
+            </Button>
           </div>
         )}
 

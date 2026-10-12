@@ -80,6 +80,28 @@ describe("ordenarInventario", () => {
     expect(r.map((l) => l.perigo)).toEqual(["Postura", "Ruído"]);
   });
 
+  it("ordena grupos de risco na ordem oficial: Físico, Químico, Biológico, Ergonômico, Acidentes", () => {
+    type LinhaComGrupo = Linha & { grupo: string };
+    const lerGrupo = {
+      ...ler,
+      grupo: (l: LinhaComGrupo) => l.grupo,
+    };
+    const r = ordenarInventario<LinhaComGrupo>([
+      { id: "5", setor: "PCP", ges: "01", perigo: "P5", grupo: "acidente" },
+      { id: "4", setor: "PCP", ges: "01", perigo: "P4", grupo: "ergonomico" },
+      { id: "1", setor: "PCP", ges: "01", perigo: "P1", grupo: "fisico" },
+      { id: "3", setor: "PCP", ges: "01", perigo: "P3", grupo: "biologico" },
+      { id: "2", setor: "PCP", ges: "01", perigo: "P2", grupo: "quimico" },
+    ], lerGrupo);
+    expect(r.map((l) => l.grupo)).toEqual([
+      "fisico",
+      "quimico",
+      "biologico",
+      "ergonomico",
+      "acidente",
+    ]);
+  });
+
   it("lista vazia não quebra", () => {
     expect(ordenarInventario([], ler)).toEqual([]);
   });

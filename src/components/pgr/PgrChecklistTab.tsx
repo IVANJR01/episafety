@@ -448,16 +448,19 @@ export default function PgrChecklistTab({ pgr }: Props) {
       norma: pgr.sgsst_certificado
         ? "Até 3 anos — organização certificada em SGSST"
         : "Máx. 2 anos (NR-01 1.5.4.4.6)" },
-    { label: "PDF gerado", sev: ultimoPdf ? "ok" : "bloqueante",
-      detail: ultimoPdf ? `Última versão: PDF v${ultimoPdf.pdf_versao}` : "Nenhum PDF gerado" },
+    { label: "PDF gerado",
+      sev: ultimoPdf ? "ok" : pgr.status === "vigente" ? "bloqueante" : "info",
+      detail: ultimoPdf ? `Última versão: PDF v${ultimoPdf.pdf_versao}` : "Será gerado na aba '1. Documento Oficial' ao emitir" },
     { label: "PDF atualizado em relação ao conteúdo",
-      sev: !ultimoPdf ? "bloqueante" : pdfDesatualizado ? "alerta" : "ok",
-      detail: pdfDesatualizado ? "Regenerar o PDF antes de publicar" : undefined },
+      sev: !ultimoPdf ? "info" : pdfDesatualizado ? "alerta" : "ok",
+      detail: !ultimoPdf ? "Sincronizado na geração do PDF" : pdfDesatualizado ? "Regenerar o PDF antes de publicar" : undefined },
     { label: "PDF final sem marca d'água de rascunho",
-      sev: !ultimoPdf ? "bloqueante" : ultimoPdf.com_marca_dagua ? "alerta" : "ok" },
+      sev: !ultimoPdf ? "info" : ultimoPdf.com_marca_dagua ? "alerta" : "ok",
+      detail: !ultimoPdf ? "Marca d'água é removida na versão final emitida" : undefined },
     { label: "Assinatura visual conferida com o PDF atual",
-      sev: !temRT ? "info" : assinPdfAtual ? "ok" : "alerta",
+      sev: !temRT ? "info" : !ultimoPdf ? "info" : assinPdfAtual ? "ok" : "alerta",
       detail: !temRT ? "Sem responsável técnico declarado"
+        : !ultimoPdf ? "Disponível na aba '1. Documento Oficial' após gerar o PDF"
         : assinPdfAtual ? `Conferida com PDF v${ultimoPdf?.pdf_versao}`
         : "Falta assinatura visual do PDF atual" },
   ];

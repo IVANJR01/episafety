@@ -485,7 +485,8 @@ export default function InventarioTab({
     return ordenarInventario(base as any[], {
       chaveSetor: (i: any) => chaveSetor(i),
       codigoGes: (i: any) => i.ghe?.codigo,
-      desempate: (i: any) => `${i.grupo || ""}§${i.perigo_descricao || ""}§${i.id}`,
+      grupo: (i: any) => i.grupo,
+      desempate: (i: any) => `${i.perigo_descricao || ""}§${i.id}`,
     });
   }, [itens, busca]);
 
