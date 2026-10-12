@@ -323,6 +323,11 @@ export interface InventarioLinha {
   setor?: string;
   /** Número do GES. A chave mantém o nome `ghe` por ser o formato do dados.json. */
   ghe?: string;
+  /**
+   * Trabalhadores do GES — chave nova no dados.json (NR-01, 1.5.7.3.2 "e").
+   * Ausente, a faixa do grupo sai exatamente como saía antes.
+   */
+  trabalhadores?: number | string | null;
   funcao?: string;
   processo?: string;
   agente?: string;
@@ -374,6 +379,15 @@ function inventarioTabela(dados?: InventarioLinha[]) {
           ? [campo(String(val).slice(2, -2), { size: 14 })]
           : [t(String(val || "").replace(/\n/g, " "), { size: 14 })]),
       ];
+      /*
+       * Trabalhadores do grupo — NR-01, item 1.5.7.3.2 "e".
+       *
+       * Sem o campo, a faixa sai exatamente como saía antes: o pedaço inteiro
+       * só existe se houver número. Zero é um número e aparece — significa
+       * "ninguém exposto", que é diferente de não ter sido informado.
+       */
+      const nTrab = r.trabalhadores;
+      const temTrab = nTrab !== undefined && nTrab !== null && nTrab !== "";
       rows.push(
         new TableRow({
           cantSplit: true,
@@ -386,6 +400,12 @@ function inventarioTabela(dados?: InventarioLinha[]) {
                   ...grp("SETOR: ", r.setor),
                   t("    |    ", { size: 14, color: GRAY }),
                   ...grp("FUNÇÕES: ", r.funcao),
+                  ...(temTrab
+                    ? [
+                        t("    |    ", { size: 14, color: GRAY }),
+                        ...grp("TRABALHADORES: ", String(nTrab)),
+                      ]
+                    : []),
                 ]),
                 p([...grp("Ambiente: ", r.ambiente)], { spacing: { before: 40 } }),
                 p([...grp("Processo / atividades: ", r.processo)], { spacing: { before: 40 } }),

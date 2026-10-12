@@ -59,6 +59,12 @@ export interface InventarioRow {
   setor?: string | null;
   /** Vem de sst_ges.codigo — é o número do GES. */
   ges_codigo?: string | null;
+  /**
+   * Trabalhadores do GES, vindo de `sst_ges.trabalhadores` — NR-01, item
+   * 1.5.7.3.2 "e". É o número do GRUPO, diferente de `trabalhadores_expostos`,
+   * que conta quantos ficam expostos àquele perigo em particular.
+   */
+  ges_trabalhadores?: number | null;
   funcoes_snapshot?: string[] | null;
   processo?: string | null;
   grupo?: string | null;
@@ -257,6 +263,8 @@ function linhaInventario(i: InventarioRow): InventarioLinha {
     /* A chave chama-se `ghe` por ser o nome no dados.json do pacote; o valor é
        o código do GES, e é "GES" que sai impresso no documento. */
     ghe: txt(i.ges_codigo),
+    /* Chave nova. Vazia, a faixa do GES sai exatamente como saía antes. */
+    trabalhadores: i.ges_trabalhadores ?? undefined,
     funcao: (i.funcoes_snapshot || []).filter(Boolean).join(", "),
     processo: txt(i.processo),
     agente: AGENTE_POR_GRUPO[txt(i.grupo)] ?? "",

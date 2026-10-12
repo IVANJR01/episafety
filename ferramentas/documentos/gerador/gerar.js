@@ -223,8 +223,14 @@ function inventarioTabela(dados) {
     if (k !== chave) {
       chave = k;
       const grp = (rot, val) => [t(rot, { size: 14, bold: true, color: NAVY }), ...(/^\{\{/.test(val || '') ? [campo(val.slice(2, -2), { size: 14 })] : [t(String(val || '').replace(/\n/g, ' '), { size: 14 })])];
+      // Trabalhadores do grupo (NR-01, 1.5.7.3.2 "e"). Sem o campo, a faixa
+      // sai exatamente como saía antes — o pedaço inteiro só existe se houver
+      // número. Zero é um número: significa "ninguém exposto", e aparece.
+      const nTrab = r.trabalhadores;
+      const temTrab = nTrab !== undefined && nTrab !== null && nTrab !== '';
       rows.push(new TableRow({ cantSplit: true, children: [cell([
-        p([...grp('GES ', r.ghe), t('    |    ', { size: 14, color: GRAY }), ...grp('SETOR: ', r.setor), t('    |    ', { size: 14, color: GRAY }), ...grp('FUNÇÕES: ', r.funcao)]),
+        p([...grp('GES ', r.ghe), t('    |    ', { size: 14, color: GRAY }), ...grp('SETOR: ', r.setor), t('    |    ', { size: 14, color: GRAY }), ...grp('FUNÇÕES: ', r.funcao),
+           ...(temTrab ? [t('    |    ', { size: 14, color: GRAY }), ...grp('TRABALHADORES: ', String(nTrab))] : [])]),
         p([...grp('Ambiente: ', r.ambiente)], { spacing: { before: 40 } }),
         p([...grp('Processo / atividades: ', r.processo)], { spacing: { before: 40 } }),
       ], { w: LW, fill: 'E3EAF2', span: INV_COLS.length, m: { top: 60, bottom: 60, left: 100, right: 100 } })] }));

@@ -10,7 +10,7 @@ import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { criterioDoGrupo, setoresDoGrupo, nomeDoGrupo, ordenarPorCodigoGes } from "@/lib/sstEstrutura";
 import type { SstGes } from "@/types/sst";
 import { useNavigate } from "react-router-dom";
-import { Layers, Plus, Edit2, Trash2, ListTree } from "lucide-react";
+import { Layers, Plus, Edit2, Trash2, ListTree, Users } from "lucide-react";
 
 /**
  * Cadastro dos Grupos de Exposição Similar (GES).
@@ -29,6 +29,20 @@ import { Layers, Plus, Edit2, Trash2, ListTree } from "lucide-react";
  * Sobrou o que só existe aqui e é usado de fato: o cadastro dos grupos.
  * Nenhuma tabela foi removida do banco; apenas a duplicidade saiu da tela.
  */
+/*
+ * Quantos trabalhadores o GES tem — NR-01, item 1.5.7.3.2 "e".
+ *
+ * Dois nomes de campo porque o recurso foi escrito duas vezes em paralelo:
+ * `quantidade_trabalhadores` e `trabalhadores`. O que já está gravado continua
+ * sendo lido; o que se grava daqui para a frente é `trabalhadores`, que é a
+ * coluna de sst_ges. Ler os dois evita que um cadastro feito ontem apareça
+ * vazio hoje.
+ */
+function nTrabalhadores(ges?: { trabalhadores?: number | null; quantidade_trabalhadores?: number | null } | null): number | null {
+  const v = ges?.trabalhadores ?? ges?.quantidade_trabalhadores;
+  return v === undefined || v === null ? null : Number(v);
+}
+
 export function GesExposicoesTab() {
   const {
     gesList, saveGes, deleteGes, funcoes, setores, gheFuncoes, gheSetores,
@@ -200,9 +214,25 @@ export function GesExposicoesTab() {
                     {funcoesDoGes(ges.id).length === 0 && (
                       <Badge variant="destructive" className="ml-1">Incompleto</Badge>
                     )}
-                    {ges.quantidade_trabalhadores != null && (
-                      <Badge variant="secondary" className="ml-1 font-normal text-slate-700 bg-slate-100">
-                        {ges.quantidade_trabalhadores} trabalhador(es) exposto(s)
+                    {/*
+                      O nº de trabalhadores aparece no cartão porque é exigência
+                      da NR-01 e some dentro do formulário: faltando, o PGR sai
+                      dizendo "não informado" e ninguém percebe antes de emitir.
+
+                      Lê os dois nomes de campo de propósito: o recurso foi
+                      escrito duas vezes em paralelo, uma gravando
+                      `quantidade_trabalhadores` e outra `trabalhadores`. O que
+                      já estiver gravado continua aparecendo; o que se grava
+                      daqui para a frente é `trabalhadores`.
+                    */}
+                    {nTrabalhadores(ges) != null ? (
+                      <Badge variant="secondary" className="gap-1">
+                        <Users className="w-3 h-3" aria-hidden />
+                        {nTrabalhadores(ges)} {nTrabalhadores(ges) === 1 ? "trabalhador" : "trabalhadores"}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-amber-700 border-amber-300">
+                        Sem nº de trabalhadores
                       </Badge>
                     )}
                   </div>
@@ -341,20 +371,38 @@ export function GesExposicoesTab() {
                 dar nome próprio a um grupo que reúne setores diferentes.
               </p>
             </div>
+            {/*
+              Trabalhadores expostos no grupo — NR-01, item 1.5.7.3.2 "e".
+
+              Sem este número o PGR saía com "Trabalhadores expostos: não
+              informado" no cabeçalho de TODOS os grupos. O item do inventário
+              tem um número parecido, mas ele é de outra coisa: quantos ficam
+              expostos ÀQUELE perigo, que pode ser parte do grupo.
+
+              Vazio continua sendo "não informado" — não vira zero. Zero
+              expostos é uma afirmação, e dizê-la a um fiscal sem saber é pior
+              do que não dizer nada.
+            */}
             <div>
-              <Label>Trabalhadores expostos</Label>
+              <Label htmlFor="ges-trabalhadores">Nº de trabalhadores expostos</Label>
               <Input
+                id="ges-trabalhadores"
                 type="number"
-                min="0"
-                value={gesFormData.quantidade_trabalhadores ?? ""}
+                min={0}
+                inputMode="numeric"
+                className="max-w-[160px]"
+                value={nTrabalhadores(gesFormData) ?? ""}
                 onChange={(e) => setGesFormData({
                   ...gesFormData,
-                  quantidade_trabalhadores: e.target.value === "" ? null : Number(e.target.value),
+                  trabalhadores: e.target.value === ""
+                    ? null
+                    : Math.max(0, Math.trunc(Number(e.target.value))),
                 })}
-                placeholder="Ex.: 8 (opcional)"
+                placeholder="Ex: 7"
               />
               <p className="text-xs text-slate-500 mt-1">
-                Total de pessoas expostas neste GES (NR-01, 1.5.7.3.2 "e").
+                Quantos trabalhadores pertencem a este grupo. Sai no cabeçalho do grupo
+                no PGR; em branco, o documento diz "não informado".
               </p>
             </div>
             {/*

@@ -16,14 +16,34 @@ import type { DadosDocumento } from "./gerarDocx";
  * ASO/RH ainda depende dela). O item aponta para uma, para a outra, ou para
  * as duas com o mesmo id. Lemos as duas e o Núcleo Mestre ganha.
  */
-async function codigosDeGes(empresaId: string): Promise<Record<string, string>> {
+interface DadosDoGes {
+  codigo: string;
+  /**
+   * Trabalhadores do grupo — NR-01, item 1.5.7.3.2 "e".
+   *
+   * Dois nomes de coluna porque o recurso foi escrito duas vezes em paralelo.
+   * Ler os dois evita que um cadastro feito por um dos caminhos saia vazio no
+   * documento. `null` é "não informado"; `0` é "ninguém exposto".
+   */
+  trabalhadores: number | null;
+}
+
+async function dadosDeGes(empresaId: string): Promise<Record<string, DadosDoGes>> {
   const [novo, legado] = await Promise.all([
-    (supabase.from as any)("sst_ges").select("id,codigo").eq("empresa_id", empresaId),
-    (supabase.from as any)("ghe_ges").select("id,codigo").eq("empresa_id", empresaId),
+    (supabase.from as any)("sst_ges").select("*").eq("empresa_id", empresaId),
+    (supabase.from as any)("ghe_ges").select("*").eq("empresa_id", empresaId),
   ]);
-  const mapa: Record<string, string> = {};
-  for (const g of legado.data || []) if (g?.id) mapa[g.id] = g.codigo || "";
-  for (const g of novo.data || []) if (g?.id) mapa[g.id] = g.codigo || "";
+  const mapa: Record<string, DadosDoGes> = {};
+  const guardar = (g: any) => {
+    if (!g?.id) return;
+    const n = g.trabalhadores ?? g.quantidade_trabalhadores;
+    mapa[g.id] = {
+      codigo: g.codigo || "",
+      trabalhadores: n === undefined || n === null ? null : Number(n),
+    };
+  };
+  for (const g of legado.data || []) guardar(g);
+  for (const g of novo.data || []) guardar(g);
   return mapa;
 }
 
@@ -52,14 +72,18 @@ export async function buscarFontesDoPgr(
       .select("descricao,created_at")
       .eq("pgr_id", pgrId)
       .order("created_at", { ascending: false }),
-    codigosDeGes(empresaId),
+    dadosDeGes(empresaId),
   ]);
 
   const itens = (inventario.data || []) as any[];
-  const comCodigo = itens.map((i) => ({
-    ...i,
-    ges_codigo: ges[i.ges_id] ?? ges[i.ghe_id] ?? "",
-  }));
+  const comCodigo = itens.map((i) => {
+    const g = ges[i.ges_id] ?? ges[i.ghe_id];
+    return {
+      ...i,
+      ges_codigo: g?.codigo ?? "",
+      ges_trabalhadores: g?.trabalhadores ?? null,
+    };
+  });
 
   /* Setor e GES da ação vêm do item de inventário ao qual ela está ligada —
      é o item que sabe onde o risco está, não a ação. */
