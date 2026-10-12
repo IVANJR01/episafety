@@ -311,7 +311,8 @@ export default function PgrChecklistTab({ pgr }: Props) {
       !(i.justificativa_severidade || "").trim() &&
       !(i.justificativa_probabilidade || "").trim() &&
       !(i.justificativa || "").trim() &&
-      !(i.tecnica_utilizada || "").trim(),
+      !(i.tecnica_utilizada || "").trim() &&
+      !(i.classificacao && i.severidade && i.probabilidade),
   );
   const naoAvaliados = inventario.filter((i) => !i.classificacao);
   const ergoSemAvaliacao = inventario.filter(
