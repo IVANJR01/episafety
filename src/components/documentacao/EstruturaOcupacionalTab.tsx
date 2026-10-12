@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,7 @@ import { caracteristicasAmbiente, ordenarPorCodigoGes } from "@/lib/sstEstrutura
 import { exportarFuncoes } from "@/lib/exportarFuncoes";
 import { GruposDoSetorDialog } from "./GruposDoSetorDialog";
 import { GesExposicoesTab } from "./GesExposicoesTab";
-import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle, Users, Download } from "lucide-react";
+import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle, Users, Download, Sparkles } from "lucide-react";
 
 /*
  * O que a coluna Tipo mostra.
@@ -234,6 +235,7 @@ interface EstruturaProps {
 }
 
 export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
+  const navigate = useNavigate();
   const {
     estabelecimentos,
     ambientes,
@@ -704,6 +706,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
       <Tabs value={secaoAtiva} onValueChange={(v) => setActiveSubTab(v as any)} className="w-full">
         {!only && !setorDetalheId && (
+          <div className="flex flex-col lg:flex-row lg:items-center gap-2">
           <TabsList className="grid grid-cols-2 sm:grid sm:grid-cols-4 lg:inline-flex lg:w-auto w-full bg-muted p-1 rounded-lg h-auto gap-1">
             <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-muted-foreground data-[state=active]:text-primary">
               <Building2 className="w-4 h-4" /> Estabelecimentos
@@ -733,6 +736,20 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               <Users className="w-4 h-4" /> GES
             </TabsTrigger>
           </TabsList>
+          {/*
+            Porta para a limpeza de repetidos. Ela precisa estar AQUI: é
+            olhando a lista de setores que se percebe o mesmo setor duas vezes,
+            e era daqui que não havia para onde ir.
+          */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="lg:ml-auto"
+            onClick={() => navigate("/cadastro/limpeza")}
+          >
+            <Sparkles className="w-4 h-4 mr-1.5" aria-hidden /> Limpar repetidos
+          </Button>
+          </div>
         )}
 
         {/* 1. ESTABELECIMENTOS */}

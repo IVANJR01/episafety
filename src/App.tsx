@@ -43,6 +43,7 @@ import Treinamentos from "@/pages/Treinamentos";
 
 import CadastroDashboard from "@/pages/CadastroDashboard";
 import EstruturaGhePage from "@/pages/cadastro/EstruturaGhePage";
+import LimpezaCadastros from "@/pages/cadastro/LimpezaCadastros";
 import CentralPPP from "@/pages/CentralPPP";
 import Backups from "@/pages/Backups";
 import VideoTreinamentos from "@/pages/VideoTreinamentos";
@@ -310,6 +311,7 @@ function ProtectedRoute() {
             não quebrar links já existentes (ex.: os do PCMSO). */}
         <Route path="/cadastro/ghe" element={<Navigate to="/documentacao-sst?aba=ges" replace />} />
         <Route path="/cadastro/ghe/:id/estrutura" element={<EstruturaGhePage />} />
+        <Route path="/cadastro/limpeza" element={<NetworkErrorBoundary><LimpezaCadastros /></NetworkErrorBoundary>} />
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
         <Route path="/dds" element={<DDS />} />
         <Route path="/inspecoes-se" element={<InspecoesSE />} />
