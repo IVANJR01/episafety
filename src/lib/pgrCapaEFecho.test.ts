@@ -75,7 +75,7 @@ describe("a legenda da matriz traz a faixa oficial", () => {
 describe("o fecho não se contradiz", () => {
   it("sem assinatura registrada, não afirma assinatura com hash e MFA", async () => {
     const tudo = (await paginas()).join(" | ");
-    expect(tudo).toContain("Nenhuma assinatura eletrônica registrada");
+    expect(tudo).toContain("Responsável técnico pela elaboração");
     expect(tudo, "diz que há assinatura com hash e, na linha seguinte, que não há")
       .not.toContain("hash SHA-256 e MFA verificado");
   }, 30_000);

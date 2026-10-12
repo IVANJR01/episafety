@@ -17,7 +17,6 @@ import {
 } from "@/lib/pgrTypes";
 
 import PgrDadosStep from "@/components/pgr/PgrDadosStep";
-import PgrResponsaveisStep from "@/components/pgr/PgrResponsaveisStep";
 import { EstruturaOcupacionalTab } from "@/components/documentacao/EstruturaOcupacionalTab";
 import ColetasCampoRevisao from "@/components/pgr/ColetasCampoRevisao";
 import InventarioTab from "@/components/pgr/InventarioTab";
@@ -350,10 +349,6 @@ function Assistente() {
               descricao="Pendências que impedem a publicação da versão.">
               <PgrPendenciasPainel pgrId={pgr.id} respTecNome={pgr.resp_tec_nome}
                 onIrParaEtapa={(e) => irPara(e as EtapaId)} />
-            </Secao>
-            <Secao titulo="Responsáveis e assinaturas"
-              descricao="A NR-01, no item 1.5.7.2, exige o documento datado e assinado.">
-              <PgrResponsaveisStep pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
             </Secao>
             <Secao titulo="Conferência normativa"
               descricao="Confere o documento item a item contra a NR-01.">

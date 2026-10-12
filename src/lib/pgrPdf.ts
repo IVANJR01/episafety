@@ -1017,9 +1017,8 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
    * elabora tecnicamente e a organização, que responde pelo programa.
    */
   if (ctx.assinaturas.length === 0) {
-    para(b, "Nenhuma assinatura eletrônica registrada até a geração deste PDF.");
     ensure(b, 34);
-    b.y += 10;
+    b.y += 6;
     const linhaAssinatura = (x: number, nome: string, papel: string) => {
       pdf.setDrawColor(120); pdf.setLineWidth(0.3);
       pdf.line(x, b.y, x + 78, b.y);
