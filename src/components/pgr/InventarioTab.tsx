@@ -5,11 +5,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash2, Search, AlertTriangle, ArrowDownToLine, Eye, EyeOff, Download, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, AlertTriangle, ArrowDownToLine, Eye, EyeOff, Download, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import InventarioItemDialog from "./InventarioItemDialog";
 import ImportarInventarioDialog from "./ImportarInventarioDialog";
-import { exportarInventarioXlsx } from "@/lib/exportarInventarioXlsx";
+import { dadosDoPgr } from "@/lib/documentos/buscarDados";
+import { gerarPlanilhaBlob, nomePlanilha } from "@/lib/documentos/gerarPlanilha";
 import {
   classificarRisco, classeLabel, CLASSE_LABEL, CLASSE_TEXT,
   CLASSES_ORDENADAS, GRUPO_LABEL, PgrClasse, corDoGrupo, corDaClasse,
@@ -72,12 +73,35 @@ export default function InventarioTab({
   const [editGroupIds, setEditGroupIds] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importarModalOpen, setImportarModalOpen] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const [delState, setDelState] = useState<{ ids: string[]; setores: string[] } | null>(null);
   const [preencher, setPreencher] = useState<Record<string, string> | null>(null);
   const [busyTrazer, setBusyTrazer] = useState(false);
   /** Qual perigo do levantamento o diálogo está trazendo — para fechar a
       pendência no vínculo depois que o item for criado. */
   const [trazendoDe, setTrazendoDe] = useState<string | null>(null);
+
+  const handleExportarOficial = async () => {
+    try {
+      setExportando(true);
+      toast.info("Gerando planilha oficial de SST (3 abas)...");
+      const dados = await dadosDoPgr(pgrId, empresaId);
+      const blob = await gerarPlanilhaBlob(dados);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nomePlanilha(dados);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Planilha oficial gerada com sucesso!");
+    } catch (err: any) {
+      toast.error("Erro ao gerar planilha: " + (err.message || err));
+    } finally {
+      setExportando(false);
+    }
+  };
 
   /**
    * Colunas de detalhe (limite de exposição, intensidade, técnica utilizada,
@@ -540,12 +564,13 @@ export default function InventarioTab({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => exportarInventarioXlsx(itens, `Inventario_Riscos_${pgrId.slice(0, 8)}`)}
-              disabled={itens.length === 0}
+              onClick={handleExportarOficial}
+              disabled={exportando}
               className="gap-1.5"
-              title="Exportar inventário completo para planilha Excel"
+              title="Exportar inventário de riscos e plano de ação na planilha oficial (3 abas)"
             >
-              <Download className="h-4 w-4" /> Exportar Excel
+              {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {exportando ? "Gerando..." : "Exportar Excel"}
             </Button>
 
             {editavel && (

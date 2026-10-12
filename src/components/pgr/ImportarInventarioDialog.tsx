@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Upload, FileSpreadsheet, Download, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
-import { gerarModeloInventarioXlsx } from "@/lib/exportarInventarioXlsx";
+import { gerarPlanilhaBlob } from "@/lib/documentos/gerarPlanilha";
+import { classificarRisco } from "@/lib/pgrMatriz";
 
 interface Props {
   open: boolean;
@@ -26,6 +27,7 @@ export default function ImportarInventarioDialog({
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [lendo, setLendo] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [baixandoModelo, setBaixandoModelo] = useState(false);
   const [linhasProcessadas, setLinhasProcessadas] = useState<any[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +40,27 @@ export default function ImportarInventarioDialog({
     setErro(null);
   };
 
+  const handleBaixarModelo = async () => {
+    try {
+      setBaixandoModelo(true);
+      toast.info("Gerando modelo oficial de planilha (3 abas)...");
+      const blob = await gerarPlanilhaBlob({});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Inventario_Modelo_Oficial.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Modelo oficial baixado com sucesso!");
+    } catch (err: any) {
+      toast.error("Erro ao gerar modelo: " + (err.message || err));
+    } finally {
+      setBaixandoModelo(false);
+    }
+  };
+
   const normalizarChave = (str: string) => {
     return str
       .toLowerCase()
@@ -46,24 +69,15 @@ export default function ImportarInventarioDialog({
       .replace(/[^a-z0-9]/g, "");
   };
 
-  const mapearGrupo = (val: string): string => {
+  const mapearGrupo = (val: string): "fisico" | "quimico" | "biologico" | "ergonomico" | "acidente" | "psicossocial" => {
     const s = normalizarChave(val || "");
     if (s.includes("fisic")) return "fisico";
     if (s.includes("quimic")) return "quimico";
     if (s.includes("biolog")) return "biologico";
     if (s.includes("ergonom")) return "ergonomico";
-    if (s.includes("acident") || s.includes("mecanic")) return "acidente";
     if (s.includes("psicossoc")) return "psicossocial";
+    if (s.includes("acident") || s.includes("mecanic")) return "acidente";
     return "acidente";
-  };
-
-  const calcularClasse = (p: number, s: number): string => {
-    const total = p * s;
-    if (total <= 3) return "trivial";
-    if (total <= 8) return "toleravel";
-    if (total <= 12) return "moderado";
-    if (total <= 15) return "substancial";
-    return "intoleravel";
   };
 
   const processarArquivo = async (file: File) => {
@@ -74,19 +88,40 @@ export default function ImportarInventarioDialog({
     try {
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer, { type: "array" });
-      const sheetName = wb.SheetNames[0];
+      
+      // Procura a aba de Inventário de Riscos ou usa a primeira
+      const sheetName = wb.SheetNames.find((n) => n.toUpperCase().includes("INVENT")) || wb.SheetNames[0];
       if (!sheetName) throw new Error("A planilha não possui páginas legíveis.");
 
       const ws = wb.Sheets[sheetName];
+
+      // Preenche células mescladas para que nenhuma linha filha fique vazia
+      if (ws["!merges"]) {
+        for (const merge of ws["!merges"]) {
+          const startCellAddress = XLSX.utils.encode_cell(merge.s);
+          const startCell = ws[startCellAddress];
+          if (startCell && startCell.v !== undefined) {
+            for (let r = merge.s.r; r <= merge.e.r; r++) {
+              for (let c = merge.s.c; c <= merge.e.c; c++) {
+                const addr = XLSX.utils.encode_cell({ r, c });
+                if (!ws[addr] || ws[addr].v === undefined || ws[addr].v === "") {
+                  ws[addr] = { ...startCell };
+                }
+              }
+            }
+          }
+        }
+      }
+
       const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
 
       if (rawRows.length < 2) {
         throw new Error("A planilha precisa ter um cabeçalho e pelo menos uma linha de dados.");
       }
 
-      // Procura linha do cabeçalho
+      // Procura a linha de cabeçalho principal
       let headerIdx = 0;
-      for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
+      for (let i = 0; i < Math.min(rawRows.length, 15); i++) {
         const rowStr = rawRows[i].map((c) => String(c).toLowerCase()).join(" ");
         if (rowStr.includes("perigo") || rowStr.includes("agente") || rowStr.includes("setor") || rowStr.includes("ges")) {
           headerIdx = i;
@@ -94,19 +129,50 @@ export default function ImportarInventarioDialog({
         }
       }
 
-      const headers = rawRows[headerIdx].map((h) => normalizarChave(String(h || "")));
-      const dataRows = rawRows.slice(headerIdx + 1);
+      // Verifica se a próxima linha é um sub-cabeçalho (como na planilha oficial: EPC, EPI, ATENUAÇÃO)
+      let dataStartIdx = headerIdx + 1;
+      let headers = rawRows[headerIdx].map((h) => normalizarChave(String(h || "")));
 
-      // Carrega os GES da empresa para tentar vincular por código ou nome
-      const { data: ghes = [] } = await (supabase.from as any)("ghe_ges")
-        .select("id, codigo, nome")
-        .eq("empresa_id", empresaId);
+      if (headerIdx + 1 < rawRows.length) {
+        const nextRowStr = rawRows[headerIdx + 1].map((c) => String(c).toLowerCase()).join(" ");
+        if (nextRowStr.includes("epc") || nextRowStr.includes("epi") || nextRowStr.includes("procedimento") || nextRowStr.includes("atenuacao")) {
+          // Combina o cabeçalho principal com o sub-cabeçalho
+          headers = headers.map((h, col) => {
+            const sub = normalizarChave(String(rawRows[headerIdx + 1][col] || ""));
+            return sub ? `${h}_${sub}` : h;
+          });
+          dataStartIdx = headerIdx + 2;
+        }
+      }
+
+      const dataRows = rawRows.slice(dataStartIdx);
+
+      // Carrega os GES da empresa para vincular por código ou nome (suporta sst_ges e ghe_ges)
+      const [ghesResp, sstGesResp] = await Promise.all([
+        (supabase.from as any)("ghe_ges").select("id, codigo, nome").eq("empresa_id", empresaId),
+        (supabase.from as any)("sst_ges").select("id, codigo, nome").eq("empresa_id", empresaId),
+      ]);
 
       const mapaGhe = new Map<string, string>();
-      (ghes || []).forEach((g: any) => {
-        if (g.codigo) mapaGhe.set(normalizarChave(g.codigo), g.id);
-        if (g.nome) mapaGhe.set(normalizarChave(g.nome), g.id);
-      });
+      const registrar = (id: string, codigo?: string | null, nome?: string | null) => {
+        if (!id) return;
+        if (codigo) {
+          const norm = normalizarChave(codigo);
+          mapaGhe.set(norm, id);
+          const semPref = norm.replace(/^(ges|ghe)/, "");
+          if (semPref) mapaGhe.set(semPref, id);
+          if (!norm.startsWith("ges") && !norm.startsWith("ghe")) {
+            mapaGhe.set("ges" + norm, id);
+            mapaGhe.set("ghe" + norm, id);
+          }
+        }
+        if (nome) {
+          mapaGhe.set(normalizarChave(nome), id);
+        }
+      };
+
+      (ghesResp.data || []).forEach((g: any) => registrar(g.id, g.codigo, g.nome));
+      (sstGesResp.data || []).forEach((g: any) => registrar(g.id, g.codigo, g.nome));
 
       const findCol = (termos: string[]) => {
         return headers.findIndex((h) => termos.some((t) => h.includes(t)));
@@ -124,9 +190,9 @@ export default function ImportarInventarioDialog({
       const cLesoes = findCol(["lesoes", "possiveislesoes", "danos", "agravos"]);
       const cLimite = findCol(["limite", "limitedeexposicao", "tolerancia"]);
       const cIntensidade = findCol(["intensidade", "concentracao", "medicao"]);
-      const cTempo = findCol(["tipo/tempo", "tempo", "exposicao", "tipodeexposicao"]);
+      const cTempo = findCol(["tempo", "exposicao", "tipodeexposicao"]);
       const cTecnica = findCol(["tecnica", "tecnicautilizada", "metodologia"]);
-      const cControles = findCol(["proc", "epc", "administrativo", "medidas", "controles"]);
+      const cControles = findCol(["epc", "procedimento", "administrativo", "medidas", "controles"]);
       const cEpi = findCol(["epi", "protecaoint"]);
       const cAtenuacao = findCol(["atenuacao", "fatordeprotecao"]);
       const cProb = findCol(["prob", "probabilidade", "p"]);
@@ -134,6 +200,13 @@ export default function ImportarInventarioDialog({
       const cExpostos = findCol(["trabalhadores", "expostos", "qtd"]);
 
       const itensParaSalvar: any[] = [];
+      const ant: Record<string, string> = {
+        ambiente: "",
+        setor: "",
+        ges: "",
+        funcao: "",
+        processo: "",
+      };
 
       for (const row of dataRows) {
         if (!row || row.every((c) => !c || String(c).trim() === "")) continue;
@@ -141,41 +214,68 @@ export default function ImportarInventarioDialog({
         const val = (idx: number) => (idx >= 0 && row[idx] != null ? String(row[idx]).trim() : "");
         const num = (idx: number, defVal: number) => {
           if (idx < 0) return defVal;
-          const parsed = Number(row[idx]);
+          const raw = String(row[idx] ?? "").replace(/[^0-9]/g, "");
+          const parsed = Number(raw);
           return !isNaN(parsed) && parsed >= 1 && parsed <= 5 ? parsed : defVal;
         };
 
-        const perigoDesc = val(cPerigo) || val(cTipoAgente) || "Perigo não especificado";
-        const grupo = mapearGrupo(val(cAgente));
+        // Herança de campos de grupo mesclados
+        let ambiente = val(cAmbiente);
+        let setor = val(cSetor);
+        let gesTexto = val(cGes);
+        let funcaoStr = val(cFuncao);
+        let processo = val(cProcesso);
+
+        if (!ambiente && ant.ambiente) ambiente = ant.ambiente;
+        if (!setor && ant.setor) setor = ant.setor;
+        if (!gesTexto && ant.ges) gesTexto = ant.ges;
+        if (!funcaoStr && ant.funcao) funcaoStr = ant.funcao;
+        if (!processo && ant.processo) processo = ant.processo;
+
+        const perigoDesc = val(cPerigo) || val(cTipoAgente);
+        const fonte = val(cFonte);
+        const lesoes = val(cLesoes);
+        const medidas = val(cControles);
+        const agente = val(cAgente);
+
+        // Se a linha não tiver dados de risco (ex: linha vazia, rodapé, legenda), pula
+        if (!perigoDesc && !fonte && !lesoes && !medidas && !agente) {
+          continue;
+        }
+
+        // Atualiza o anterior para a próxima linha
+        if (ambiente) ant.ambiente = ambiente;
+        if (setor) ant.setor = setor;
+        if (gesTexto) ant.ges = gesTexto;
+        if (funcaoStr) ant.funcao = funcaoStr;
+        if (processo) ant.processo = processo;
+
+        const grupo = mapearGrupo(agente);
         const P = num(cProb, 2);
         const S = num(cSev, 2);
         const nivel = P * S;
-        const classe = calcularClasse(P, S);
+        const classe = classificarRisco(S, P) || (nivel <= 3 ? "trivial" : nivel <= 8 ? "toleravel" : nivel <= 12 ? "moderado" : nivel <= 15 ? "substancial" : "intoleravel");
 
-        const gesTexto = val(cGes);
         const gheId = gesTexto ? mapaGhe.get(normalizarChave(gesTexto)) || null : null;
 
-        const funcoesStr = val(cFuncao);
-        const funcoesArr = funcoesStr ? funcoesStr.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean) : null;
-
-        const controlesStr = val(cControles);
-        const controlesArr = controlesStr ? controlesStr.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean) : null;
-
+        const funcoesArr = funcaoStr ? funcaoStr.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean) : null;
+        const controlesArr = medidas ? medidas.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean) : null;
         const qtdTrab = cExpostos >= 0 && !isNaN(Number(row[cExpostos])) ? Number(row[cExpostos]) : null;
 
         itensParaSalvar.push({
           pgr_id: pgrId,
           empresa_id: empresaId,
           ghe_id: gheId,
-          setor: val(cSetor) || null,
-          descricao_ambiente: val(cAmbiente) || null,
-          processo: val(cProcesso) || null,
+          ges_id: gheId,
+          setor: setor || null,
+          descricao_ambiente: ambiente || null,
+          processo: processo || null,
           funcoes_snapshot: funcoesArr,
           grupo,
           tipo_agente: val(cTipoAgente) || null,
-          perigo_descricao: perigoDesc,
-          fonte_geradora: val(cFonte) || null,
-          lesoes: val(cLesoes) || null,
+          perigo_descricao: perigoDesc || "Perigo não especificado",
+          fonte_geradora: fonte || null,
+          lesoes: lesoes || null,
           limite_tolerancia: val(cLimite) || null,
           intensidade: val(cIntensidade) || null,
           tempo_exposicao: val(cTempo) || "Intermitente",
@@ -243,20 +343,22 @@ export default function ImportarInventarioDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Caixa de download de modelo */}
+          {/* Caixa de download de modelo oficial com as 3 abas */}
           <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 text-xs">
             <div className="flex items-center gap-2">
               <Download className="h-4 w-4 text-slate-500" />
-              <span>Precisa do modelo padrão para preencher?</span>
+              <span>Precisa do modelo padrão oficial para preencher?</span>
             </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={gerarModeloInventarioXlsx}
+              onClick={handleBaixarModelo}
+              disabled={baixandoModelo}
               className="h-7 text-xs gap-1"
             >
-              Baixar Modelo Excel
+              {baixandoModelo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              {baixandoModelo ? "Gerando..." : "Baixar Modelo Oficial"}
             </Button>
           </div>
 
@@ -312,7 +414,7 @@ export default function ImportarInventarioDialog({
                 </Badge>
               </div>
 
-              {/* Prévia das primeiras 3 linhas */}
+              {/* Prévia das primeiras 5 linhas */}
               <div className="max-h-40 overflow-y-auto text-[11px] border rounded divide-y">
                 {linhasProcessadas.slice(0, 5).map((item, idx) => (
                   <div key={idx} className="p-2 flex items-center justify-between gap-2 hover:bg-slate-50">
