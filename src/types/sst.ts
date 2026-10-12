@@ -138,6 +138,7 @@ export interface SstGes {
   nome: string;
   descricao?: string | null;
   criterio_agrupamento?: string | null;
+  quantidade_trabalhadores?: number | null;
   validade_inicio: string;
   validade_fim?: string | null;
   responsavel_inspecao?: string | null;

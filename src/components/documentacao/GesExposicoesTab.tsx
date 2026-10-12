@@ -200,6 +200,11 @@ export function GesExposicoesTab() {
                     {funcoesDoGes(ges.id).length === 0 && (
                       <Badge variant="destructive" className="ml-1">Incompleto</Badge>
                     )}
+                    {ges.quantidade_trabalhadores != null && (
+                      <Badge variant="secondary" className="ml-1 font-normal text-slate-700 bg-slate-100">
+                        {ges.quantidade_trabalhadores} trabalhador(es) exposto(s)
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex shrink-0">
                     {/* Funções, riscos e EPIs deste GES. Essa tela era acessível
@@ -334,6 +339,22 @@ export function GesExposicoesTab() {
               <p className="text-xs text-slate-500 mt-1">
                 Em branco, o grupo se chama pelo setor das funções. Preencha só para
                 dar nome próprio a um grupo que reúne setores diferentes.
+              </p>
+            </div>
+            <div>
+              <Label>Trabalhadores expostos</Label>
+              <Input
+                type="number"
+                min="0"
+                value={gesFormData.quantidade_trabalhadores ?? ""}
+                onChange={(e) => setGesFormData({
+                  ...gesFormData,
+                  quantidade_trabalhadores: e.target.value === "" ? null : Number(e.target.value),
+                })}
+                placeholder="Ex.: 8 (opcional)"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Total de pessoas expostas neste GES (NR-01, 1.5.7.3.2 "e").
               </p>
             </div>
             {/*

@@ -56,6 +56,7 @@ const portalRhItems: NavItem[] = [
 
 // Gestão Documental SST
 const gestaoDocItems: NavItem[] = [
+  { path: "/sst-express", label: "Gerador Express", icon: FileText, moduleKey: "pgr" },
   { path: "/documentacao-sst", label: "Documentação SST", icon: BookOpen, moduleKey: "pgr" },
   { path: "/arquivo-digital", label: "Dossiê do Colaborador", icon: FolderOpen, moduleKey: "arquivo_digital" },
 ];

@@ -98,6 +98,7 @@ import LaudoPericulosidade from "@/pages/programas/LaudoPericulosidade";
 
 import DocumentacaoSst from "@/pages/DocumentacaoSst";
 import ArquivoDigitalModule from "@/pages/arquivo-digital/ArquivoDigitalModule";
+import SstExpressDashboard from "@/pages/sst-express/SstExpressDashboard";
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
 import AdminLayout from "@/components/AdminLayout";
@@ -279,6 +280,7 @@ function ProtectedRoute() {
       <MfaGate>
       <Routes>
         <Route path="/" element={<NetworkErrorBoundary><DashboardGuard /></NetworkErrorBoundary>} />
+        <Route path="/sst-express" element={<NetworkErrorBoundary><SstExpressDashboard /></NetworkErrorBoundary>} />
         <Route path="/documentacao-sst" element={<NetworkErrorBoundary><DocumentacaoSst /></NetworkErrorBoundary>} />
         <Route path="/epis" element={<NetworkErrorBoundary><EPIs /></NetworkErrorBoundary>} />
         <Route path="/epis/controle-contrato" element={<NetworkErrorBoundary><ControleEstoqueContrato /></NetworkErrorBoundary>} />

@@ -5,9 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash2, Search, AlertTriangle, ArrowDownToLine, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, AlertTriangle, ArrowDownToLine, Eye, EyeOff, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import InventarioItemDialog from "./InventarioItemDialog";
+import ImportarInventarioDialog from "./ImportarInventarioDialog";
+import { exportarInventarioXlsx } from "@/lib/exportarInventarioXlsx";
 import {
   classificarRisco, classeLabel, CLASSE_LABEL, CLASSE_TEXT,
   CLASSES_ORDENADAS, GRUPO_LABEL, PgrClasse, corDoGrupo, corDaClasse,
@@ -69,6 +71,7 @@ export default function InventarioTab({
   const [editId, setEditId] = useState<string | null>(null);
   const [editGroupIds, setEditGroupIds] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importarModalOpen, setImportarModalOpen] = useState(false);
   const [delState, setDelState] = useState<{ ids: string[]; setores: string[] } | null>(null);
   const [preencher, setPreencher] = useState<Record<string, string> | null>(null);
   const [busyTrazer, setBusyTrazer] = useState(false);
@@ -533,18 +536,35 @@ export default function InventarioTab({
                 Requer ação: {stats.acao}
               </button>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportarInventarioXlsx(itens, `Inventario_Riscos_${pgrId.slice(0, 8)}`)}
+              disabled={itens.length === 0}
+              className="gap-1.5"
+              title="Exportar inventário completo para planilha Excel"
+            >
+              <Download className="h-4 w-4" /> Exportar Excel
+            </Button>
+
             {editavel && (
-              /* "Importar GES" saiu: criava linhas a partir dos setores com
-                 ambiente, processo e funções preenchidos — exatamente o que
-                 "Novo item" passou a fazer sozinho ao escolher o GES. Eram
-                 dois caminhos para a mesma linha, e o de importação ainda
-                 pedia para escolher o grupo de novo, no fim. */
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setImportarModalOpen(true)}
+                className="gap-1.5 border-amber-300 hover:bg-amber-50 text-amber-900"
+                title="Importar riscos de planilha Excel (.xlsx, .xlsm, .csv)"
+              >
+                <Upload className="h-4 w-4 text-amber-700" /> Importar Planilha
+              </Button>
+            )}
+
+            {editavel && (
               <Button size="sm" onClick={() => { setEditId(null); setPreencher(null); setDialogOpen(true); }}>
                 <Plus className="h-4 w-4 mr-1" /> Novo item
               </Button>
             )}
-
           </div>
         </CardContent>
       </Card>
@@ -847,6 +867,14 @@ export default function InventarioTab({
         pgrId={pgrId} empresaId={empresaId} itemId={editId} valoresIniciais={preencher}
         groupItemIds={editGroupIds} levantamentoId={trazendoDe}
         onSaved={onSaved}
+      />
+
+      <ImportarInventarioDialog
+        open={importarModalOpen}
+        onOpenChange={setImportarModalOpen}
+        pgrId={pgrId}
+        empresaId={empresaId}
+        onImported={onSaved}
       />
 
       <AlertDialog open={!!delState} onOpenChange={(o) => { if (!o) setDelState(null); }}>

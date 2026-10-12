@@ -449,6 +449,7 @@ export function useNucleoMestreSst() {
           codigo: g.codigo || `GES-${Math.floor(100 + Math.random() * 900)}`,
           nome: g.nome || "Novo GES",
           descricao: g.criterio_agrupamento || g.descricao || null,
+          quantidade_trabalhadores: g.quantidade_trabalhadores ?? null,
           status: "ativo",
         }),
         // Sempre espelha em ghe_ges: o módulo ASO/RH (funcionarios.ghe_id -> ghe_ges)

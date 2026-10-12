@@ -197,6 +197,7 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     });
     const gesDetalhes = (gesCru as any[]).map((g: any) => ({
       ...g,
+      qtd_trabalhadores: g.quantidade_trabalhadores ?? g.qtd_trabalhadores ?? null,
       // O nome sai do setor quando o grupo não tem nome próprio. Sem isto o
       // documento lista "01", "02", "03" — o mesmo número da coluna ao lado.
       nome: nomeDoGrupo({
