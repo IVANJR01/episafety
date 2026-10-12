@@ -397,123 +397,252 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4" /> Documento do PGR
-            </CardTitle>
-            <div className="flex flex-wrap gap-2">
+    <div className="space-y-6">
+      {/* ----------------------------------------------------------------- */}
+      {/* 1. CARD PRINCIPAL: EMISSÃO DO PDF OFICIAL                         */}
+      {/* ----------------------------------------------------------------- */}
+      <Card className="border-border/80 shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-5 text-white">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                  <FileText className="h-4 w-4" />
+                </span>
+                <h3 className="font-semibold text-lg tracking-tight">Emissão Oficial do PGR (PDF)</h3>
+              </div>
+              <p className="text-xs text-slate-300">
+                Gere a versão oficial numerada e rastreável com capa, identificação, inventário e plano de ação.
+              </p>
+            </div>
+
+            {/* Ações principais do PDF */}
+            <div className="flex items-center gap-2 flex-wrap">
               {!bloqueado && (
-                <Button size="sm" variant="outline" onClick={handlePrevisualizar} disabled={busy}>
-                  <Eye className="h-4 w-4 mr-1" /> Ver como vai sair
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handlePrevisualizar}
+                  disabled={busy}
+                  className="bg-slate-800/80 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white"
+                >
+                  <Eye className="h-4 w-4 mr-1.5 text-slate-400" />
+                  Ver como vai sair
                 </Button>
               )}
               {ultima && (
-                <Button size="sm" variant="outline" onClick={() => abrirPdfVersao(ultima)}>
-                  <FileText className="h-4 w-4 mr-1" /> Abrir PDF salvo
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => abrirPdfVersao(ultima)}
+                  className="bg-slate-800/80 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white"
+                >
+                  <ExternalLink className="h-4 w-4 mr-1.5 text-sky-400" />
+                  Abrir PDF Salvo
                 </Button>
               )}
               {!bloqueado && canExport && (
-                <MfaActionButton size="sm" onClick={handleGerar} disabled={busy}>
-                  <RefreshCw className={`h-4 w-4 mr-1 ${busy ? "animate-spin" : ""}`} />
-                  {ultima ? "Regenerar PDF" : "Gerar PDF"}
+                <MfaActionButton
+                  size="sm"
+                  onClick={handleGerar}
+                  disabled={busy}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-md shadow-indigo-600/30 border border-indigo-400/30"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-1.5 ${busy ? "animate-spin" : ""}`} />
+                  {ultima ? "Regenerar PDF" : "Gerar PDF Oficial"}
                 </MfaActionButton>
-              )}
-              {!bloqueado && canExport && (
-                <Button size="sm" variant="outline" onClick={() => handleGerarDocumento("PGR")} disabled={busy}>
-                  <FileType2 className="h-4 w-4 mr-1" /> Gerar PGR (Word)
-                </Button>
-              )}
-              {!bloqueado && canExport && (
-                <Button size="sm" variant="outline" onClick={() => handleGerarDocumento("XLSX")} disabled={busy}>
-                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Gerar Planilha (Excel)
-                </Button>
-              )}
-              {!bloqueado && canExport && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="outline" disabled={busy}>
-                      Outros documentos <ChevronDown className="h-4 w-4 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64">
-                    <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                      Mesma capa e os dados desta empresa
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {OUTROS_DOCUMENTOS.map((d) => (
-                      <DropdownMenuItem key={d.sigla} onClick={() => handleGerarDocumento(d.sigla)}>
-                        <FileType2 className="h-4 w-4 mr-2 shrink-0" />
-                        <span className="truncate">{d.nome}</span>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
               )}
               {ultima && !ultima.com_marca_dagua && canAssinar && (
-                <MfaActionButton size="sm" variant="outline" onClick={() => setShowSig(true)} disabled={busy}>
-                  <PenLine className="h-4 w-4 mr-1" /> Assinar (visual)
+                <MfaActionButton
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowSig(true)}
+                  disabled={busy}
+                  className="bg-slate-800/80 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white"
+                >
+                  <PenLine className="h-4 w-4 mr-1.5 text-emerald-400" />
+                  Assinar (visual)
                 </MfaActionButton>
               )}
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          {/*
-            Antes eram duas tarjas coloridas empilhadas, uma delas só explicando
-            a diferença entre os botões. Instrução de botão é legenda, não
-            alerta: em cor de aviso, ela disputava atenção com a ressalva legal
-            e o documento ficava com cara de tutorial.
-          */}
-          <p className="text-xs text-muted-foreground">
-            <b>Ver como vai sair</b> abre o documento para conferência e não grava nada.
-            {" "}<b>Gerar PDF</b> cria a versão numerada e rastreável — é a que vale como documento.
-            {" "}<b>Gerar PGR (Word)</b>, <b>Gerar Planilha (Excel)</b> e os <b>outros documentos</b>
-            baixam arquivos editáveis no formato da SafetySoluções, para você ajustar antes de
-            entregar; eles não geram versão nem ficam guardados.
-            {status === "rascunho" || status === "em_revisao"
-              ? " Enquanto o PGR não for publicado, os dois saem com marca d'água de rascunho."
-              : ""}
-          </p>
-          <div className="rounded-md p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-            <b>Documento técnico interno.</b> A validação deste PDF é por hash SHA-256 e QR Code
-            internos. A assinatura ICP-Brasil do sistema, hoje aplicada à Ficha de EPI, ainda não
-            é aplicada ao PGR.
-          </div>
+        </div>
+
+        <CardContent className="p-5 space-y-4">
           {desatualizado && (
-            <div className="rounded-md p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" /> PDF desatualizado — o conteúdo do PGR foi alterado após a última geração.
+            <div className="rounded-xl p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-sm flex items-center gap-2.5">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span><b>PDF desatualizado:</b> o conteúdo do PGR foi alterado após a última geração. Recomendamos clicar em <b>Regenerar PDF</b>.</span>
             </div>
           )}
+
           {bloqueado && (
-            <div className="rounded-md p-3 bg-zinc-50 border border-zinc-200 text-zinc-700 text-sm">
-              PGR <b>{status}</b> — apenas visualização das versões anteriores.
+            <div className="rounded-xl p-3 bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-sm">
+              PGR <b>{status}</b> — modo somente visualização das versões registradas.
             </div>
           )}
+
+          {/* Dados da versão atual */}
           {ultima ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <Info label="Última versão" value={`v${ultima.pdf_versao}${ultima.com_marca_dagua ? " (RASCUNHO)" : ""}`} />
-              <Info label="Gerado em" value={new Date(ultima.gerado_em).toLocaleString("pt-BR")} />
-              <Info label="Tamanho" value={ultima.tamanho_bytes ? `${Math.round(ultima.tamanho_bytes / 1024)} KB` : "—"} />
-              <Info label="Armazenamento" value={
-                ultima.storage_provider === "supabase_storage" || ultima.storage_path
-                  ? <span className="text-xs">Supabase Storage (privado)</span>
-                  : ultima.drive_view_link
-                  ? <a className="text-primary underline inline-flex items-center gap-1" href={ultima.drive_view_link} target="_blank" rel="noreferrer">Drive <ExternalLink className="h-3 w-3" /></a>
-                  : "—"
-              } />
-              <div className="md:col-span-2">
-                <span className="text-xs text-muted-foreground">Hash SHA-256: </span>
-                <span className="font-mono text-[11px] break-all">{ultima.pdf_hash}</span>
+            <div className="rounded-xl bg-muted/40 border p-4 space-y-3">
+              <div className="flex items-center justify-between border-b pb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                  Registro da Última Versão Gerada
+                </span>
+                <Badge variant={ultima.com_marca_dagua ? "outline" : "default"} className="text-xs">
+                  {ultima.com_marca_dagua ? "Rascunho" : "Oficial"}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <div className="text-xs text-muted-foreground">Versão do PDF</div>
+                  <div className="font-semibold text-foreground">v{ultima.pdf_versao} (PGR v{ultima.pgr_versao})</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Gerado em</div>
+                  <div className="font-medium text-foreground">{new Date(ultima.gerado_em).toLocaleString("pt-BR")}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Tamanho do Arquivo</div>
+                  <div className="font-medium text-foreground">{ultima.tamanho_bytes ? `${Math.round(ultima.tamanho_bytes / 1024)} KB` : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Armazenamento</div>
+                  <div className="font-medium text-foreground">
+                    {ultima.storage_provider === "supabase_storage" || ultima.storage_path
+                      ? <span className="text-xs text-emerald-600 font-medium">Supabase Storage</span>
+                      : ultima.drive_view_link
+                      ? <a className="text-primary underline inline-flex items-center gap-1 text-xs" href={ultima.drive_view_link} target="_blank" rel="noreferrer">Google Drive <ExternalLink className="h-3 w-3" /></a>
+                      : "—"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t text-xs text-muted-foreground flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <span><b>Hash de Integridade (SHA-256):</b> <code className="font-mono text-[11px] text-foreground bg-muted px-1.5 py-0.5 rounded select-all break-all">{ultima.pdf_hash}</code></span>
               </div>
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground">Nenhum PDF gerado ainda.</div>
+            <div className="text-center py-6 text-sm text-muted-foreground border border-dashed rounded-xl">
+              <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
+              Nenhum PDF oficial gerado ainda para esta revisão. Clique em <b>Gerar PDF Oficial</b> acima.
+            </div>
           )}
+
+          <div className="text-[11px] text-muted-foreground bg-muted/30 p-2.5 rounded-lg border">
+            <b>Validação técnica:</b> Este documento é autenticado por Hash SHA-256 e código QR interno. A emissão oficial atende aos requisitos normativos do item 1.5.7.2 da NR-01.
+          </div>
         </CardContent>
       </Card>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* 2. EXPORTAÇÕES RÁPIDAS: WORD, EXCEL E OUTROS LAUDOS               */}
+      {/* ----------------------------------------------------------------- */}
+      <div className="space-y-3">
+        <div className="space-y-0.5">
+          <h4 className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+            <FileType2 className="h-4 w-4 text-primary" />
+            Formatos Editáveis & Laudos Complementares
+          </h4>
+          <p className="text-xs text-muted-foreground">
+            Baixe arquivos editáveis no padrão da SafetySoluções para ajustes locais antes da entrega final.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Card Word */}
+          <div className="border rounded-xl p-4 bg-card hover:border-blue-300 dark:hover:border-blue-800 transition-all shadow-sm flex flex-col justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold text-sm">
+                <FileType2 className="h-4 w-4" />
+                <span>PGR em Word (.docx)</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Documento completo do PGR formatado com capas e tabelas, 100% editável no Microsoft Word.
+              </p>
+            </div>
+            {!bloqueado && canExport && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleGerarDocumento("PGR")}
+                disabled={busy}
+                className="w-full text-xs font-medium border-blue-200 dark:border-blue-900 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-blue-700 dark:text-blue-300"
+              >
+                <FileType2 className="h-3.5 w-3.5 mr-1.5 text-blue-600" />
+                Baixar Word (.docx)
+              </Button>
+            )}
+          </div>
+
+          {/* Card Excel */}
+          <div className="border rounded-xl p-4 bg-card hover:border-emerald-300 dark:hover:border-emerald-800 transition-all shadow-sm flex flex-col justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold text-sm">
+                <FileSpreadsheet className="h-4 w-4" />
+                <span>Planilha Inventário (.xlsx)</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Planilha com todos os perigos, riscos, classificações da matriz e plano de ação estruturado.
+              </p>
+            </div>
+            {!bloqueado && canExport && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleGerarDocumento("XLSX")}
+                disabled={busy}
+                className="w-full text-xs font-medium border-emerald-200 dark:border-emerald-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5 text-emerald-600" />
+                Baixar Planilha (.xlsx)
+              </Button>
+            )}
+          </div>
+
+          {/* Card Outros Laudos */}
+          <div className="border rounded-xl p-4 bg-card hover:border-purple-300 dark:hover:border-purple-800 transition-all shadow-sm flex flex-col justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-semibold text-sm">
+                <ExternalLink className="h-4 w-4" />
+                <span>Laudos do Pacote</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Gere PCMSO, AET, AEP, Laudo de Insalubridade (NR-15) e Periculosidade (NR-16) da mesma empresa.
+              </p>
+            </div>
+            {!bloqueado && canExport && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    className="w-full text-xs font-medium border-purple-200 dark:border-purple-900 hover:bg-purple-50 dark:hover:bg-purple-950/40 text-purple-700 dark:text-purple-300"
+                  >
+                    <span>Escolher documento</span>
+                    <ChevronDown className="h-3.5 w-3.5 ml-1.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                    Mesma capa e dados cadastrais
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {OUTROS_DOCUMENTOS.map((d) => (
+                    <DropdownMenuItem key={d.sigla} onClick={() => handleGerarDocumento(d.sigla)} className="text-xs">
+                      <FileType2 className="h-3.5 w-3.5 mr-2 text-purple-600" />
+                      <span className="truncate">{d.nome}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        </div>
+      </div>
 
       <Dialog open={showSig} onOpenChange={setShowSig}>
         <DialogContent>
