@@ -7,14 +7,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  FileText, ShieldCheck, BookOpen, History,
+  FileText, ShieldCheck, History,
   Sparkles, CheckCircle2, AlertTriangle, Layers, ListChecks,
   Building2, UserCheck, Clock, FileDown, Check
 } from "lucide-react";
 import PgrPdfTab from "./PgrPdfTab";
 import PgrPendenciasPainel, { usePgrPendencias } from "./PgrPendenciasPainel";
 import PgrChecklistTab from "./PgrChecklistTab";
-import TextosTab from "./TextosTab";
 import HistoricoRevisoes from "./HistoricoRevisoes";
 
 interface Props {
@@ -194,10 +193,10 @@ export default function PgrEmissaoDashboard({
       {/* TABS DE NAVEGAÇÃO LIMPA E ORGANIZADA                                      */}
       {/* ========================================================================= */}
       <Tabs value={tabAtiva} onValueChange={setTabAtiva} className="w-full space-y-6">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 p-1.5 bg-muted/80 backdrop-blur-sm rounded-xl border border-border/60 h-auto gap-1">
+        <TabsList className="grid grid-cols-1 sm:grid-cols-3 p-1.5 bg-muted/80 backdrop-blur-sm rounded-xl border border-border/60 h-auto gap-1">
           <TabsTrigger
             value="emissao"
-            className="flex items-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:font-semibold rounded-lg text-xs md:text-sm"
+            className="flex items-center justify-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:font-semibold rounded-lg text-xs md:text-sm"
           >
             <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             <span>1. Documento Oficial</span>
@@ -205,7 +204,7 @@ export default function PgrEmissaoDashboard({
 
           <TabsTrigger
             value="validacao"
-            className="flex items-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:font-semibold rounded-lg text-xs md:text-sm"
+            className="flex items-center justify-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:font-semibold rounded-lg text-xs md:text-sm"
           >
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>2. Checklist NR-01</span>
@@ -217,19 +216,11 @@ export default function PgrEmissaoDashboard({
           </TabsTrigger>
 
           <TabsTrigger
-            value="textos"
-            className="flex items-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:font-semibold rounded-lg text-xs md:text-sm"
-          >
-            <BookOpen className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-            <span>3. Textos Institucionais</span>
-          </TabsTrigger>
-
-          <TabsTrigger
             value="historico"
-            className="flex items-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:font-semibold rounded-lg text-xs md:text-sm"
+            className="flex items-center justify-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:font-semibold rounded-lg text-xs md:text-sm"
           >
             <History className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            <span>4. Histórico (20 anos)</span>
+            <span>3. Histórico (20 anos)</span>
           </TabsTrigger>
         </TabsList>
 
@@ -268,19 +259,6 @@ export default function PgrEmissaoDashboard({
             </p>
             <PgrChecklistTab pgr={pgr} />
           </div>
-        </TabsContent>
-
-        {/* --------------------------------------------------------------------- */}
-        {/* ABA 3: TEXTOS INSTITUCIONAIS                                          */}
-        {/* --------------------------------------------------------------------- */}
-        <TabsContent value="textos" className="space-y-4 focus-visible:outline-none">
-          <div className="space-y-1">
-            <h2 className="text-lg font-semibold tracking-tight">Textos do documento</h2>
-            <p className="text-sm text-muted-foreground">
-              Campos institucionais opcionais (introdução, objetivos, metodologia). A NR-01 não os exige, e só saem no documento se forem preenchidos.
-            </p>
-          </div>
-          <TextosTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={canEdit} />
         </TabsContent>
 
         {/* --------------------------------------------------------------------- */}

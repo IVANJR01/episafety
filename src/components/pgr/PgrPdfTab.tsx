@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { FileText, Download, RefreshCw, PenLine, ExternalLink, AlertTriangle, ShieldCheck, Eye } from "lucide-react";
 import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
-import { FileType2, FileSpreadsheet, ChevronDown } from "lucide-react";
+import { FileType2, ChevronDown } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -551,7 +551,7 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Card Word */}
           <div className="border rounded-xl p-4 bg-card hover:border-blue-300 dark:hover:border-blue-800 transition-all shadow-sm flex flex-col justify-between gap-3">
             <div className="space-y-1">
@@ -573,31 +573,6 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
               >
                 <FileType2 className="h-3.5 w-3.5 mr-1.5 text-blue-600" />
                 Baixar Word (.docx)
-              </Button>
-            )}
-          </div>
-
-          {/* Card Excel */}
-          <div className="border rounded-xl p-4 bg-card hover:border-emerald-300 dark:hover:border-emerald-800 transition-all shadow-sm flex flex-col justify-between gap-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold text-sm">
-                <FileSpreadsheet className="h-4 w-4" />
-                <span>Planilha Inventário (.xlsx)</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Planilha com todos os perigos, riscos, classificações da matriz e plano de ação estruturado.
-              </p>
-            </div>
-            {!bloqueado && canExport && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleGerarDocumento("XLSX")}
-                disabled={busy}
-                className="w-full text-xs font-medium border-emerald-200 dark:border-emerald-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-              >
-                <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5 text-emerald-600" />
-                Baixar Planilha (.xlsx)
               </Button>
             )}
           </div>
