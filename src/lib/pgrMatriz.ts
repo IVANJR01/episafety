@@ -176,6 +176,52 @@ export function classificarRisco(
   return "intoleravel";
 }
 
+/**
+ * A FAIXA DE NÍVEL de cada classe, para escrever na legenda da matriz.
+ *
+ * Não dá para deduzir a faixa dos produtos que a matriz 5x5 produz: entre 13 e
+ * 15 o único produto possível é 15, e a legenda saía "15 a 15" em vez da faixa
+ * oficial "13 a 15" da escala. A faixa é a regra, não a amostra.
+ *
+ * `faixasConferem()` prova que estes limites e `classificarRisco` dizem a
+ * mesma coisa para todo nível de 1 a 25 — se um mudar sem o outro, o teste cai.
+ */
+export const CLASSE_FAIXA: Record<PgrClasse, [number, number]> = {
+  trivial: [1, 3],
+  toleravel: [4, 8],
+  moderado: [9, 12],
+  substancial: [13, 15],
+  intoleravel: [16, 25],
+};
+
+/**
+ * As faixas escritas e a regra que classifica dizem a mesma coisa?
+ *
+ * Duas conferências. A primeira: todo par P×S da matriz cai dentro da faixa da
+ * classe que `classificarRisco` devolve. A segunda: as faixas cobrem 1 a 25
+ * inteiro, uma começando onde a outra termina — sem buraco e sem sobreposição.
+ * A segunda importa porque 13 e 14 não são produto de dois números de 1 a 5, e
+ * sem ela ninguém perceberia se o Substancial começasse em 15.
+ */
+export function faixasConferem(): boolean {
+  for (let sev = 1; sev <= 5; sev++) {
+    for (let prob = 1; prob <= 5; prob++) {
+      const classe = classificarRisco(sev, prob);
+      if (!classe) return false;
+      const [de, ate] = CLASSE_FAIXA[classe];
+      const n = sev * prob;
+      if (n < de || n > ate) return false;
+    }
+  }
+  let esperado = 1;
+  for (const c of CLASSES_ORDENADAS) {
+    const [de, ate] = CLASSE_FAIXA[c];
+    if (de !== esperado || ate < de) return false;
+    esperado = ate + 1;
+  }
+  return esperado === 26;
+}
+
 /** Espelha necessita_acao do trigger pgr_child_guard: moderado e acima. */
 export function necessitaAcao(classe: PgrClasse | null | undefined) {
   return (

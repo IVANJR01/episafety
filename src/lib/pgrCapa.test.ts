@@ -134,46 +134,42 @@ describe("capa do PGR — a capa Simples com moldura do pacote", () => {
     expect(await capa()).toContain("Vigência: 01/07/2026 a 30/06/2028");
   });
 
-  it("tem as cinco linhas da tabela de identificação", async () => {
-    const t = await capa();
-    ["Empresa", "CNPJ", "Endereço", "Responsável Técnico", "Revisão / Data"].forEach((r) =>
-      expect(t, `faltou a linha ${r}`).toContain(r));
-    expect(t).toContain("LEONARDO A. DE ARAUJO LTDA");
-    expect(t).toContain("51.213.683/0001-04");
-  });
-
-  it("mantém as cinco linhas mesmo com os dados faltando", async () => {
+  it("não repete a identificação da empresa na capa", async () => {
     /*
-     * A tabela da capa do Word tem sempre as mesmas cinco linhas. Esconder
-     * uma mudaria o desenho da capa de uma empresa para outra — e o que
-     * falta já aparece nas pendências, antes de publicar.
+     * A capa trazia uma tabela com Empresa, CNPJ, Endereço, Responsável
+     * Técnico e Revisão / Data. Tudo isso já está no corpo do documento — a
+     * identificação completa no item 2, a revisão no item 1 —, e na capa só
+     * deixava a folha poluída. Estes rótulos não voltam.
      */
-    const t = await capa({
-      doc: {
-        id: "x", versao: 1, status: "rascunho", data_emissao: "2026-07-01",
-        data_vigencia_inicio: null, data_vigencia_fim: null,
-        resp_tec_nome: null, resp_tec_registro: null,
-      },
-    } as never);
-    ["Empresa", "CNPJ", "Endereço", "Responsável Técnico", "Revisão / Data"].forEach((r) =>
-      expect(t, `faltou a linha ${r}`).toContain(r));
+    const t = (await capa()).join(" | ");
+    ["CNPJ", "Responsável Técnico", "Revisão / Data", "51.213.683/0001-04"].forEach((r) =>
+      expect(t, `"${r}" voltou para a capa`).not.toContain(r));
   });
 
-  it("traz o número de revisão e a situação do documento", async () => {
-    const t = await capa();
-    expect(t).toContain("REV. 00");
-    /* Não existem no Word, mas o PDF é versionado e a versão tem de sair. */
-    expect(t.some((x) => x.includes("PDF v1"))).toBe(true);
+  it("não traz o bloco de revisão e versões no alto", async () => {
+    /*
+     * "REV. 00" e "PGR v1 · PDF v1 · Rascunho" ficavam no canto superior
+     * direito. A revisão está no item 1 e as versões no bloco de validação da
+     * última página; a situação de rascunho a marca d'água já grita.
+     */
+    const t = (await capa()).join(" | ");
+    expect(t, "o bloco de revisão voltou para a capa").not.toContain("REV.");
+    expect(t, "o bloco de versões voltou para a capa").not.toContain("PDF v");
   });
 
-  it("fecha a capa com a identificação da empresa, e nada mais", async () => {
-    /* QR, hash e numeração são aparato do sistema e moram no miolo. */
+  it("a capa continua dizendo que documento é", async () => {
+    const t = (await capa()).join(" | ");
+    expect(t).toContain("PGR");
+    expect(t).toContain("Programa de Gerenciamento de Riscos");
+    expect(t).toContain("NR-01");
+  });
+
+  it("fecha a capa sem o aparato do sistema", async () => {
+    /* QR, hash e numeração moram no miolo e na última página. */
     const t = await capa();
-    expect(t).toContain("LEONARDO A. DE ARAUJO LTDA");
     expect(t.some((x) => x.includes("QR Code de validação"))).toBe(false);
     expect(t.some((x) => x.includes("Assinatura ICP-Brasil"))).toBe(false);
     expect(t.some((x) => x.includes("Página 1"))).toBe(false);
-    expect(t.some((x) => x.includes("3M CURSOS"))).toBe(false);
   });
 
   it("o cabeçalho e o rodapé do miolo são os do Word", async () => {
@@ -206,11 +202,17 @@ describe("capa do PGR — a capa Simples com moldura do pacote", () => {
   });
 
   it("não estoura com nome de empresa muito longo", async () => {
+    /*
+     * O nome não sai mais na capa, mas sai no cabeçalho de todas as páginas
+     * do miolo, e é lá que um nome comprido pode passar da margem.
+     */
     const nome = "COMPANHIA BRASILEIRA DE SERVICOS INTEGRADOS DE ENGENHARIA E MANUTENCAO INDUSTRIAL LTDA";
-    const t = await capa({ empresaNome: nome });
-    /* Na tabela o nome quebra em linhas; o que não pode é perder pedaço. */
-    const pedacos = t.filter((x) => nome.includes(x.trim()) && x.trim().length > 3);
-    expect(pedacos.length).toBeGreaterThan(0);
+    const pdf = await render({ ...contexto(), empresaNome: nome } as never, {
+      qrUrl: "https://safetysolucoes.com/pgr/validar/x", pdfVersao: 1, comMarca: false,
+    });
+    const p3 = trechosDaCapa2(pdf as never, 3);
+    const pedacos = p3.filter((x) => nome.includes(x.trim()) && x.trim().length > 3);
+    expect(pedacos.length, "o nome da empresa sumiu do cabeçalho").toBeGreaterThan(0);
     expect(pedacos.join(" ").replace(/\s+/g, " ").trim()).toBe(nome);
   });
 });

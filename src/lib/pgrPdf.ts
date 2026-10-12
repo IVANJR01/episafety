@@ -18,6 +18,7 @@ import {
   classeLabel,
   classificarRisco as classificarMatriz,
   CLASSE_TEXTO_HEX,
+  CLASSE_FAIXA,
   GRUPO_LABEL,
   PgrClasse,
 } from "@/lib/pgrMatriz";
@@ -365,19 +366,9 @@ function drawMatriz(b: B) {
    * itens do inventário. Antes era uma lista escrita à mão, com classes e
    * faixas que não existiam em lugar nenhum do sistema.
    */
-  const faixas = new Map<PgrClasse, number[]>();
-  for (let sev = 1; sev <= 5; sev++) {
-    for (let prob = 1; prob <= 5; prob++) {
-      const c = classificarMatriz(sev, prob);
-      if (!c) continue;
-      if (!faixas.has(c)) faixas.set(c, []);
-      faixas.get(c)!.push(sev * prob);
-    }
-  }
   const ordem: PgrClasse[] = ["trivial", "toleravel", "moderado", "substancial", "intoleravel"];
-  ordem.filter((c) => faixas.has(c)).forEach((c) => {
-    const valores = faixas.get(c)!;
-    const menor = Math.min(...valores), maior = Math.max(...valores);
+  ordem.forEach((c) => {
+    const [menor, maior] = CLASSE_FAIXA[c];
     const [r, g, bl] = CLASSE_HEX[c];
     const [tr, tg, tb] = CLASSE_TEXTO_HEX[c];
     const alturaLinha = 7;
@@ -429,21 +420,13 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
 
   /*
    * A capa é a Simples com moldura do pacote — a mesma dos seis documentos
-   * em Word. As linhas da tabela são as de niveis.js: Empresa, CNPJ,
-   * Endereço, Responsável Técnico e Revisão / Data.
+   * em Word, com a moldura da página e a sigla grande no centro.
    */
   const matriz = (ctx.unidades || [])[0] as PgrUnidadeItem | undefined;
-  const enderecoCapa = [
-    matriz?.endereco || [matriz?.logradouro, matriz?.numero].filter(Boolean).join(", "),
-    [matriz?.cidade, matriz?.uf].filter(Boolean).join("/"),
-  ].filter(Boolean).join(" – ");
-  const respCapa = [pgr.resp_tec_nome, pgr.resp_tec_registro].filter(Boolean).join(" – ");
   const anoCapa = (pgr.data_emissao || new Date().toISOString()).slice(0, 4);
 
   capaTimbrada(pdf, {
     logoDataUrl: ctx.logoDataUrl,
-    revisao: `REV. ${numeroDaRevisao(ctx.revisoes)}`,
-    meta: `PGR v${pgr.versao} · PDF v${opts.pdfVersao} · ${PGR_STATUS_LABEL[pgr.status]}`,
     sigla: "PGR",
     titulo: "Programa de Gerenciamento de Riscos",
     subtitulo: "NR-01",
@@ -454,17 +437,16 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     identificacao: [],
     campos: [],
     /*
-     * Campo sem dado não vai para a capa, mas a LINHA fica: a tabela da capa
-     * do Word tem sempre as mesmas cinco linhas, e tirar uma delas mudaria o
-     * desenho da capa de uma empresa para outra.
+     * A capa não repete a identificação da empresa.
+     *
+     * Ela trazia uma tabela com Empresa, CNPJ, Endereço, Responsável Técnico e
+     * Revisão / Data, e um bloco de "REV. 00 · PGR v1 · PDF v1" no alto. Tudo
+     * isso já está dentro do documento: a identificação completa no item 2, a
+     * revisão no item 1 e as versões no bloco de validação da última página.
+     * Repetir na capa só a deixava poluída. A capa diz o que o documento é —
+     * sigla, título, norma e vigência — e nada mais.
      */
-    linhasTabela: [
-      ["Empresa", ctx.empresaNome || ""],
-      ["CNPJ", ctx.empresaCnpj || ""],
-      ["Endereço", enderecoCapa],
-      ["Responsável Técnico", respCapa],
-      ["Revisão / Data", `${numeroDaRevisao(ctx.revisoes)} – ${fmtDate(pgr.data_emissao)}`],
-    ],
+    linhasTabela: [],
     rodapeLocal: [matriz?.cidade, matriz?.uf].filter(Boolean).join(" / ")
       ? `${[matriz?.cidade, matriz?.uf].filter(Boolean).join(" / ")} – ${anoCapa}`
       : anoCapa,
@@ -894,9 +876,18 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       b.y += 2;
       ensure(b, 8);
       pdf.setFontSize(6.5); pdf.setFont("helvetica", "normal"); pdf.setTextColor(90);
+      /*
+       * A legenda lista os status QUE ESTÃO na tabela. Antes listava as chaves
+       * do mapa de cores, e uma ação "Cancelada" — que não tem cor — aparecia
+       * na coluna sem constar da legenda logo abaixo.
+       */
+      const statusNaTabela = [...new Set(
+        (ctx.acoes as any[]).map((a: any) => ACAO_STATUS_LABEL[a.status as PgrAcaoStatus] || a.status)
+          .filter(Boolean),
+      )];
       pdf.text(
-        "Mês marcado = prazo previsto para a ação.  ·  Status: "
-          + Object.keys(STATUS_PDF_COR).join("  ·  "),
+        "Mês marcado = prazo previsto para a ação."
+          + (statusNaTabela.length ? "  ·  Status: " + statusNaTabela.join("  ·  ") : ""),
         12, b.y,
       );
       pdf.setTextColor(0);
@@ -1006,7 +997,15 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       if (det) { pdf.text(det, 12, b.y + 8); b.y += 11; } else { b.y += 6; }
     });
   }
-  para(b, "Assinatura visual com hash SHA-256 e MFA verificado. Não constitui assinatura digital ICP-Brasil.");
+  /*
+   * A nota sobre hash e MFA descreve as assinaturas REGISTRADAS. Saindo
+   * sempre, o documento sem assinatura nenhuma afirmava "assinatura visual com
+   * hash SHA-256 e MFA verificado" e, duas linhas abaixo, "nenhuma assinatura
+   * eletrônica registrada" — uma contradição no fecho do documento.
+   */
+  if (ctx.assinaturas.length > 0) {
+    para(b, "Assinatura visual com hash SHA-256 e MFA verificado. Não constitui assinatura digital ICP-Brasil.");
+  }
   /*
    * Sem assinatura registrada, o documento ganha as linhas para assinar à
    * mão.
@@ -1038,10 +1037,12 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     ensure(b, 18);
     pdf.setDrawColor(180); pdf.line(12, b.y + 12, 100, b.y + 12);
     pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-    pdf.text(a.responsavel_nome, 12, b.y + 16);
+    /* Nome em branco no registro não pode derrubar a geração do PDF inteiro:
+       o jsPDF recusa `undefined` e o documento não sai. */
+    pdf.text(a.responsavel_nome || "—", 12, b.y + 16);
     pdf.setFont("helvetica", "normal"); pdf.setFontSize(7);
     pdf.text(`${a.responsavel_registro || "—"}  ·  ${fmtDT(a.assinado_em)}  ·  MFA ${a.mfa_verificado ? "OK" : "—"}  ·  PDF v${a.pdf_versao}`, 12, b.y + 19);
-    pdf.text(`Hash assinado: ${a.pdf_hash}`, 12, b.y + 22);
+    pdf.text(`Hash assinado: ${a.pdf_hash || "—"}`, 12, b.y + 22);
     b.y += 26;
   });
 
