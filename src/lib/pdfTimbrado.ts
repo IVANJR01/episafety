@@ -418,22 +418,13 @@ export function capaTimbrada(pdf: jsPDF, capa: CapaTimbrada) {
   pdf.setLineWidth(0.6);
   pdf.rect(CAPA_MARGEM - 1, CAPA_MARGEM - 1, CAPA_LARGURA + 2, 297 - 2 * (CAPA_MARGEM - 1));
 
-  /* Caixa da logo: tracejada e centralizada, como no Word. */
+  /* Caixa da logo: opcional. Se houver imagem cadastrada, desenha; senão, fica em branco. */
   const LOGO_W = 49, LOGO_H = 17.6;
   const logoX = (LARGURA - LOGO_W) / 2;
   const logoY = CAPA_MARGEM + 4;
   if (capa.logoDataUrl) {
     try { pdf.addImage(capa.logoDataUrl, "PNG", logoX, logoY, LOGO_W, LOGO_H); }
-    catch { /* logo inválida: segue com a caixa vazia */ }
-  } else {
-    pdf.setDrawColor(170);
-    pdf.setLineWidth(0.3);
-    const anyPdf = pdf as unknown as { setLineDash?: (p: number[], f: number) => void };
-    anyPdf.setLineDash?.([1.2, 1.2], 0);
-    pdf.rect(logoX, logoY, LOGO_W, LOGO_H);
-    anyPdf.setLineDash?.([], 0);
-    pdf.setFontSize(8); pdf.setTextColor(31, 111, 178); pdf.setFont("helvetica", "normal");
-    pdf.text("{{LOGO_EMPRESA}}", LARGURA / 2, logoY + LOGO_H / 2 + 1, { align: "center" });
+    catch { /* logo inválida: segue em branco */ }
   }
 
   /* Revisão e situação: não existem no Word, mas o PDF é versionado e a
@@ -618,10 +609,6 @@ export async function rodapePaginas(pdf: jsPDF, opts: RodapeOpts) {
       if (opts.logoDataUrl) {
         try { pdf.addImage(opts.logoDataUrl, "PNG", esquerda, 6, 16, 8); }
         catch { /* logo inválida: segue sem ela */ }
-      } else {
-        pdf.setFont("helvetica", "normal"); pdf.setFontSize(6.5);
-        pdf.setTextColor(31, 111, 178);
-        pdf.text("{{LOGO_EMPRESA}}", esquerda, 11);
       }
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5);
       pdf.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
