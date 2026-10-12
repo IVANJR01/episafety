@@ -469,9 +469,6 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
                     <th rowSpan={2} className="p-2.5 text-left min-w-[100px] border-r border-slate-700/60 font-semibold tracking-wide">
                       QUANTO?
                     </th>
-                    <th rowSpan={2} className="p-2.5 text-center min-w-[80px] border-r border-slate-700/60 font-semibold tracking-wide">
-                      PRIOR.
-                    </th>
                     <th rowSpan={2} className="p-2.5 text-center min-w-[105px] border-r border-slate-700/60 font-semibold tracking-wide">
                       PRAZO FINAL
                     </th>
@@ -489,9 +486,6 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
                     </th>
                     <th rowSpan={2} className="p-2.5 text-center min-w-[110px] border-r border-slate-700/60 font-semibold tracking-wide">
                       STATUS
-                    </th>
-                    <th rowSpan={2} className="p-2.5 text-left min-w-[180px] border-r border-slate-700/60 font-semibold tracking-wide">
-                      ACOMPANHAMENTO E AFERIÇÃO
                     </th>
                     {editavel && (
                       <th rowSpan={2} className="p-2.5 text-center min-w-[70px] font-semibold tracking-wide">
@@ -517,7 +511,6 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
                   {filtradas.map((a: any) => {
                     const meses = obterMesesDaAcao(a);
                     const atras = isAtrasada(a);
-                    const prioridade = prioridadeRotulo(a.prioridade);
                     const statusLabel = ACAO_STATUS_LABEL[a.status as PgrAcaoStatus] || a.status;
 
                     return (
@@ -556,20 +549,6 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
                         </td>
                         <td className="p-2.5 border-r text-slate-600 dark:text-slate-400 whitespace-nowrap">
                           {formatarQuanto(a)}
-                        </td>
-                        <td className="p-2.5 border-r text-center">
-                          <Badge
-                            variant="outline"
-                            className={
-                              prioridade === "ALTA"
-                                ? "bg-rose-100 text-rose-800 border-rose-300 font-bold"
-                                : prioridade === "MÉDIA"
-                                ? "bg-amber-100 text-amber-800 border-amber-300 font-semibold"
-                                : "bg-slate-100 text-slate-700 border-slate-300 font-normal"
-                            }
-                          >
-                            {prioridade}
-                          </Badge>
                         </td>
 
                         {/* Prazo Final */}
@@ -641,10 +620,6 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
                           )}
                         </td>
 
-                        <td className="p-2.5 border-r text-slate-600 dark:text-slate-400">
-                          {[a.forma_acompanhamento, a.indicador].filter(Boolean).join("; ") || "—"}
-                        </td>
-
                         {editavel && (
                           <td
                             className="p-2.5 text-center whitespace-nowrap"
@@ -683,7 +658,7 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
                   {filtradas.length === 0 && (
                     <tr>
                       <td
-                        colSpan={editavel ? 25 : 24}
+                        colSpan={editavel ? 23 : 22}
                         className="p-8 text-center text-muted-foreground"
                       >
                         Nenhuma ação encontrada com os filtros selecionados.
