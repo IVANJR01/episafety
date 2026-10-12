@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  FileText, ShieldCheck, BookOpen, History, FolderArchive,
+  FileText, ShieldCheck, BookOpen, History,
   Sparkles, CheckCircle2, AlertTriangle, Layers, ListChecks,
   Building2, UserCheck, Clock, FileDown, Check
 } from "lucide-react";
@@ -16,8 +16,6 @@ import PgrPendenciasPainel, { usePgrPendencias } from "./PgrPendenciasPainel";
 import PgrChecklistTab from "./PgrChecklistTab";
 import TextosTab from "./TextosTab";
 import HistoricoRevisoes from "./HistoricoRevisoes";
-import QuadroEpisTab from "./QuadroEpisTab";
-import EmergenciasTab from "./EmergenciasTab";
 
 interface Props {
   pgr: PgrDocumento;
@@ -196,7 +194,7 @@ export default function PgrEmissaoDashboard({
       {/* TABS DE NAVEGAÇÃO LIMPA E ORGANIZADA                                      */}
       {/* ========================================================================= */}
       <Tabs value={tabAtiva} onValueChange={setTabAtiva} className="w-full space-y-6">
-        <TabsList className="grid grid-cols-2 md:grid-cols-5 p-1.5 bg-muted/80 backdrop-blur-sm rounded-xl border border-border/60 h-auto gap-1">
+        <TabsList className="grid grid-cols-2 md:grid-cols-4 p-1.5 bg-muted/80 backdrop-blur-sm rounded-xl border border-border/60 h-auto gap-1">
           <TabsTrigger
             value="emissao"
             className="flex items-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:font-semibold rounded-lg text-xs md:text-sm"
@@ -232,14 +230,6 @@ export default function PgrEmissaoDashboard({
           >
             <History className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             <span>4. Histórico (20 anos)</span>
-          </TabsTrigger>
-
-          <TabsTrigger
-            value="apoio"
-            className="flex items-center gap-2 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:font-semibold rounded-lg text-xs md:text-sm"
-          >
-            <FolderArchive className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-            <span>5. Registros de Apoio</span>
           </TabsTrigger>
         </TabsList>
 
@@ -304,34 +294,6 @@ export default function PgrEmissaoDashboard({
             </p>
           </div>
           <HistoricoRevisoes pgrId={pgr.id} />
-        </TabsContent>
-
-        {/* --------------------------------------------------------------------- */}
-        {/* ABA 5: REGISTROS DE APOIO                                             */}
-        {/* --------------------------------------------------------------------- */}
-        <TabsContent value="apoio" className="space-y-6 focus-visible:outline-none">
-          <div className="space-y-1">
-            <h2 className="text-lg font-semibold tracking-tight">Registros complementares de apoio</h2>
-            <p className="text-sm text-muted-foreground">
-              Documentos que ficam guardados na organização e apoiam a gestão de SST, sem fazer parte do volume principal do PGR.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-base font-semibold">Quadro de EPIs (NR-06)</h3>
-            <p className="text-xs text-muted-foreground">
-              Gestão de equipamentos de proteção individual. No PGR, os EPIs já constam diretamente como medidas de controle do inventário.
-            </p>
-            <QuadroEpisTab pgrId={pgr.id} empresaId={pgr.empresa_id} />
-          </div>
-
-          <div className="space-y-4 border-t pt-6">
-            <h3 className="text-base font-semibold">Preparação para emergências (NR-01 1.5.6)</h3>
-            <p className="text-xs text-muted-foreground">
-              Exigido pelo item 1.5.6 da NR-01 como plano autônomo, guardado na empresa.
-            </p>
-            <EmergenciasTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={canEdit} pgr={pgr} />
-          </div>
         </TabsContent>
       </Tabs>
     </div>
