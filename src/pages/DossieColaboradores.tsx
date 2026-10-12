@@ -43,10 +43,6 @@ function Contador({ valor, icone: Icone, cor, titulo }: {
   );
 }
 
-const getInitials = (name: string) => {
-  return name.split(" ").filter(n => n.trim()).slice(0, 2).map(n => n[0]).join("").toUpperCase();
-};
-
 /**
  * Dossiê de Colaboradores — a porta de entrada do Arquivo Digital.
  *
@@ -304,9 +300,6 @@ export default function DossieColaboradores() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-sm shrink-0">
-                      {getInitials(f.nome)}
-                    </div>
                     <div className="min-w-0">
                       <p className="font-semibold text-sm flex items-center gap-2 flex-wrap text-foreground">
                         {f.nome}
@@ -317,7 +310,7 @@ export default function DossieColaboradores() {
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {[f.cargo, f.setor].filter(Boolean).join(" • ") || "Sem função e setor"}
                       </p>
-                      {f.matricula && <p className="text-[11px] text-muted-foreground font-mono">Mat. {f.matricula}</p>}
+                      {f.matricula && <p className="text-[11px] text-muted-foreground tabular-nums">Mat. {f.matricula}</p>}
                     </div>
                   </div>
                   <FolderOpen className="w-5 h-5 text-primary shrink-0 mt-1" />
@@ -332,20 +325,25 @@ export default function DossieColaboradores() {
           <div className="rounded-xl border overflow-x-auto hidden lg:block shadow-xs bg-card">
             <Table>
               <TableHeader>
-                <TableRow className="h-12 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800">
-                  <TableHead className="py-3.5 px-6 min-w-[320px] text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                {/*
+                  O cabeçalho acompanha a rolagem. Com 49 colaboradores, as
+                  colunas somem na terceira tela e quem rola passa a ler
+                  "COSTURA" sem saber se é função ou setor.
+                */}
+                <TableRow className="h-10 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
+                  <TableHead className="py-2 px-6 min-w-[320px] text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Colaborador
                   </TableHead>
-                  <TableHead className="py-3.5 px-6 min-w-[200px] text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <TableHead className="py-2 px-6 min-w-[200px] text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Função
                   </TableHead>
-                  <TableHead className="py-3.5 px-6 min-w-[180px] text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <TableHead className="py-2 px-6 min-w-[180px] text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Setor
                   </TableHead>
-                  <TableHead className="py-3.5 px-6 min-w-[200px] text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <TableHead className="py-2 px-6 min-w-[200px] text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Pendências
                   </TableHead>
-                  <TableHead className="py-3.5 px-6 text-right w-[140px] text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <TableHead className="py-2 px-6 text-right w-[120px] text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Dossiê
                   </TableHead>
                 </TableRow>
@@ -363,50 +361,56 @@ export default function DossieColaboradores() {
                 {itensPagina.map(({ f, c }) => (
                   <TableRow
                     key={f.id}
-                    className={`h-18 hover:bg-slate-50/90 dark:hover:bg-slate-900/60 transition-colors border-b border-slate-100 dark:border-slate-800/80 cursor-pointer ${
+                    className={`hover:bg-slate-50/90 dark:hover:bg-slate-900/60 transition-colors border-b border-slate-100 dark:border-slate-800/80 cursor-pointer ${
                       f.data_demissao ? "opacity-60 bg-slate-50/40" : ""
                     }`}
                     onClick={() => navigate(`/arquivo-digital/dossie/${f.id}`)}
                   >
-                    <TableCell className="py-4 px-6">
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs select-none">
-                          {getInitials(f.nome)}
+                    {/*
+                      Sem o círculo de iniciais.
+
+                      Ele ocupava 40px no começo de cada uma das 49 linhas e não
+                      dizia nada que o nome ao lado já não dissesse — duas letras
+                      repetindo a primeira palavra da linha. Tirando, a linha
+                      encolheu de 72px para 52px: cabem sete colaboradores a mais
+                      na tela, numa lista em que o trabalho é procurar gente.
+                    */}
+                    <TableCell className="py-2.5 px-6">
+                      <div className="flex flex-col min-w-0">
+                        <div className="font-semibold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2 flex-wrap">
+                          <span className="truncate">{f.nome}</span>
+                          {f.data_demissao && (
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground font-normal border-slate-300">
+                              Desligado
+                            </Badge>
+                          )}
                         </div>
-                        <div className="flex flex-col min-w-0">
-                          <div className="font-semibold text-sm sm:text-[15px] text-slate-900 dark:text-slate-100 flex items-center gap-2 flex-wrap">
-                            <span className="truncate">{f.nome}</span>
-                            {f.data_demissao && (
-                              <Badge variant="outline" className="text-[10px] text-muted-foreground font-normal border-slate-300">
-                                Desligado
-                              </Badge>
-                            )}
+                        {/* Matrícula e CPF numa linha só, em dígitos de largura
+                            fixa: coluna de número que não dança a cada linha é
+                            a que se confere de cima a baixo sem reler. */}
+                        {(f.matricula || f.cpf) && (
+                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5 tabular-nums">
+                            {f.matricula && <span>Mat. {f.matricula}</span>}
+                            {f.matricula && f.cpf && <span className="opacity-40">·</span>}
+                            {f.cpf && <span>{f.cpf}</span>}
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                            {f.matricula && (
-                              <span className="font-mono">Matrícula: {f.matricula}</span>
-                            )}
-                            {f.cpf && (
-                              <span className="text-[11px] opacity-80">CPF: {f.cpf}</span>
-                            )}
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </TableCell>
-                    <TableCell className="py-4 px-6 text-sm font-medium text-slate-800 dark:text-slate-200">
+                    <TableCell className="py-2.5 px-6 text-sm text-slate-800 dark:text-slate-200">
                       {f.cargo || "—"}
                     </TableCell>
-                    <TableCell className="py-4 px-6 text-sm font-medium text-slate-600 dark:text-slate-400">
+                    <TableCell className="py-2.5 px-6 text-sm text-slate-600 dark:text-slate-400">
                       {f.setor || "—"}
                     </TableCell>
-                    <TableCell className="py-4 px-6">
+                    <TableCell className="py-2.5 px-6">
                       <Pendencias c={c} />
                     </TableCell>
-                    <TableCell className="py-4 px-6 text-right">
+                    <TableCell className="py-2.5 px-6 text-right">
                       <Button
                         size="sm"
-                        variant="outline"
-                        className="h-9 px-3.5 text-xs font-semibold rounded-lg bg-background hover:bg-primary hover:text-primary-foreground border-slate-200 dark:border-slate-700 shadow-2xs transition-all gap-1.5 ml-auto"
+                        variant="ghost"
+                        className="h-8 px-3 text-xs font-medium rounded-md text-slate-600 dark:text-slate-300 hover:bg-primary hover:text-primary-foreground transition-colors gap-1.5 ml-auto"
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate(`/arquivo-digital/dossie/${f.id}`);
