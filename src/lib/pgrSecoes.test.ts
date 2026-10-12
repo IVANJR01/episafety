@@ -92,8 +92,7 @@ describe("seções do PGR", () => {
       "Conteúdo Mínimo do Inventário",              // 1.5.7.3.2 "a" a "i"
       "Plano de Ação",                              // 1.5.7.1 "b"
       "Revisão do PGR",                             // 1.5.4.4.6
-      "Encerramento",                               // 1.5.7.2
-      "Assinaturas",                                // 1.5.7.2
+      "Encerramento",                               // 1.5.7.2 — fecha o documento
     ].forEach((secao) => expect(texto, `faltou "${secao}"`).toContain(secao));
   });
 
@@ -110,6 +109,27 @@ describe("seções do PGR", () => {
     expect(texto, 'letra "e" — funções').toContain("Marceneiro");
     expect(texto, 'letra "a" — ambiente').toContain("Galpão de produção");
     expect(texto, 'letra "b" — atividades').toContain("Corte e aparelhamento de madeira");
+  });
+
+  it("as assinaturas fecham o Encerramento, sem seção própria", async () => {
+    /*
+     * No documento em Word o PGR termina em "7. Encerramento": o texto, a
+     * data e logo abaixo as duas linhas de assinatura. O PDF abria uma "8.
+     * Assinaturas" que o Word não tem, e a numeração deixava de bater entre
+     * os dois documentos.
+     */
+    const texto = await gerar();
+    expect(texto).not.toContain("8. Assinaturas");
+    /* Mas as assinaturas continuam impressas. O parêntese sai escapado no
+       PDF (\( e \)), então compara-se pelo trecho sem ele. */
+    expect(texto).toContain("Responsável técnico pela elaboração");
+    expect(texto).toContain("Pela organização");
+  });
+
+  it("o controle de revisões é a tabela do Word, com as colunas certas", async () => {
+    const texto = await gerar();
+    ["REVISÃO", "DATA", "DESCRIÇÃO", "RESPONSÁVEL"].forEach((coluna) =>
+      expect(texto, `faltou a coluna ${coluna}`).toContain(coluna));
   });
 
   it("não imprime seção que a norma não pede", async () => {

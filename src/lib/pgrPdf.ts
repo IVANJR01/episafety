@@ -210,6 +210,22 @@ async function sha256Hex(buf: ArrayBuffer): Promise<string> {
  * Tipo de exposição do banco -> rótulo da planilha. Os mesmos pares de
  * src/lib/documentos/montarDados.ts, para o PDF e o Word dizerem o mesmo.
  */
+/*
+ * O tratamento de cada faixa, na redação do pacote.
+ *
+ * É a coluna "TRATAMENTO NO PLANO DE AÇÃO" da legenda da matriz, igual à do
+ * documento em Word e à da planilha. CLASSE_DECISAO, em pgrMatriz.ts, diz a
+ * mesma coisa com outras palavras e é usada na tela; aqui vale a redação do
+ * documento, porque é o documento que vai para fiscalização.
+ */
+const CLASSE_DECISAO_CURTA: Record<PgrClasse, string> = {
+  trivial: "Nenhuma ação necessária.",
+  toleravel: "Nenhum controle adicional necessário.",
+  moderado: "Controle adicional, se possível/viável.",
+  substancial: "Controle necessário.",
+  intoleravel: "Ação imediata ou interrupção da atividade.",
+};
+
 const EXPOSICAO_PDF: Record<string, string> = {
   continua: "Permanente",
   intermitente: "Intermitente",
@@ -220,59 +236,119 @@ const EXPOSICAO_PDF: Record<string, string> = {
 const fmtMoeda = (v: number) =>
   Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+/*
+ * Matriz de risco 5x5, no formato do documento em Word e da planilha.
+ *
+ * A versão anterior era um quadriculado com os eixos numerados de 1 a 5 e uma
+ * legenda em lista ao lado. O Word traz o nome de cada faixa — "Muito
+ * Provável (5)", "Leve (1)" —, a palavra PROBABILIDADE escrita na vertical ao
+ * longo das cinco linhas, e a legenda como tabela de três colunas que diz o
+ * que fazer com cada classificação. Quem lê a matriz precisa saber o que é o
+ * número; sem os rótulos, "3 x 4" não diz nada a quem não decorou a escala.
+ */
 function drawMatriz(b: B) {
-  ensure(b, 70);
-  const x0 = 60, y0 = b.y + 4, cs = 14;
-  b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(8);
-  b.doc.text("Matriz de Risco 5×5 (Severidade × Probabilidade)", 12, b.y + 2);
-  // axes
-  for (let s = 5; s >= 1; s--) {
-    for (let p = 1; p <= 5; p++) {
-      const c = classificarMatriz(s, p);
-      const [r, g, bl] = (c && CLASSE_HEX[c]) || [200, 200, 200];
-      b.doc.setFillColor(r, g, bl);
-      const px = x0 + (p - 1) * cs;
-      const py = y0 + (5 - s) * cs;
-      b.doc.rect(px, py, cs, cs, "F");
-      /*
-       * O numero sai na cor que se le em cima do fundo — nao sempre em branco.
-       * Com as cores oficiais da planilha (amarelo FFFF00, laranja FFC000,
-       * verde 92D050, azul 00B0F0) o branco sumia: a matriz saia com metade
-       * dos numeros invisiveis. Mesma regra do gerador de Word: so o
-       * Intoleravel (C00000) leva letra branca.
-       */
-      const [tr, tg, tb] = (c && CLASSE_TEXTO_HEX[c]) || [0, 0, 0];
-      b.doc.setTextColor(tr, tg, tb); b.doc.setFontSize(8);
-      b.doc.text(String(s * p), px + cs / 2, py + cs / 2 + 1, { align: "center" });
-    }
-  }
-  b.doc.setTextColor(0); b.doc.setFontSize(7);
-  for (let p = 1; p <= 5; p++) b.doc.text(String(p), x0 + (p - 1) * cs + cs / 2, y0 + 5 * cs + 4, { align: "center" });
-  for (let s = 5; s >= 1; s--) b.doc.text(String(s), x0 - 3, y0 + (5 - s) * cs + cs / 2 + 1, { align: "right" });
+  const NAVY: [number, number, number] = [15, 42, 68];
+  const NAVY2: [number, number, number] = [27, 63, 99];
+  const CLARO: [number, number, number] = [238, 242, 246];
+
+  const SEV = ["Leve (1)", "Baixa (2)", "Moderada (3)", "Alta (4)", "Extrema (5)"];
+  const PROB: [string, number][] = [
+    ["Muito Provável", 5], ["Provável", 4], ["Possível", 3], ["Pouco Provável", 2], ["Rara", 1],
+  ];
+
+  /* Em paisagem a matriz e a legenda cabem lado a lado; em pé, uma embaixo
+     da outra — é o mesmo arranjo do Word, que imprime a seção deitada. */
+  const direita = b.direita ?? 200;
+  const ladoALado = direita > 230;
+
+  const LARG_PROB = 10;        // a faixa vertical "PROBABILIDADE"
+  const LARG_ROTULO = 26;      // "Muito Provável (5)"
+  const CEL = ladoALado ? 20 : 17;
+  const ALT = 11;
+  const larguraMatriz = LARG_PROB + LARG_ROTULO + 5 * CEL;
+
+  ensure(b, 6 * ALT + 22);
+  const x0 = 12;
+  let y = b.y;
+
+  b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(7.5);
+
+  /* Faixa "SEVERIDADE" por cima das cinco colunas. */
+  b.doc.setFillColor(...NAVY);
+  b.doc.rect(x0 + LARG_PROB + LARG_ROTULO, y, 5 * CEL, 6, "F");
+  b.doc.setTextColor(255);
+  b.doc.text("SEVERIDADE", x0 + LARG_PROB + LARG_ROTULO + (5 * CEL) / 2, y + 4, { align: "center" });
+  y += 6;
+
+  /* Cabeçalho das severidades. */
+  b.doc.setFillColor(...NAVY2);
+  b.doc.rect(x0 + LARG_PROB + LARG_ROTULO, y, 5 * CEL, 8, "F");
+  b.doc.setTextColor(255); b.doc.setFontSize(6.5);
+  SEV.forEach((t, i) =>
+    b.doc.text(t, x0 + LARG_PROB + LARG_ROTULO + i * CEL + CEL / 2, y + 5, { align: "center" }));
+  const yCelulas = y + 8;
+
+  /* Faixa vertical "PROBABILIDADE", ao lado das cinco linhas. */
+  b.doc.setFillColor(...NAVY);
+  b.doc.rect(x0, yCelulas, LARG_PROB, 5 * ALT, "F");
+  b.doc.setTextColor(255); b.doc.setFontSize(7);
   /*
-   * Sem a seta "→": a fonte padrao do jsPDF e WinAnsi, que nao tem esse
-   * caractere. Ele nao saia como seta — saia como lixo ("!'"), e ainda
-   * embaralhava o espacamento do resto da frase. O mesmo valia para o "≤" da
-   * legenda abaixo. Os numeros 1 a 5 ja estao desenhados no eixo.
+   * Texto girado é posicionado pelo início da linha de base, e o `align` do
+   * jsPDF não vale com `angle` — centralizar pede a conta na mão: sobe-se
+   * metade da largura do texto a partir do meio da faixa.
    */
-  b.doc.text("Probabilidade", x0 + 35, y0 + 5 * cs + 9, { align: "center" });
-  b.doc.text("Sev.", x0 - 8, y0 + 35, { align: "center" });
+  const rotulo = "PROBABILIDADE";
+  const larguraRotulo = b.doc.getTextWidth(rotulo);
+  b.doc.text(rotulo, x0 + LARG_PROB / 2 + 2.4, yCelulas + (5 * ALT) / 2 + larguraRotulo / 2, {
+    angle: 90,
+  } as never);
+
+  /* As cinco linhas: rótulo e as células coloridas. */
+  PROB.forEach(([nome, p], linha) => {
+    const yl = yCelulas + linha * ALT;
+    b.doc.setFillColor(...NAVY2);
+    b.doc.rect(x0 + LARG_PROB, yl, LARG_ROTULO, ALT, "F");
+    b.doc.setTextColor(255); b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(6.5);
+    b.doc.text(`${nome} (${p})`, x0 + LARG_PROB + LARG_ROTULO / 2, yl + ALT / 2 + 1.2, {
+      align: "center",
+    });
+
+    for (let sv = 1; sv <= 5; sv++) {
+      const valor = p * sv;
+      const classe = classificarMatriz(sv, p);
+      const [r, g, bl] = (classe && CLASSE_HEX[classe]) || [200, 200, 200];
+      const x = x0 + LARG_PROB + LARG_ROTULO + (sv - 1) * CEL;
+      b.doc.setFillColor(r, g, bl);
+      b.doc.rect(x, yl, CEL, ALT, "F");
+      b.doc.setDrawColor(255); b.doc.setLineWidth(0.3);
+      b.doc.rect(x, yl, CEL, ALT);
+      const [tr, tg, tb] = (classe && CLASSE_TEXTO_HEX[classe]) || [0, 0, 0];
+      b.doc.setTextColor(tr, tg, tb); b.doc.setFontSize(8.5);
+      b.doc.text(String(valor), x + CEL / 2, yl + ALT / 2 + 1.4, { align: "center" });
+    }
+  });
+
+  const fimMatriz = yCelulas + 5 * ALT;
+
+  /* ── Legenda: faixa, classificação e o que fazer ──────────────────────── */
+  const legX = ladoALado ? x0 + larguraMatriz + 8 : x0;
+  let legY = ladoALado ? b.y : fimMatriz + 6;
+  const legLarg = ladoALado ? direita - legX - 2 : larguraMatriz;
+  const cols = [legLarg * 0.18, legLarg * 0.26, legLarg * 0.56];
+
+  b.doc.setFillColor(...NAVY);
+  b.doc.rect(legX, legY, legLarg, 6, "F");
+  b.doc.setTextColor(255); b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(6.5);
+  ["NÍVEL (P x S)", "CLASSIFICAÇÃO", "TRATAMENTO NO PLANO DE AÇÃO"].forEach((t, i) => {
+    const x = legX + cols.slice(0, i).reduce((a, c) => a + c, 0);
+    b.doc.text(t, x + cols[i] / 2, legY + 4, { align: "center" });
+  });
+  legY += 6;
 
   /*
-   * A legenda sai da MESMA regra que pinta as celulas e que classifica os
-   * itens do inventario (classificarRisco, que replica a funcao do banco).
-   *
-   * Antes era uma lista escrita a mao com quatro classes inventadas — "Baixo
-   * (<=4)", "Moderado (<=9)", "Alto (<=16)", "Critico (>16)" — que nao existem
-   * em lugar nenhum do sistema. As classes de verdade sao cinco (Trivial,
-   * Toleravel, Moderado, Substancial, Intoleravel) e as faixas sao outras. O
-   * resultado: na mesma pagina, a legenda dizia "Alto" para a celula 15 e o
-   * quadro logo abaixo contava esse mesmo item como "Substancial", com cor que
-   * nao correspondia a nenhuma linha da legenda. Num documento tecnico isso e
-   * a escala descrevendo errado o proprio desenho.
-   *
-   * Escrita assim, mexer na regra de classificacao nao deixa a legenda para
-   * tras — ela e derivada, nao copiada.
+   * As faixas saem da MESMA regra que pinta as células e que classifica os
+   * itens do inventário. Antes era uma lista escrita à mão, com classes e
+   * faixas que não existiam em lugar nenhum do sistema.
    */
   const faixas = new Map<PgrClasse, number[]>();
   for (let sev = 1; sev <= 5; sev++) {
@@ -283,18 +359,37 @@ function drawMatriz(b: B) {
       faixas.get(c)!.push(sev * prob);
     }
   }
-  const legX = x0 + 5 * cs + 8;
   const ordem: PgrClasse[] = ["trivial", "toleravel", "moderado", "substancial", "intoleravel"];
-  ordem.filter((c) => faixas.has(c)).forEach((c, i) => {
+  ordem.filter((c) => faixas.has(c)).forEach((c) => {
     const valores = faixas.get(c)!;
     const menor = Math.min(...valores), maior = Math.max(...valores);
     const [r, g, bl] = CLASSE_HEX[c];
+    const [tr, tg, tb] = CLASSE_TEXTO_HEX[c];
+    const alturaLinha = 7;
+    b.doc.setDrawColor(201, 211, 221); b.doc.setLineWidth(0.2);
+
     b.doc.setFillColor(r, g, bl);
-    b.doc.rect(legX, y0 + i * 8, 5, 5, "F");
-    b.doc.setTextColor(0); b.doc.setFontSize(8);
-    b.doc.text(`${CLASSIF_LABEL[c]} (${menor === maior ? menor : `${menor} a ${maior}`})`, legX + 7, y0 + i * 8 + 4);
+    b.doc.rect(legX, legY, cols[0], alturaLinha, "F");
+    b.doc.rect(legX, legY, cols[0], alturaLinha);
+    b.doc.setTextColor(tr, tg, tb); b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(7);
+    b.doc.text(`${menor} a ${maior}`, legX + cols[0] / 2, legY + 4.7, { align: "center" });
+
+    b.doc.setFillColor(...CLARO);
+    b.doc.rect(legX + cols[0], legY, cols[1], alturaLinha, "F");
+    b.doc.rect(legX + cols[0], legY, cols[1], alturaLinha);
+    b.doc.setTextColor(0);
+    b.doc.text(CLASSIF_LABEL[c].toUpperCase(), legX + cols[0] + cols[1] / 2, legY + 4.7, {
+      align: "center",
+    });
+
+    b.doc.rect(legX + cols[0] + cols[1], legY, cols[2], alturaLinha);
+    b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(7);
+    b.doc.text(CLASSE_DECISAO_CURTA[c], legX + cols[0] + cols[1] + 2, legY + 4.7);
+    legY += alturaLinha;
   });
-  b.y = y0 + 5 * cs + 14;
+
+  b.doc.setTextColor(0);
+  b.y = Math.max(fimMatriz, legY) + 5;
 }
 
 /**
@@ -363,18 +458,43 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   pdf.addPage(); b.y = 15;
 
   // Controle de revisões (visível logo após a capa)
+  /*
+   * Controle de revisões — a MESMA tabela do Word: REVISÃO | DATA |
+   * DESCRIÇÃO | RESPONSÁVEL, com linhas em branco para as próximas revisões
+   * serem anotadas. Saía como uma linha de texto corrido ("00 — Elaboração
+   * do Programa..."), que não é o quadro que o documento do pacote tem.
+   */
   title(b, "Controle de Revisões");
-  if (!ctx.revisoes || ctx.revisoes.length === 0) {
-    para(b, "00 — Elaboração do Programa de Gerenciamento de Riscos");
-  } else {
-    ctx.revisoes.slice().reverse().forEach((r, idx) => {
-      ensure(b, 6);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-      const rev = String(idx).padStart(2, "0");
-      const desc = r.motivo || (r.acao === "publicar" ? "Publicação da versão" : r.acao);
-      const ll = pdf.splitTextToSize(`${rev}  ·  ${fmtDate(r.created_at)}  ·  ${desc}`, 186);
-      pdf.text(ll, 12, b.y + 3); b.y += 3 + ll.length * 3.2;
-    });
+  {
+    const largura = (b.direita ?? 200) - 20;
+    const linhaRev = tabela(
+      b,
+      [
+        { rotulo: "REVISÃO", x: 12, w: 18 },
+        { rotulo: "DATA", x: 34, w: 24 },
+        { rotulo: "DESCRIÇÃO", x: 62, w: largura - 18 - 24 - 38 },
+        { rotulo: "RESPONSÁVEL", x: (b.direita ?? 200) - 48, w: 44 },
+      ],
+      { fonte: 8, fonteCabecalho: 7.5, grade: true, cabecalhoEscuro: true },
+    );
+    const registradas = (ctx.revisoes || []).slice().reverse();
+    const linhas: [string, string, string, string][] = registradas.length
+      ? registradas.map((r, idx) => [
+          String(idx).padStart(2, "0"),
+          fmtDate(r.created_at),
+          r.motivo || (r.acao === "publicar" ? "Publicação da versão" : String(r.acao ?? "")),
+          pgr.resp_tec_nome || "",
+        ])
+      : [[
+          "00",
+          fmtDate(pgr.data_emissao),
+          "Elaboração do Programa de Gerenciamento de Riscos",
+          pgr.resp_tec_nome || "",
+        ]];
+    linhas.forEach((l) => linhaRev(l.map((x) => x || "")));
+    /* Linhas em branco para as próximas revisões, como no Word. */
+    for (let i = linhas.length; i < 5; i++) linhaRev(["", "", "", ""]);
+    b.y += 3;
   }
 
   // Identificação da empresa e dos estabelecimentos abrangidos.
@@ -840,11 +960,17 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     b.y += 12;
   }
 
-  title(b, "Assinaturas");
-  // 1.5.7.2 da NR-01: os documentos do PGR são elaborados sob responsabilidade
-  // da organização, datados e assinados. Quem responde tecnicamente aparece
-  // aqui, junto das assinaturas — antes tinha seção própria, que repetia o
-  // mesmo dado da capa sem exigência que a justificasse.
+  /*
+   * As assinaturas fecham o ENCERRAMENTO, sem seção própria.
+   *
+   * No documento em Word o documento termina em "7. Encerramento": o texto,
+   * a data e, logo abaixo, as duas linhas de assinatura. O PDF abria uma
+   * "8. Assinaturas" que o Word não tem — uma seção a mais no sumário e uma
+   * numeração que deixava de bater entre os dois documentos.
+   *
+   * 1.5.7.2 da NR-01: os documentos do PGR são elaborados sob
+   * responsabilidade da organização, datados e assinados.
+   */
   const resps = ctx.responsaveis || [];
   if (resps.length === 0) {
     kv(b, "Responsável Técnico", pgr.resp_tec_nome || "—");

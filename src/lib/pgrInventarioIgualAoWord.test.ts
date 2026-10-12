@@ -119,15 +119,38 @@ describe("o inventário do PDF x o do Word", () => {
 });
 
 describe("nível e classificação são calculados, nunca lidos", () => {
+  /**
+   * A LINHA do inventário daquele perigo — não o documento inteiro.
+   *
+   * A legenda da matriz escreve as cinco classes em caixa alta (TRIVIAL,
+   * MODERADO...), então procurar a palavra no documento todo acusa a legenda
+   * e não a linha. Era assim que estes dois testes estavam, e eles passaram a
+   * falhar sozinhos quando a legenda ganhou o formato do Word — sem nada de
+   * errado no inventário.
+   */
+  async function linhaDoPerigo(ctx: PgrPdfContext) {
+    const pdf = await render(ctx, { qrUrl: "https://x/validar", pdfVersao: 1, comMarca: false });
+    const bruto = Buffer.from(pdf.output("arraybuffer")).toString("latin1");
+    const linha = bruto.split("<w:tr").length > 1
+      ? null
+      : bruto.split("BT").find((bloco) => bloco.includes("Poeira de algod"));
+    expect(linha, "a linha do inventário não foi encontrada").toBeTruthy();
+    /* O bloco de texto do PDF é por célula; junta a linha inteira pela
+       vizinhança no fluxo de desenho. */
+    const i = bruto.indexOf("Poeira de algod");
+    const janela = bruto.slice(i - 2000, i + 6000);
+    return [...janela.matchAll(/\((.*?)\) Tj/g)].map((m) => m[1]).join(" | ");
+  }
+
   it("P=4 e S=3 dão 12 MODERADO, mesmo com outro valor gravado na linha", async () => {
     const mentiroso = {
       ...CTX,
       inventario: [{ ...item, nivel_risco: 999, classificacao: "trivial" }] as never,
     } as PgrPdfContext;
-    const texto = await pdfTexto(mentiroso);
-    expect(texto).not.toContain("999");
-    expect(texto).toContain("MODERADO");
-    expect(texto).not.toContain("TRIVIAL");
+    const linha = await linhaDoPerigo(mentiroso);
+    expect(linha).not.toContain("999");
+    expect(linha).toContain("MODERADO");
+    expect(linha, "a classe gravada no banco venceu o cálculo").not.toContain("TRIVIAL");
     /* E pintado de amarelo oficial — isto se confere no PDF cru. */
     const pdf = await render(mentiroso, { qrUrl: "https://x/validar", pdfVersao: 1, comMarca: false });
     expect(Buffer.from(pdf.output("arraybuffer")).toString("latin1")).toContain("1. 1. 0. rg");
@@ -138,8 +161,8 @@ describe("nível e classificação são calculados, nunca lidos", () => {
       ...CTX,
       inventario: [{ ...item, probabilidade: null, severidade: null, classificacao: null }] as never,
     } as PgrPdfContext;
-    const texto = await pdfTexto(semAval);
-    expect(texto).not.toContain("MODERADO");
-    expect(texto).not.toContain("TRIVIAL");
+    const linha = await linhaDoPerigo(semAval);
+    expect(linha).not.toContain("MODERADO");
+    expect(linha).not.toContain("TRIVIAL");
   }, 30_000);
 });
