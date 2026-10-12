@@ -200,6 +200,20 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
     });
   }, [acoes, fStatus, fResp, fPrio, soAtrasadas, busca, mapaInventario, mapaSetores]);
 
+  const anoVigencia = useMemo(() => {
+    const ini = pgr?.data_vigencia_inicio ? new Date(pgr.data_vigencia_inicio + "T00:00:00").getFullYear() : null;
+    const fim = pgr?.data_vigencia_fim ? new Date(pgr.data_vigencia_fim + "T00:00:00").getFullYear() : null;
+    if (ini && fim) return ini === fim ? `${ini}` : `${ini}/${fim}`;
+    if (ini) return `${ini}`;
+    if (pgr?.data_emissao) return `${new Date(pgr.data_emissao + "T00:00:00").getFullYear()}`;
+    const acaoComPrazo = acoes.find((a: any) => a.prazo);
+    if (acaoComPrazo) {
+      const anoAcao = new Date(acaoComPrazo.prazo + "T00:00:00").getFullYear();
+      if (!isNaN(anoAcao)) return `${anoAcao}`;
+    }
+    return `${new Date().getFullYear()}`;
+  }, [pgr, acoes]);
+
   const stats = useMemo(() => {
     const ativas = acoes.filter((a: any) => a.status !== "cancelada");
     const s: any = { total: ativas.length, atrasadas: 0 };
@@ -434,58 +448,69 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
               <table className="w-full text-xs border-collapse">
                 <thead className="bg-[#0f2a44] text-white text-xs font-semibold select-none sticky top-0 z-20">
                   <tr className="border-b border-slate-700">
-                    <th className="p-2.5 text-left min-w-[120px] border-r border-slate-700/60 font-semibold tracking-wide">
+                    <th rowSpan={2} className="p-2.5 text-left min-w-[120px] border-r border-slate-700/60 font-semibold tracking-wide">
                       SETOR
                     </th>
-                    <th className="p-2.5 text-center min-w-[60px] border-r border-slate-700/60 font-semibold tracking-wide">
+                    <th rowSpan={2} className="p-2.5 text-center min-w-[60px] border-r border-slate-700/60 font-semibold tracking-wide">
                       GES
                     </th>
-                    <th className="p-2.5 text-left min-w-[220px] border-r border-slate-700/60 font-semibold tracking-wide">
+                    <th rowSpan={2} className="p-2.5 text-left min-w-[220px] border-r border-slate-700/60 font-semibold tracking-wide">
                       O QUÊ? (MEDIDA)
                     </th>
-                    <th className="p-2.5 text-left min-w-[180px] border-r border-slate-700/60 font-semibold tracking-wide">
+                    <th rowSpan={2} className="p-2.5 text-left min-w-[180px] border-r border-slate-700/60 font-semibold tracking-wide">
                       POR QUÊ?
                     </th>
-                    <th className="p-2.5 text-left min-w-[180px] border-r border-slate-700/60 font-semibold tracking-wide">
+                    <th rowSpan={2} className="p-2.5 text-left min-w-[180px] border-r border-slate-700/60 font-semibold tracking-wide">
                       COMO?
                     </th>
-                    <th className="p-2.5 text-left min-w-[120px] border-r border-slate-700/60 font-semibold tracking-wide">
+                    <th rowSpan={2} className="p-2.5 text-left min-w-[120px] border-r border-slate-700/60 font-semibold tracking-wide">
                       ONDE?
                     </th>
-                    <th className="p-2.5 text-left min-w-[100px] border-r border-slate-700/60 font-semibold tracking-wide">
+                    <th rowSpan={2} className="p-2.5 text-left min-w-[100px] border-r border-slate-700/60 font-semibold tracking-wide">
                       QUANTO?
                     </th>
-                    <th className="p-2.5 text-center min-w-[80px] border-r border-slate-700/60 font-semibold tracking-wide">
+                    <th rowSpan={2} className="p-2.5 text-center min-w-[80px] border-r border-slate-700/60 font-semibold tracking-wide">
                       PRIOR.
                     </th>
+                    <th rowSpan={2} className="p-2.5 text-center min-w-[105px] border-r border-slate-700/60 font-semibold tracking-wide">
+                      PRAZO FINAL
+                    </th>
 
-                    {/* Cronograma anual de 12 meses */}
+                    {/* Cronograma anual de 12 meses agrupado sob o ano de vigência */}
+                    <th
+                      colSpan={12}
+                      className="py-1 px-2 text-center border-l border-r border-slate-700/60 font-bold tracking-wider text-[11px] bg-[#091b2c] uppercase text-amber-200"
+                    >
+                      CRONOGRAMA ({anoVigencia})
+                    </th>
+
+                    <th rowSpan={2} className="p-2.5 text-left min-w-[140px] border-r border-slate-700/60 font-semibold tracking-wide">
+                      RESPONSÁVEL
+                    </th>
+                    <th rowSpan={2} className="p-2.5 text-center min-w-[110px] border-r border-slate-700/60 font-semibold tracking-wide">
+                      STATUS
+                    </th>
+                    <th rowSpan={2} className="p-2.5 text-left min-w-[180px] border-r border-slate-700/60 font-semibold tracking-wide">
+                      ACOMPANHAMENTO E AFERIÇÃO
+                    </th>
+                    {editavel && (
+                      <th rowSpan={2} className="p-2.5 text-center min-w-[70px] font-semibold tracking-wide">
+                        AÇÕES
+                      </th>
+                    )}
+                  </tr>
+                  <tr className="border-b border-slate-700 bg-[#0c2237]">
                     {MESES_CRONOGRAMA.map((m, idx) => (
                       <th
                         key={m.num}
-                        className={`p-1 text-center w-7 min-w-[28px] max-w-[28px] text-[11px] font-bold ${
+                        className={`py-1 text-center w-7 min-w-[28px] max-w-[28px] text-[11px] font-bold ${
                           idx === 0 ? "border-l border-slate-700/60" : ""
                         } border-r border-slate-700/60`}
-                        title={m.nome}
+                        title={`${m.nome} / ${anoVigencia}`}
                       >
                         {m.rotulo}
                       </th>
                     ))}
-
-                    <th className="p-2.5 text-left min-w-[140px] border-r border-slate-700/60 font-semibold tracking-wide">
-                      RESPONSÁVEL
-                    </th>
-                    <th className="p-2.5 text-center min-w-[110px] border-r border-slate-700/60 font-semibold tracking-wide">
-                      STATUS
-                    </th>
-                    <th className="p-2.5 text-left min-w-[180px] border-r border-slate-700/60 font-semibold tracking-wide">
-                      ACOMPANHAMENTO E AFERIÇÃO
-                    </th>
-                    {editavel && (
-                      <th className="p-2.5 text-center min-w-[70px] font-semibold tracking-wide">
-                        AÇÕES
-                      </th>
-                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -547,15 +572,45 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
                           </Badge>
                         </td>
 
+                        {/* Prazo Final */}
+                        <td className="p-2.5 border-r text-center whitespace-nowrap">
+                          {a.prazo ? (
+                            <div className="flex flex-col items-center justify-center leading-tight">
+                              <span
+                                className={`text-xs ${
+                                  atras
+                                    ? "text-red-600 dark:text-red-400 font-bold"
+                                    : "text-slate-800 dark:text-slate-200 font-medium"
+                                }`}
+                              >
+                                {new Date(a.prazo + "T00:00:00").toLocaleDateString("pt-BR")}
+                              </span>
+                              {atras && (
+                                <span className="text-[10px] text-red-500 font-semibold">
+                                  atrasada
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+
                         {/* 12 Meses do cronograma */}
                         {MESES_CRONOGRAMA.map((m) => {
                           const marcado = meses.includes(m.num);
+                          const dataFormatada = a.prazo ? new Date(a.prazo + "T00:00:00").toLocaleDateString("pt-BR") : null;
                           return (
                             <td
                               key={m.num}
                               className={`p-1 text-center w-7 min-w-[28px] max-w-[28px] border-r ${
                                 marcado ? "bg-[#0f2a44]/5" : ""
                               }`}
+                              title={
+                                marcado
+                                  ? `${m.nome} / ${anoVigencia}${dataFormatada ? ` — Prazo final: ${dataFormatada}` : ""}`
+                                  : `${m.nome} / ${anoVigencia}`
+                              }
                             >
                               {marcado ? (
                                 <div className="w-5 h-5 mx-auto bg-[#0f2a44] text-white rounded text-[11px] font-bold flex items-center justify-center shadow-xs">
@@ -628,7 +683,7 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
                   {filtradas.length === 0 && (
                     <tr>
                       <td
-                        colSpan={editavel ? 21 : 20}
+                        colSpan={editavel ? 25 : 24}
                         className="p-8 text-center text-muted-foreground"
                       >
                         Nenhuma ação encontrada com os filtros selecionados.
@@ -646,7 +701,7 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
                   X
                 </div>
                 <span className="font-medium text-slate-700 dark:text-slate-300">
-                  Mês marcado = prazo previsto para a ação.
+                  Mês marcado no cronograma anual ({anoVigencia}) conforme o prazo final estipulado para a ação.
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
