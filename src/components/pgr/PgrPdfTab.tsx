@@ -515,58 +515,6 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">Versões do PDF</CardTitle></CardHeader>
-        <CardContent>
-          {versoes.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Nenhuma versão registrada.</p>
-          ) : (
-            <ul className="space-y-2">
-              {versoes.map((v: any) => (
-                <li key={v.id} className="border rounded-md p-3 text-sm flex items-center justify-between gap-2 flex-wrap">
-                  <div>
-                    <div className="font-medium">
-                      PDF v{v.pdf_versao} · PGR v{v.pgr_versao}
-                      {v.com_marca_dagua && <Badge variant="outline" className="ml-2 text-[10px]">RASCUNHO</Badge>}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground font-mono break-all">{v.pdf_hash}</div>
-                    <div className="text-[11px] text-muted-foreground">{new Date(v.gerado_em).toLocaleString("pt-BR")}</div>
-                  </div>
-                  {(v.storage_path || v.drive_view_link) && (
-                    <Button size="sm" variant="outline" onClick={() => abrirPdfVersao(v)}>
-                      <Eye className="h-3 w-3 mr-1" /> Visualizar
-                    </Button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4" /> Assinaturas visuais
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {assinaturas.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Nenhuma assinatura registrada.</p>
-          ) : (
-            <ul className="space-y-2">
-              {assinaturas.map((a: any) => (
-                <li key={a.id} className="border rounded-md p-3 text-sm">
-                  <div className="font-medium">{a.responsavel_nome} <span className="text-xs text-muted-foreground">· {a.responsavel_registro || "—"}</span></div>
-                  <div className="text-xs text-muted-foreground">PDF v{a.pdf_versao} · {new Date(a.assinado_em).toLocaleString("pt-BR")} · MFA {a.mfa_verificado ? "OK" : "—"}</div>
-                  <div className="text-[11px] font-mono break-all text-muted-foreground">{a.pdf_hash}</div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-
       <Dialog open={showSig} onOpenChange={setShowSig}>
         <DialogContent>
           <DialogHeader>

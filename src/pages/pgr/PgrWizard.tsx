@@ -23,7 +23,6 @@ import InventarioTab from "@/components/pgr/InventarioTab";
 import PlanoAcaoTab from "@/components/pgr/PlanoAcaoTab";
 import QuadroEpisTab from "@/components/pgr/QuadroEpisTab";
 import EmergenciasTab from "@/components/pgr/EmergenciasTab";
-import GovernancaTab from "@/components/pgr/GovernancaTab";
 import PgrChecklistTab from "@/components/pgr/PgrChecklistTab";
 import PgrPdfTab from "@/components/pgr/PgrPdfTab";
 import HistoricoRevisoes from "@/components/pgr/HistoricoRevisoes";
@@ -357,10 +356,6 @@ function Assistente() {
             <Secao titulo="Histórico de revisões"
               descricao="Item 1.5.7.3.3.1 da NR-01: o histórico das atualizações é mantido por 20 anos.">
               <HistoricoRevisoes pgrId={pgr.id} />
-            </Secao>
-            <Secao titulo="Gatilhos e aprovações"
-              descricao="Prazo de revisão e trâmite de aprovação interna.">
-              <GovernancaTab pgr={pgr} canEdit={editavel} />
             </Secao>
             {/*
               Os textos institucionais também só existiam na tela clássica.

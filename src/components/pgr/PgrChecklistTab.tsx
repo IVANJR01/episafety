@@ -307,12 +307,19 @@ export default function PgrChecklistTab({ pgr }: Props) {
   const semGrupoExposto = inventario.filter((i) => !i.trabalhadores_expostos && !i.ghe_id && !i.setor_id);
   const semFonte = inventario.filter((i) => !(i.fonte_geradora || "").trim() && !(i.circunstancia || "").trim() && !(i.perigo_descricao || "").trim());
   const semJustificativa = inventario.filter(
-    (i) => !(i.justificativa_severidade || "").trim() || !(i.justificativa_probabilidade || "").trim(),
+    (i) =>
+      !(i.justificativa_severidade || "").trim() &&
+      !(i.justificativa_probabilidade || "").trim() &&
+      !(i.justificativa || "").trim() &&
+      !(i.tecnica_utilizada || "").trim(),
   );
   const naoAvaliados = inventario.filter((i) => !i.classificacao);
   const ergoSemAvaliacao = inventario.filter(
-    (i) => (i.grupo === "ergonomico" || i.grupo === "psicossocial")
-      && !medicoes.some((m) => m.inventario_item_id === i.id),
+    (i) =>
+      (i.grupo === "ergonomico" || i.grupo === "psicossocial") &&
+      !(i.tecnica_utilizada || "").trim() &&
+      i.avaliacao_estado !== "avaliado" &&
+      !medicoes.some((m) => m.inventario_item_id === i.id),
   );
   const quantSemFonteLimite = medicoes.filter((m) => m.resultado != null && !(m.limite_fonte || "").trim());
   const soEpi = inventario.filter((i) => {
@@ -437,15 +444,6 @@ export default function PgrChecklistTab({ pgr }: Props) {
     { label: "Responsável técnico declarado",
       sev: temRT ? "ok" : "bloqueante",
       norma: "NR-01 1.5.7.2 — documento datado e assinado" },
-    { label: "Aprovador / responsável pela organização declarado",
-      sev: temAprovador ? "ok" : "recomendacao",
-      detail: temAprovador ? undefined : "Nenhum aprovador cadastrado em Responsáveis" },
-    { label: "Gatilhos de revisão tratados",
-      sev: sevSe(n(gatilhosAbertos) > 0, "bloqueante"),
-      detail: n(gatilhosAbertos) > 0
-        ? `${n(gatilhosAbertos)} gatilho(s) em aberto — tratar ou dispensar com justificativa`
-        : "Nenhum gatilho pendente",
-      norma: "NR-01 1.5.4.4.6" },
     { label: "Revisão da avaliação dentro do prazo",
       sev: !pgr.proxima_revisao ? "recomendacao" : revisaoVencida ? "bloqueante" : "ok",
       detail: !pgr.proxima_revisao
