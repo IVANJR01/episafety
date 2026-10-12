@@ -348,7 +348,6 @@ function ProtectedRoute() {
         <Route path="/pgr/:id/comparar" element={<PgrComparar />} />
         <Route path="/campo" element={<LevantamentoCampo />} />
         <Route path="/pgr/:id/editar" element={<PgrNovo />} />
-        <Route path="/pgr/validar/:id" element={<PgrValidar />} />
         <Route path="/ltcat" element={<LtcatModule />} />
         <Route path="/ltcat/dashboard" element={<LtcatDashboard />} />
         <Route path="/ltcat/novo" element={<LtcatNovo />} />
@@ -440,6 +439,11 @@ const App = () => (
             <Route path="/verificar-aso/:hash" element={<VerificarAso />} />
             {/* Conferência da Ficha de EPI pelo código impresso: pública de
                 propósito, porque quem consulta é o fiscal com o papel na mão. */}
+            {/* Conferência do PGR pelo QR Code do rodapé: pública, porque
+                quem lê o QR é o fiscal com o papel na mão — e estava atrás do
+                login, o que tornava o QR impresso inútil. Mostra só a
+                identificação do documento; o conteúdo do PGR continua restrito. */}
+            <Route path="/pgr/validar/:id" element={<PgrValidar />} />
             <Route path="/verificar" element={<VerificarFicha />} />
             <Route path="/verificar/:codigo" element={<VerificarFicha />} />
             <Route path="/aprovacao-publica" element={<AprovacaoPublica />} />
