@@ -10,7 +10,7 @@ import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { criterioDoGrupo, setoresDoGrupo, nomeDoGrupo, ordenarPorCodigoGes } from "@/lib/sstEstrutura";
 import type { SstGes } from "@/types/sst";
 import { useNavigate } from "react-router-dom";
-import { Layers, Plus, Edit2, Trash2, ListTree } from "lucide-react";
+import { Layers, Plus, Edit2, Trash2, ListTree, Users } from "lucide-react";
 
 /**
  * Cadastro dos Grupos de Exposição Similar (GES).
@@ -200,6 +200,21 @@ export function GesExposicoesTab() {
                     {funcoesDoGes(ges.id).length === 0 && (
                       <Badge variant="destructive" className="ml-1">Incompleto</Badge>
                     )}
+                    {/*
+                      O nº de trabalhadores aparece no cartão porque é exigência
+                      da NR-01 e some dentro do formulário: faltando, o PGR sai
+                      dizendo "não informado" e ninguém percebe antes de emitir.
+                    */}
+                    {ges.trabalhadores != null ? (
+                      <Badge variant="secondary" className="gap-1">
+                        <Users className="w-3 h-3" aria-hidden />
+                        {ges.trabalhadores} {ges.trabalhadores === 1 ? "trabalhador" : "trabalhadores"}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-amber-700 border-amber-300">
+                        Sem nº de trabalhadores
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex shrink-0">
                     {/* Funções, riscos e EPIs deste GES. Essa tela era acessível
@@ -334,6 +349,40 @@ export function GesExposicoesTab() {
               <p className="text-xs text-slate-500 mt-1">
                 Em branco, o grupo se chama pelo setor das funções. Preencha só para
                 dar nome próprio a um grupo que reúne setores diferentes.
+              </p>
+            </div>
+            {/*
+              Trabalhadores expostos no grupo — NR-01, item 1.5.7.3.2 "e".
+
+              Sem este número o PGR saía com "Trabalhadores expostos: não
+              informado" no cabeçalho de TODOS os grupos. O item do inventário
+              tem um número parecido, mas ele é de outra coisa: quantos ficam
+              expostos ÀQUELE perigo, que pode ser parte do grupo.
+
+              Vazio continua sendo "não informado" — não vira zero. Zero
+              expostos é uma afirmação, e dizê-la a um fiscal sem saber é pior
+              do que não dizer nada.
+            */}
+            <div>
+              <Label htmlFor="ges-trabalhadores">Nº de trabalhadores expostos</Label>
+              <Input
+                id="ges-trabalhadores"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                className="max-w-[160px]"
+                value={gesFormData.trabalhadores ?? ""}
+                onChange={(e) => setGesFormData({
+                  ...gesFormData,
+                  trabalhadores: e.target.value === ""
+                    ? null
+                    : Math.max(0, Math.trunc(Number(e.target.value))),
+                })}
+                placeholder="Ex: 7"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Quantos trabalhadores pertencem a este grupo. Sai no cabeçalho do grupo
+                no PGR; em branco, o documento diz "não informado".
               </p>
             </div>
             {/*

@@ -657,16 +657,33 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
         const ges = nomeGes(primeiro) || "Sem GES";
         const setor = nomeSetor(primeiro);
         const funcoes = (primeiro.funcoes_snapshot || []).filter(Boolean).join(", ");
+        /*
+         * Quantos trabalhadores o grupo tem — NR-01, item 1.5.7.3.2 "e".
+         *
+         * A fonte certa é o CADASTRO do GES: o número é do grupo. O número do
+         * item do inventário é de outra coisa — quantos ficam expostos ÀQUELE
+         * perigo, que pode ser parte do grupo —, e por isso só serve de reserva,
+         * para o cadastro antigo que ainda não tem o campo preenchido.
+         *
+         * Zero não é "não informado": se alguém gravou 0, o documento diz 0.
+         */
+        const cadastroGes = ((ctx.gesDetalhes as any[]) || []).find(
+          (g: any) => g.id === primeiro.ges_id || g.id === primeiro.ghe_id,
+        );
         const expostosGrupo = itens
           .map((i) => i.trabalhadores_expostos)
           .filter((n) => n != null && n > 0) as number[];
-        const maior = expostosGrupo.length ? Math.max(...expostosGrupo) : 0;
+        const expostos: number | null = cadastroGes?.trabalhadores != null
+          ? Number(cadastroGes.trabalhadores)
+          : (expostosGrupo.length ? Math.max(...expostosGrupo) : null);
 
         const cabecalho = [
           `GES: ${ges}`,
           setor && `Setor: ${setor}`,
           funcoes && `Funções: ${funcoes}`,
-          maior > 0 ? `Trabalhadores expostos: ${maior}` : "Trabalhadores expostos: não informado",
+          expostos != null
+            ? `Trabalhadores expostos: ${expostos}`
+            : "Trabalhadores expostos: não informado",
         ].filter(Boolean).join("    ·    ");
         const detalhes = [
           primeiro.descricao_ambiente && `Ambiente: ${primeiro.descricao_ambiente}`,

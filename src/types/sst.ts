@@ -138,6 +138,11 @@ export interface SstGes {
   nome: string;
   descricao?: string | null;
   criterio_agrupamento?: string | null;
+  /**
+   * Trabalhadores expostos no grupo — NR-01, item 1.5.7.3.2 "e".
+   * `null` é "não informado"; `0` é a afirmação de que ninguém está exposto.
+   */
+  trabalhadores?: number | null;
   validade_inicio: string;
   validade_fim?: string | null;
   responsavel_inspecao?: string | null;
