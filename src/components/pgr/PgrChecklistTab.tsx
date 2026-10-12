@@ -331,9 +331,6 @@ export default function PgrChecklistTab({ pgr }: Props) {
 
   const acoesSemResponsavel = acoesAtivas.filter((a) => !(a.responsavel_nome || "").trim());
   const acoesSemPrazo = acoesAtivas.filter((a) => !a.prazo);
-  const acoesSemAcompanhamento = acoesAtivas.filter(
-    (a) => !(a.forma_acompanhamento || "").trim() || !(a.indicador || "").trim(),
-  );
   const atrasadas = acoes.filter((a) => isAtrasada(a));
   const concluidasSemVerificacao = acoes.filter(
     (a) => a.status === "concluida"
@@ -422,10 +419,6 @@ export default function PgrChecklistTab({ pgr }: Props) {
     { label: "Ações com prazo definido",
       sev: sevSe(n(acoesSemPrazo) > 0, "bloqueante"),
       detail: n(acoesSemPrazo) > 0 ? `${n(acoesSemPrazo)} ação(ões) sem prazo` : undefined },
-    { label: "Ações com forma de acompanhamento e indicador",
-      sev: sevSe(n(acoesSemAcompanhamento) > 0, "recomendacao"),
-      detail: n(acoesSemAcompanhamento) > 0
-        ? `${n(acoesSemAcompanhamento)} ação(ões) sem acompanhamento/indicador` : undefined },
     { label: "Ações concluídas com verificação de eficácia",
       sev: sevSe(n(concluidasSemVerificacao) > 0, "alerta"),
       detail: n(concluidasSemVerificacao) > 0
