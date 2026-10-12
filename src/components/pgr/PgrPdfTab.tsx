@@ -122,7 +122,12 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     // cai no comportamento antigo em vez de não ser gerado.
     const [unidadesRes, respRes] = await Promise.all([
       (supabase.from as any)("empresa_config")
-        .select("id,nome,nome_fantasia,cnpj,cnae_principal,grau_risco,telefone,email,logradouro,numero,complemento,bairro,cidade,uf,cep,endereco,empresa_pai_id")
+        /*
+         * cnae_secundario entrou na lista: a Identificação da Empresa tem
+         * essa linha, como no Word, e sem o campo na consulta ela saía
+         * sempre vazia — um campo anunciado e nunca preenchido.
+         */
+        .select("id,nome,nome_fantasia,cnpj,cnae_principal,cnae_secundario,grau_risco,telefone,email,logradouro,numero,complemento,bairro,cidade,uf,cep,endereco,empresa_pai_id")
         .or(`id.eq.${pgr.empresa_id},empresa_pai_id.eq.${pgr.empresa_id}`),
       (supabase.from as any)("pgr_responsaveis")
         .select("papel,nome,cpf,profissao,registro_profissional,uf_registro,numero_art,ordem")

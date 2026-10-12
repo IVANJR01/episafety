@@ -218,6 +218,21 @@ async function sha256Hex(buf: ArrayBuffer): Promise<string> {
  * mesma coisa com outras palavras e é usada na tela; aqui vale a redação do
  * documento, porque é o documento que vai para fiscalização.
  */
+/**
+ * Grau de risco como a NR-04 escreve: 2 vira "02 (Dois)".
+ *
+ * Saía o número cru — "1" —, e o documento em Word imprime por extenso. É a
+ * mesma regra de src/lib/documentos/montarDados.ts, para os dois formatos
+ * dizerem a mesma coisa.
+ */
+const GRAU_EXTENSO = ["", "Um", "Dois", "Três", "Quatro"];
+function grauDeRisco(v?: number | null): string {
+  if (v === null || v === undefined) return "";
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 1 || n > 4) return "";
+  return `${String(n).padStart(2, "0")} (${GRAU_EXTENSO[n]})`;
+}
+
 const CLASSE_DECISAO_CURTA: Record<PgrClasse, string> = {
   trivial: "Nenhuma ação necessária.",
   toleravel: "Nenhum controle adicional necessário.",
@@ -521,7 +536,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     ["CNPJ", principal?.cnpj || ctx.empresaCnpj || ""],
     ["CNAE Principal", principal?.cnae_principal || ""],
     ["CNAE Secundário", cnaeSecundario],
-    ["Grau de Risco (NR-04)", principal?.grau_risco != null ? String(principal.grau_risco) : ""],
+    ["Grau de Risco (NR-04)", grauDeRisco(principal?.grau_risco)],
     ["Endereço", enderecoDe(principal)],
     ["Bairro", principal?.bairro || ""],
     ["Cidade / UF", [principal?.cidade, principal?.uf].filter(Boolean).join(" – ")],
