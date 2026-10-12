@@ -668,8 +668,8 @@ export default function InventarioTab({
                         larguras aqui são fixas porque o `left` das seguintes é
                         a soma delas. */}
                     <th className={`${CTX_TH} w-[200px] min-w-[200px] max-w-[200px] left-0`}>Descrição do ambiente</th>
-                    <th className={`${CTX_TH} w-[88px] min-w-[88px] max-w-[88px] left-[200px]`}>Setor</th>
-                    <th className={`${CTX_TH} w-[48px] min-w-[48px] max-w-[48px] left-[288px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>
+                    <th className={`${CTX_TH} w-[130px] min-w-[130px] max-w-[130px] left-[200px]`}>Setor</th>
+                    <th className={`${CTX_TH} w-[48px] min-w-[48px] max-w-[48px] left-[330px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>
                       <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap">GES</div>
                     </th>
                     <th className="p-1.5 text-center border border-amber-400 w-[180px] min-w-[180px]">Função</th>
@@ -786,10 +786,10 @@ export default function InventarioTab({
                           </td>
                         )}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} style={{ backgroundColor: "#ffffff" }} className="p-1.5 pt-2 border align-middle sticky left-[200px] z-40 w-[88px] min-w-[88px] max-w-[88px] break-words">{val(i.setor)}</td>
+                          <td rowSpan={linhasDoSetor} style={{ backgroundColor: "#ffffff" }} className="p-1.5 pt-2 border align-middle sticky left-[200px] z-40 w-[130px] min-w-[130px] max-w-[130px] font-medium leading-snug break-words">{val(i.setor)}</td>
                         )}
                         {abreGes && (
-                          <td rowSpan={linhasDoGes} style={{ backgroundColor: "#fffbeb" }} className={`p-1.5 pt-2 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[288px] z-40 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] w-[48px] min-w-[48px] max-w-[48px] break-words`}>
+                          <td rowSpan={linhasDoGes} style={{ backgroundColor: "#fffbeb" }} className={`p-1.5 pt-2 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[330px] z-40 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] w-[48px] min-w-[48px] max-w-[48px] break-words`}>
                             {/* Sem grupo a linha sai N.A no PGR emitido. Marcar
                                 em âmbar é o que faz a falha aparecer antes da
                                 emissão, e não depois. */}

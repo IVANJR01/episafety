@@ -628,11 +628,11 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
      * Cabendo perfeitamente nos 277 mm úteis da folha deitada (10 mm a 287 mm).
      */
     const COLS = [
-      { chave: "ambiente", rotulo: "DESCRIÇÃO DO AMBIENTE", w: 25, align: "left" as const },
-      { chave: "setor", rotulo: "SETOR", w: 13, align: "left" as const },
+      { chave: "ambiente", rotulo: "DESCRIÇÃO DO AMBIENTE", w: 23, align: "left" as const },
+      { chave: "setor", rotulo: "SETOR", w: 17, align: "left" as const },
       { chave: "ges", rotulo: "GES", w: 7, align: "center" as const },
       { chave: "funcoes", rotulo: "FUNÇÃO", w: 18, align: "left" as const },
-      { chave: "processo", rotulo: "PROCESSO", w: 24, align: "left" as const },
+      { chave: "processo", rotulo: "PROCESSO", w: 22, align: "left" as const },
       { chave: "agente", rotulo: "AGENTE", w: 14, align: "center" as const },
       { chave: "tipo_agente", rotulo: "PERIGO / TIPO DE AGENTE", w: 17, align: "left" as const },
       { chave: "fonte", rotulo: "FONTE / CIRCUNSTÂNCIA", w: 18, align: "left" as const },
