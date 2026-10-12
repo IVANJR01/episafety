@@ -21,8 +21,12 @@ import {
   CLASSE_FAIXA,
   GRUPO_LABEL,
   PgrClasse,
+  corDaClasse,
+  corDoGrupo,
 } from "@/lib/pgrMatriz";
 import { ACAO_STATUS_LABEL, type PgrAcaoStatus } from "@/lib/pgrAcoes";
+import { pesoDoGrupo, ordenarInventario } from "@/lib/inventarioOrdem";
+import { descreverAmbiente, descreverProcesso } from "@/lib/sstEstrutura";
 
 export interface PgrInventarioItem {
   id: string;
@@ -38,10 +42,31 @@ export interface PgrInventarioItem {
   necessita_acao: boolean;
   trabalhadores_expostos: number | null;
   controles_existentes: string | null;
-  /* Vieram com a tabela do inventário e não estavam declarados: o `any`
-     implícito escondia erro de digitação em nome de coluna. */
   setor_id?: string | null;
   lesoes?: string | null;
+  setor?: string | null;
+  descricao_ambiente?: string | null;
+  ambiente?: string | null;
+  processo?: string | null;
+  processo_id?: string | null;
+  ambiente_id?: string | null;
+  funcoes_snapshot?: string[] | null;
+  ges_id?: string | null;
+  ges_codigo?: string | null;
+  tipo_agente?: string | null;
+  limite_tolerancia?: string | null;
+  intensidade?: string | null;
+  medicao_valor?: number | string | null;
+  medicao_unidade?: string | null;
+  tempo_exposicao?: string | null;
+  tecnica_utilizada?: string | null;
+  metodologia_avaliacao?: string | null;
+  tipo_avaliacao?: string | null;
+  epi?: string | null;
+  atenuacao?: string | null;
+  fator_protecao?: string | null;
+  epi_fator_protecao?: string | null;
+  nivel_risco?: number | null;
 }
 export interface PgrAcaoItem {
   id: string;
@@ -137,6 +162,7 @@ export interface PgrPdfContext {
   revisoes: PgrRevisaoItem[];
   assinaturas: PgrAssinaturaItem[];
   ghes: Record<string, string>;
+  ghesCodigos?: Record<string, string>;
   textos?: Record<string, string>;
   /** Matriz + filiais, para a seção de identificação. */
   unidades?: PgrUnidadeItem[];
@@ -581,251 +607,597 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     b.limiteY = undefined;
   };
 
+  const hexToRgb = (hex: string): [number, number, number] => {
+    const h = (hex || "#000000").replace("#", "");
+    return [
+      parseInt(h.slice(0, 2), 16) || 0,
+      parseInt(h.slice(2, 4), 16) || 0,
+      parseInt(h.slice(4, 6), 16) || 0,
+    ];
+  };
+
   const desenharInventario = () => {
-  if (ctx.inventario.length === 0) {
+    if (ctx.inventario.length === 0) {
       para(b, "Nenhum item de inventário registrado.");
-    } else {
-      /*
-       * As larguras são as do pacote, proporcionais, cabendo nos 277 mm úteis
-       * da página deitada. Mexer numa exige recalcular o conjunto: a tabela não
-       * se ajusta sozinha, e sobra ou falta acaba desenhado fora do papel.
-       */
-      const COLS: { rotulo: string; chave: string; w: number }[] = [
-        { rotulo: "AGENTE", chave: "agente", w: 15 },
-        { rotulo: "PERIGO", chave: "perigo", w: 22 },
-        { rotulo: "FONTE / CIRCUNSTÂNCIA", chave: "fonte", w: 22 },
-        { rotulo: "POSSÍVEIS LESÕES OU AGRAVOS", chave: "lesoes", w: 28 },
-        { rotulo: "LIMITE DE EXPOSIÇÃO", chave: "limite", w: 14 },
-        { rotulo: "INTENS. / CONC.", chave: "intensidade", w: 13 },
-        { rotulo: "TIPO / TEMPO DE EXPOSIÇÃO", chave: "exposicao", w: 16 },
-        { rotulo: "TÉCNICA UTILIZADA", chave: "tecnica", w: 17 },
-        { rotulo: "EPC / PROCEDIMENTO ADMINISTRATIVO", chave: "medidas", w: 32 },
-        { rotulo: "EPI", chave: "epi", w: 18 },
-        { rotulo: "ATENUAÇÃO / FP", chave: "atenuacao", w: 14 },
-        { rotulo: "P", chave: "probabilidade", w: 5 },
-        { rotulo: "S", chave: "severidade", w: 5 },
-        { rotulo: "NÍVEL", chave: "nivel", w: 8 },
-        { rotulo: "CLASSIFICAÇÃO", chave: "classificacao", w: 18 },
-      ];
-      /*
-       * 12 mm de margem + as larguras + 0,8 mm entre colunas tem de caber nos
-       * 287 mm da borda direita. Somando mais do que isso, as últimas colunas
-       * saem desenhadas fora do papel — foi o que aconteceu com
-       * CLASSIFICAÇÃO, que saía cortada na metade.
-       */
-      /*
-       * 2 mm de vão entre colunas: é nele que a linha da grade passa, com 1 mm
-       * de folga de cada lado. Com 0,8 mm o texto encostava na linha.
-       */
-      let xAcumulado = 12;
-      const colunas = COLS.map((c) => {
-        const col = { rotulo: c.rotulo, x: xAcumulado, w: c.w };
-        xAcumulado += c.w + 2;
-        return col;
-      });
-      const addLinha = tabela(b, colunas, {
-        fonte: 6.3, fonteCabecalho: 6, grade: true, cabecalhoEscuro: true,
-      });
+      return;
+    }
 
-      const mapaGes: Record<string, string> = (ctx.ghes as any) || {};
-      const nomeGes = (i: any) => mapaGes[i.ges_id] || mapaGes[i.ghe_id] || "";
-      const nomeSetor = (i: any) =>
-        i.setor || ((ctx.setores as any[]) || []).find((s: any) => s.id === i.setor_id)?.nome || "";
+    /*
+     * Tabela mestre oficial integrada de 20 colunas — espelhando exatamente a
+     * tela do sistema (InventarioTab) e a planilha oficial de SST da SafetySoluções.
+     * Cabendo perfeitamente nos 277 mm úteis da folha deitada (10 mm a 287 mm).
+     */
+    const COLS = [
+      { chave: "ambiente", rotulo: "DESCRIÇÃO DO AMBIENTE", w: 23, align: "left" as const },
+      { chave: "setor", rotulo: "SETOR", w: 17, align: "left" as const },
+      { chave: "ges", rotulo: "GES", w: 7, align: "center" as const },
+      { chave: "funcoes", rotulo: "FUNÇÃO", w: 18, align: "left" as const },
+      { chave: "processo", rotulo: "PROCESSO", w: 22, align: "left" as const },
+      { chave: "agente", rotulo: "AGENTE", w: 14, align: "center" as const },
+      { chave: "tipo_agente", rotulo: "PERIGO / TIPO DE AGENTE", w: 17, align: "left" as const },
+      { chave: "fonte", rotulo: "FONTE / CIRCUNSTÂNCIA", w: 18, align: "left" as const },
+      { chave: "lesoes", rotulo: "POSSÍVEIS LESÕES OU AGRAVOS", w: 20, align: "left" as const },
+      { chave: "limite", rotulo: "LIMITE DE EXPOSIÇÃO", w: 10, align: "center" as const },
+      { chave: "intensidade", rotulo: "INTENS. / CONC.", w: 10, align: "center" as const },
+      { chave: "exposicao", rotulo: "TIPO / TEMPO DE EXPOSIÇÃO", w: 13, align: "center" as const },
+      { chave: "tecnica", rotulo: "TÉCNICA UTILIZADA", w: 12, align: "center" as const },
+      { chave: "medidas", rotulo: "EPC / PROCEDIMENTO ADMINISTRATIVO", w: 22, align: "left" as const },
+      { chave: "epi", rotulo: "EPI", w: 13, align: "center" as const },
+      { chave: "atenuacao", rotulo: "ATENUAÇÃO / FP", w: 10, align: "center" as const },
+      { chave: "probabilidade", rotulo: "P", w: 6, align: "center" as const },
+      { chave: "severidade", rotulo: "S", w: 6, align: "center" as const },
+      { chave: "nivel", rotulo: "NÍVEL", w: 6, align: "center" as const },
+      { chave: "classificacao", rotulo: "CLASSIFICAÇÃO", w: 13, align: "center" as const },
+    ];
 
-      /* Um grupo por GES, na ordem do nome; sem GES fica por último. */
-      const grupos = new Map<string, any[]>();
-      for (const i of ctx.inventario as any[]) {
-        const chave = i.ges_id || i.ghe_id || "__sem_ges__";
-        if (!grupos.has(chave)) grupos.set(chave, []);
-        grupos.get(chave)!.push(i);
+    let xAcumulado = 10;
+    const colunasComX = COLS.map((c) => {
+      const col = { ...c, x: xAcumulado };
+      xAcumulado += c.w;
+      return col;
+    });
+
+    const mapaGesNome: Record<string, string> = (ctx.ghes as any) || {};
+    const mapaGesCodigo: Record<string, string> = (ctx.ghesCodigos as any) || {};
+
+    const obterCodigoGes = (i: any): string => {
+      if (i.ges_codigo) return i.ges_codigo;
+      if (mapaGesCodigo[i.ges_id]) return mapaGesCodigo[i.ges_id];
+      if (mapaGesCodigo[i.ghe_id]) return mapaGesCodigo[i.ghe_id];
+      if (ctx.gesDetalhes) {
+        const det = ctx.gesDetalhes.find((g: any) => g.id === i.ges_id || g.id === i.ghe_id);
+        if (det?.codigo) return det.codigo;
       }
-      const chavesOrdenadas = [...grupos.keys()].sort((a, c) => {
-        if (a === "__sem_ges__") return 1;
-        if (c === "__sem_ges__") return -1;
-        return (mapaGes[a] || "").localeCompare(mapaGes[c] || "");
+      const nome = mapaGesNome[i.ges_id] || mapaGesNome[i.ghe_id] || "";
+      const match = nome.match(/GES\s*([0-9A-Za-z]+)/i);
+      if (match) return match[1];
+      return nome || "—";
+    };
+
+    const obterSetor = (i: any): string => {
+      if (i.setor && i.setor !== "N.A") return i.setor;
+      if (i.setor_id && ctx.setores) {
+        const s = ctx.setores.find((sec: any) => sec.id === i.setor_id);
+        if (s?.nome) return s.nome;
+      }
+      return "—";
+    };
+
+    const obterAmbiente = (i: any): string => {
+      const direto = i.descricao_ambiente || i.ambiente;
+      if (direto && direto !== "N.A") return direto;
+      if (ctx.ambientes && i.ambiente_id) {
+        const amb = ctx.ambientes.find((a: any) => a.id === i.ambiente_id);
+        if (amb) return descreverAmbiente(amb);
+      }
+      return "—";
+    };
+
+    const obterProcesso = (i: any): string => {
+      const direto = i.processo;
+      if (direto && direto !== "N.A") return direto;
+      if (ctx.processos && i.processo_id) {
+        const proc = ctx.processos.find((p: any) => p.id === i.processo_id);
+        if (proc) return descreverProcesso(proc);
+      }
+      return "—";
+    };
+
+    const expostosPorGes = new Map<string, number>();
+    for (const itemInv of ctx.inventario as any[]) {
+      const g = itemInv.ges_id || itemInv.ghe_id || "__sem_ges__";
+      const exp = Number(itemInv.trabalhadores_expostos) || 0;
+      const atual = expostosPorGes.get(g) || 0;
+      if (exp > atual) expostosPorGes.set(g, exp);
+    }
+
+    const obterFuncoes = (i: any): string => {
+      if (Array.isArray(i.funcoes_snapshot) && i.funcoes_snapshot.length > 0) {
+        return i.funcoes_snapshot.filter(Boolean).join(", ");
+      }
+      if (typeof i.funcoes_snapshot === "string" && i.funcoes_snapshot) {
+        return i.funcoes_snapshot;
+      }
+      return "—";
+    };
+
+    const chaveSetor = (i: any) => [obterSetor(i), obterAmbiente(i), obterProcesso(i)].join("§");
+    const chaveGes = (i: any) => [chaveSetor(i), obterCodigoGes(i)].join("§");
+    const chaveAgente = (i: any) => [chaveGes(i), i.grupo || ""].join("§");
+
+    const itensOrdenados = ordenarInventario(ctx.inventario as any[], {
+      chaveSetor,
+      codigoGes: obterCodigoGes,
+      grupo: (i) => i.grupo,
+      desempate: (i) => `${i.perigo_descricao || ""}§${i.id}`,
+    });
+
+    const itensPreparados = itensOrdenados.map((i: any) => {
+      const temAval = i.probabilidade != null && i.severidade != null;
+      const nivelNum = temAval ? Number(i.probabilidade) * Number(i.severidade) : null;
+      const classe: PgrClasse | null =
+        nivelNum != null ? classificarMatriz(i.severidade, i.probabilidade) : (i.classificacao as PgrClasse | null);
+      const classeTexto = classe ? (CLASSIF_LABEL[classe] || classe).toUpperCase() : "—";
+
+      const dados: Record<string, string> = {
+        ambiente: obterAmbiente(i),
+        setor: obterSetor(i),
+        ges: obterCodigoGes(i),
+        funcoes: obterFuncoes(i),
+        processo: obterProcesso(i),
+        agente: GRUPO_LABEL[i.grupo] || i.grupo || "—",
+        tipo_agente: i.tipo_agente || i.perigo_descricao || "—",
+        fonte: i.fonte_geradora || (i.tipo_agente ? i.perigo_descricao : "") || "—",
+        lesoes: i.lesoes || "—",
+        limite: i.limite_tolerancia || "N.A",
+        intensidade: i.intensidade
+          || (i.medicao_valor != null
+            ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}`
+            : "N.A"),
+        exposicao: i.tempo_exposicao || EXPOSICAO_PDF[i.tipo_exposicao] || i.tipo_exposicao || "N.A",
+        tecnica: i.tecnica_utilizada || i.metodologia_avaliacao || i.tipo_avaliacao || "N.A",
+        medidas: Array.isArray(i.controles_existentes)
+          ? i.controles_existentes.filter(Boolean).join("; ")
+          : (i.controles_existentes || "N.A"),
+        epi: i.epi || "N.A",
+        atenuacao: i.atenuacao || i.fator_protecao || i.epi_fator_protecao || "N.A",
+        probabilidade: i.probabilidade != null ? String(i.probabilidade) : "—",
+        severidade: i.severidade != null ? String(i.severidade) : "—",
+        nivel: nivelNum != null ? String(nivelNum) : (i.nivel_risco != null ? String(i.nivel_risco) : "—"),
+        classificacao: classeTexto,
+      };
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(5.0);
+      const linhasTexto: Record<string, string[]> = {};
+      for (const col of colunasComX) {
+        linhasTexto[col.chave] = pdf.splitTextToSize(dados[col.chave] || "—", col.w - 1.2) as string[];
+      }
+
+      // Altura requerida pelas colunas do item
+      const maxLinhasItem = Math.max(
+        linhasTexto.tipo_agente.length,
+        linhasTexto.fonte.length,
+        linhasTexto.lesoes.length,
+        linhasTexto.limite.length,
+        linhasTexto.intensidade.length,
+        linhasTexto.exposicao.length,
+        linhasTexto.tecnica.length,
+        linhasTexto.medidas.length,
+        linhasTexto.epi.length,
+        linhasTexto.atenuacao.length,
+        linhasTexto.probabilidade.length,
+        linhasTexto.severidade.length,
+        linhasTexto.nivel.length,
+        linhasTexto.classificacao.length,
+      );
+
+      const altura = Math.max(6.5, maxLinhasItem * 2.1 + 2.0);
+
+      return {
+        item: i,
+        dados,
+        linhasTexto,
+        altura,
+        classe,
+        chaveSetor: chaveSetor(i),
+        chaveGes: chaveGes(i),
+        chaveAgente: chaveAgente(i),
+      };
+    });
+
+    // Ajuste de altura se o texto mesclado (Ambiente/Processo) exigir mais espaço vertical
+    for (let i = 0; i < itensPreparados.length; ) {
+      const chaveSec = itensPreparados[i].chaveSetor;
+      let j = i;
+      while (j < itensPreparados.length && itensPreparados[j].chaveSetor === chaveSec) j++;
+      const qtdLinhas = j - i;
+      const alturaAtual = itensPreparados.slice(i, j).reduce((s, row) => s + row.altura, 0);
+
+      const altAmbNecessaria = itensPreparados[i].linhasTexto.ambiente.length * 2.1 + 3.0;
+      const altProcNecessaria = itensPreparados[i].linhasTexto.processo.length * 2.1 + 3.0;
+      const maxNecessaria = Math.max(altAmbNecessaria, altProcNecessaria);
+
+      if (maxNecessaria > alturaAtual) {
+        const extraPorLinha = (maxNecessaria - alturaAtual) / qtdLinhas;
+        for (let k = i; k < j; k++) {
+          itensPreparados[k].altura += extraPorLinha;
+        }
+      }
+      i = j;
+    }
+
+    const desenharCabecalho = () => {
+      const hCab = 9.5;
+      pdf.setFillColor(253, 230, 138); // Fundo âmbar oficial (#FDE68A)
+      pdf.rect(10, b.y, 277, hCab, "F");
+
+      pdf.setDrawColor(245, 158, 11); // Borda âmbar oficial (#F59E0B)
+      pdf.setLineWidth(0.35);
+      pdf.rect(10, b.y, 277, hCab);
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(4.7);
+      pdf.setTextColor(69, 26, 3); // #451A03 (âmbar escuro da tela)
+
+      colunasComX.forEach((c) => {
+        pdf.setDrawColor(245, 158, 11);
+        pdf.setLineWidth(0.35);
+        pdf.line(c.x + c.w, b.y, c.x + c.w, b.y + hCab);
+
+        const partes = pdf.splitTextToSize(c.rotulo, c.w - 1.0) as string[];
+        const altTexto = partes.length * 2.1;
+        let ty = b.y + (hCab - altTexto) / 2 + 1.8;
+        partes.forEach((p) => {
+          if (c.align === "center") {
+            pdf.text(p, c.x + c.w / 2, ty, { align: "center" });
+          } else {
+            pdf.text(p, c.x + 0.8, ty);
+          }
+          ty += 2.1;
+        });
       });
 
-      /**
-       * A faixa que abre cada GES — letras "a", "b" e "e" do 1.5.7.3.2.
-       *
-       * Desenhada fora do fluxo da tabela, então ela mesma cuida da quebra de
-       * página — e manda redesenhar o cabeçalho das colunas quando quebra,
-       * senão a página seguinte começaria com linhas sem dizer o que é cada uma.
-       */
-      const faixaDoGes = (itens: any[]) => {
-        const primeiro = itens[0];
-        const ges = nomeGes(primeiro) || "Sem GES";
-        const setor = nomeSetor(primeiro);
-        const funcoes = (primeiro.funcoes_snapshot || []).filter(Boolean).join(", ");
-        /*
-         * Quantos trabalhadores o grupo tem — NR-01, item 1.5.7.3.2 "e".
-         *
-         * A fonte certa é o CADASTRO do GES: o número é do grupo. O número do
-         * item do inventário é de outra coisa — quantos ficam expostos ÀQUELE
-         * perigo, que pode ser parte do grupo —, e por isso só serve de reserva,
-         * para o cadastro antigo que ainda não tem o campo preenchido.
-         *
-         * Zero não é "não informado": se alguém gravou 0, o documento diz 0.
-         */
-        const cadastroGes = ((ctx.gesDetalhes as any[]) || []).find(
-          (g: any) => g.id === primeiro.ges_id || g.id === primeiro.ghe_id,
-        );
-        const expostosGrupo = itens
-          .map((i) => i.trabalhadores_expostos)
-          .filter((n) => n != null && n > 0) as number[];
-        /* Dois nomes de coluna: o recurso foi escrito duas vezes em paralelo. */
-        const doCadastro = cadastroGes?.trabalhadores ?? cadastroGes?.quantidade_trabalhadores;
-        const expostos: number | null = doCadastro != null
-          ? Number(doCadastro)
-          : (expostosGrupo.length ? Math.max(...expostosGrupo) : null);
+      pdf.setTextColor(0);
+      b.y += hCab;
+    };
 
-        const cabecalho = [
-          `GES: ${ges}`,
-          setor && `Setor: ${setor}`,
-          funcoes && `Funções: ${funcoes}`,
-          expostos != null
-            ? `Trabalhadores expostos: ${expostos}`
-            : "Trabalhadores expostos: não informado",
-        ].filter(Boolean).join("    ·    ");
-        const detalhes = [
-          primeiro.descricao_ambiente && `Ambiente: ${primeiro.descricao_ambiente}`,
-          primeiro.processo && `Processo / atividades: ${primeiro.processo}`,
-        ].filter(Boolean) as string[];
+    desenharCabecalho();
 
-        const larguraUtil = (b.direita ?? 200) - 14;
-        pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5);
-        const linhasCab = pdf.splitTextToSize(cabecalho, larguraUtil) as string[];
-        pdf.setFont("helvetica", "normal"); pdf.setFontSize(7);
-        const linhasDet = detalhes.flatMap((d) => pdf.splitTextToSize(d, larguraUtil) as string[]);
-        const altura = linhasCab.length * 3.6 + linhasDet.length * 3.2 + 3;
+    let idx = 0;
+    while (idx < itensPreparados.length) {
+      const limiteY = b.limiteY ?? 190;
+      let idxFim = idx;
+      let yAccum = b.y;
 
-        if (b.y + altura + 8 > (b.limiteY ?? 278)) {
-          pdf.addPage([297, 210], "landscape");
-          b.y = 15;
-          addLinha.cabecalho();
+      while (idxFim < itensPreparados.length) {
+        const h = itensPreparados[idxFim].altura;
+        if (yAccum + h > limiteY && idxFim > idx) {
+          break;
         }
-        pdf.setFillColor(227, 234, 242);
-        pdf.rect(10, b.y, (b.direita ?? 200) - 10, altura, "F");
-        let yTexto = b.y + 3.4;
+        yAccum += h;
+        idxFim++;
+      }
+
+      if (idxFim === idx) {
+        pdf.addPage([297, 210], "landscape");
+        b.y = 15;
+        desenharCabecalho();
+        idxFim = idx + 1;
+      }
+
+      const linhasPagina = itensPreparados.slice(idx, idxFim);
+      const yLinhas: { y: number; h: number }[] = [];
+      let yPos = b.y;
+      for (const itemPrep of linhasPagina) {
+        yLinhas.push({ y: yPos, h: itemPrep.altura });
+        yPos += itemPrep.altura;
+      }
+
+      const colAmb = colunasComX[0];
+      const colSetor = colunasComX[1];
+      const colGes = colunasComX[2];
+      const colFun = colunasComX[3];
+      const colProc = colunasComX[4];
+      const colAgente = colunasComX[5];
+
+      // 1. Células mescladas por SETOR (Ambiente, Setor, Processo)
+      for (let i = 0; i < linhasPagina.length; ) {
+        const chave = linhasPagina[i].chaveSetor;
+        let j = i;
+        while (j < linhasPagina.length && linhasPagina[j].chaveSetor === chave) j++;
+
+        const yTop = yLinhas[i].y;
+        const hBloco = (yLinhas[j - 1].y + yLinhas[j - 1].h) - yTop;
+        const rowData = linhasPagina[i];
+
+        // Ambiente: fundo suave #FFFBEB
+        pdf.setFillColor(255, 251, 235);
+        pdf.rect(colAmb.x, yTop, colAmb.w, hBloco, "F");
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(4.8);
         pdf.setTextColor(15, 23, 42);
-        linhasCab.forEach((l) => {
-          pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5);
-          pdf.text(l, 12, yTexto);
-          yTexto += 3.6;
-        });
-        linhasDet.forEach((l) => {
-          pdf.setFont("helvetica", "normal"); pdf.setFontSize(7);
-          pdf.text(l, 12, yTexto);
-          yTexto += 3.2;
-        });
-        pdf.setTextColor(0);
-        b.y += altura;
-      };
-
-      /** O valor de cada coluna, do jeito que a planilha escreve. */
-      const valorDaColuna = (i: any, chave: string): string => {
-        switch (chave) {
-          /*
-           * O agente sai pelo rótulo, não pelo valor do banco. Saía "[fisico]",
-           * "[quimico]", "[psicossocial]" — minúsculo, sem acento e entre
-           * colchetes, que é o nome do enum, não português.
-           */
-          case "agente": return GRUPO_LABEL[i.grupo] || i.grupo || "";
-          case "perigo": return i.perigo_descricao || "";
-          case "fonte": return i.fonte_geradora || "";
-          case "lesoes": return i.lesoes || "";
-          case "limite": return i.limite_tolerancia || "";
-          case "intensidade":
-            return i.intensidade
-              || (i.medicao_valor != null
-                ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}`
-                : "");
-          /* O tempo descrito diz mais que o tipo; na falta dele, o tipo. */
-          case "exposicao": return i.tempo_exposicao || EXPOSICAO_PDF[i.tipo_exposicao] || "";
-          case "tecnica": return i.tecnica_utilizada || "";
-          case "medidas":
-            return Array.isArray(i.controles_existentes)
-              ? i.controles_existentes.filter(Boolean).join("; ")
-              : (i.controles_existentes || "");
-          case "epi": return i.epi || "";
-          case "atenuacao": return i.atenuacao || "";
-          case "probabilidade": return i.probabilidade != null ? String(i.probabilidade) : "";
-          case "severidade": return i.severidade != null ? String(i.severidade) : "";
-          default: return "";
+        let yAmb = yTop + 2.5;
+        for (const linha of rowData.linhasTexto.ambiente) {
+          if (yAmb > yTop + hBloco - 1) break;
+          pdf.text(linha, colAmb.x + 0.8, yAmb);
+          yAmb += 2.1;
         }
-      };
 
-      for (const chave of chavesOrdenadas) {
-        const itens = grupos.get(chave)!;
-        faixaDoGes(itens);
+        // Setor: fundo branco
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(colSetor.x, yTop, colSetor.w, hBloco, "F");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(5.2);
+        pdf.setTextColor(15, 23, 42);
+        const altSetor = rowData.linhasTexto.setor.length * 2.2;
+        let ySet = yTop + (hBloco - altSetor) / 2 + 1.8;
+        for (const linha of rowData.linhasTexto.setor) {
+          pdf.text(linha, colSetor.x + 0.8, ySet);
+          ySet += 2.2;
+        }
 
-        itens.forEach((i: any) => {
-          /*
-           * Nível e classificação são CALCULADOS aqui, nunca lidos do dado —
-           * a mesma regra do Word e da planilha.
-           */
-          const temAval = i.probabilidade != null && i.severidade != null;
-          const nivel = temAval ? Number(i.probabilidade) * Number(i.severidade) : null;
-          const classe: PgrClasse | null =
-            nivel != null ? classificarMatriz(i.severidade, i.probabilidade) : null;
+        // Processo: fundo branco
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(colProc.x, yTop, colProc.w, hBloco, "F");
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(4.8);
+        pdf.setTextColor(15, 23, 42);
+        let yProc = yTop + 2.5;
+        for (const linha of rowData.linhasTexto.processo) {
+          if (yProc > yTop + hBloco - 1) break;
+          pdf.text(linha, colProc.x + 0.8, yProc);
+          yProc += 2.1;
+        }
 
-          const celulas = COLS.map((c) => {
-            if (c.chave === "nivel") return nivel != null ? String(nivel) : "";
-            if (c.chave === "classificacao") return classe ? CLASSIF_LABEL[classe].toUpperCase() : "";
-            return valorDaColuna(i, c.chave);
-          });
+        i = j;
+      }
 
-          /*
-           * Sem a tarja na margem: com a célula de classificação pintada dentro
-           * da grade, a tarja ficava do lado de fora da moldura, repetindo a
-           * mesma informação e parecendo sobra de desenho.
-           */
-          const cor = classe ? CLASSE_HEX[classe] : undefined;
-          addLinha(
-            celulas,
-            undefined,
-            cor && classe
-              ? { col: COLS.length - 1, fundo: cor, texto: CLASSE_TEXTO_HEX[classe] }
-              : undefined,
-          );
-        });
+      // 2. Células mescladas por GES (GES, Função)
+      for (let i = 0; i < linhasPagina.length; ) {
+        const chave = linhasPagina[i].chaveGes;
+        let j = i;
+        while (j < linhasPagina.length && linhasPagina[j].chaveGes === chave) j++;
+
+        const yTop = yLinhas[i].y;
+        const hBloco = (yLinhas[j - 1].y + yLinhas[j - 1].h) - yTop;
+        const rowData = linhasPagina[i];
+
+        // GES: fundo suave #FFFBEB, negrito centralizado
+        pdf.setFillColor(255, 251, 235);
+        pdf.rect(colGes.x, yTop, colGes.w, hBloco, "F");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(7.0);
+        pdf.setTextColor(15, 23, 42);
+        pdf.text(rowData.dados.ges, colGes.x + colGes.w / 2, yTop + hBloco / 2 + 1.2, { align: "center" });
+
+        // Função: fundo branco
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(colFun.x, yTop, colFun.w, hBloco, "F");
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(4.8);
+        pdf.setTextColor(15, 23, 42);
+        let yFun = yTop + 2.5;
+        for (const linha of rowData.linhasTexto.funcoes) {
+          if (yFun > yTop + hBloco - 1) break;
+          pdf.text(linha, colFun.x + 0.8, yFun);
+          yFun += 2.1;
+        }
+
+        i = j;
+      }
+
+      // 3. Célula mesclada por AGENTE (Grupo de risco NR-09 com cor oficial)
+      for (let i = 0; i < linhasPagina.length; ) {
+        const chave = linhasPagina[i].chaveAgente;
+        let j = i;
+        while (j < linhasPagina.length && linhasPagina[j].chaveAgente === chave) j++;
+
+        const yTop = yLinhas[i].y;
+        const hBloco = (yLinhas[j - 1].y + yLinhas[j - 1].h) - yTop;
+        const rowData = linhasPagina[i];
+        const grupo = rowData.item.grupo;
+        const cor = corDoGrupo(grupo);
+        const rgbFundo = hexToRgb(cor.fundo);
+        const rgbTexto = hexToRgb(cor.texto);
+
+        pdf.setFillColor(...rgbFundo);
+        pdf.rect(colAgente.x, yTop, colAgente.w, hBloco, "F");
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(6.0);
+        pdf.setTextColor(...rgbTexto);
+
+        const partesAgente = pdf.splitTextToSize(GRUPO_LABEL[grupo] || grupo || "—", colAgente.w - 1.0) as string[];
+        let yAg = yTop + (hBloco - partesAgente.length * 2.4) / 2 + 1.8;
+        for (const linha of partesAgente) {
+          pdf.text(linha, colAgente.x + colAgente.w / 2, yAg, { align: "center" });
+          yAg += 2.4;
+        }
+
+        i = j;
+      }
+
+      // 4. Células individuais por item de risco (colunas 6 a 19)
+      linhasPagina.forEach((row, k) => {
+        const rowY = yLinhas[k].y;
+        const rowH = yLinhas[k].h;
+
+        // Fundo branco padrão nas colunas 6 a 18
+        for (let cIdx = 6; cIdx <= 18; cIdx++) {
+          const col = colunasComX[cIdx];
+          pdf.setFillColor(255, 255, 255);
+          pdf.rect(col.x, rowY, col.w, rowH, "F");
+
+          pdf.setFont("helvetica", cIdx >= 16 ? "bold" : "normal");
+          pdf.setFontSize(cIdx >= 16 ? 5.5 : 4.8);
+          pdf.setTextColor(15, 23, 42);
+
+          const linhas = row.linhasTexto[col.chave];
+          if (col.align === "center") {
+            const altT = linhas.length * 2.1;
+            let ty = rowY + (rowH - altT) / 2 + 1.8;
+            for (const l of linhas) {
+              pdf.text(l, col.x + col.w / 2, ty, { align: "center" });
+              ty += 2.1;
+            }
+          } else {
+            let ty = rowY + 2.4;
+            for (const l of linhas) {
+              if (ty > rowY + rowH - 1) break;
+              pdf.text(l, col.x + 0.8, ty);
+              ty += 2.1;
+            }
+          }
+        }
+
+        // Coluna 19: Classificação do risco com cor oficial
+        const colCls = colunasComX[19];
+        const classe = row.classe;
+        if (classe) {
+          const corCls = corDaClasse(classe);
+          const rgbClsFundo = hexToRgb(corCls.fundo);
+          const rgbClsTexto = hexToRgb(corCls.texto);
+          pdf.setFillColor(...rgbClsFundo);
+          pdf.rect(colCls.x, rowY, colCls.w, rowH, "F");
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(5.2);
+          pdf.setTextColor(...rgbClsTexto);
+          pdf.text(row.dados.classificacao, colCls.x + colCls.w / 2, rowY + rowH / 2 + 1.2, { align: "center" });
+        } else {
+          pdf.setFillColor(241, 245, 249);
+          pdf.rect(colCls.x, rowY, colCls.w, rowH, "F");
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(5.0);
+          pdf.setTextColor(100);
+          pdf.text("—", colCls.x + colCls.w / 2, rowY + rowH / 2 + 1.2, { align: "center" });
+        }
+
+        // Linha divisória horizontal entre itens nas colunas 6 a 19
+        pdf.setDrawColor(226, 232, 240);
+        pdf.setLineWidth(0.2);
+        pdf.line(colunasComX[6].x, rowY + rowH, 287, rowY + rowH);
+      });
+
+      // Grade e bordas verticais da página
+      pdf.setDrawColor(215, 220, 228);
+      pdf.setLineWidth(0.2);
+
+      colunasComX.forEach((c) => {
+        pdf.line(c.x, b.y, c.x, yPos);
+      });
+      pdf.line(287, b.y, 287, yPos);
+
+      // Linhas horizontais separadoras de setor
+      for (let i = 0; i < linhasPagina.length; i++) {
+        const chaveAtual = linhasPagina[i].chaveSetor;
+        const chaveProx = i + 1 < linhasPagina.length ? linhasPagina[i + 1].chaveSetor : null;
+        if (chaveProx !== chaveAtual) {
+          pdf.setDrawColor(245, 158, 11);
+          pdf.setLineWidth(0.35);
+          pdf.line(10, yLinhas[i].y + yLinhas[i].h, 287, yLinhas[i].y + yLinhas[i].h);
+          pdf.setDrawColor(215, 220, 228);
+          pdf.setLineWidth(0.2);
+        }
+      }
+
+      b.y = yPos;
+      idx = idxFim;
+
+      if (idx < itensPreparados.length) {
+        pdf.addPage([297, 210], "landscape");
+        b.y = 15;
+        desenharCabecalho();
       }
     }
+
+    b.y += 3;
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(6.5);
+    pdf.setTextColor(100);
+
+    /*
+     * Trabalhadores expostos — NR-01, item 1.5.7.3.2 "e".
+     *
+     * A fonte certa é o CADASTRO do GES: o número é do grupo. O número do item
+     * do inventário é de outra coisa — quantos ficam expostos ÀQUELE perigo, que
+     * pode ser parte do grupo — e por isso só serve de reserva, para o cadastro
+     * antigo que ainda não tem o campo preenchido.
+     *
+     * Dois nomes de coluna porque o campo foi criado duas vezes em paralelo:
+     * `trabalhadores` e `quantidade_trabalhadores`. Ler os dois evita que um
+     * cadastro já preenchido apareça como "não informado".
+     *
+     * Zero não é "não informado": se alguém gravou 0, o documento diz 0.
+     */
+    const doCadastro = ((ctx.gesDetalhes as any[]) || [])
+      .map((g: any) => g?.trabalhadores ?? g?.quantidade_trabalhadores)
+      .filter((n: unknown) => n !== null && n !== undefined)
+      .map(Number);
+    const expostosLista = (ctx.inventario as any[])
+      .map((i) => i.trabalhadores_expostos)
+      .filter((n) => n != null && n > 0) as number[];
+    const total: number | null = doCadastro.length
+      ? doCadastro.reduce((a: number, c: number) => a + c, 0)
+      : (expostosLista.length ? Math.max(...expostosLista) : null);
+    const expTexto = total != null
+      ? `Trabalhadores expostos: ${total}`
+      : "Trabalhadores expostos: não informado";
+
+    pdf.text(
+      `Classificação PGR — Trivial (1-3) · Tolerável (4-8) · Moderado (9-12) · Substancial (13-15) · Intolerável (16-25). Campos sem dado exibem N.A.    ·    ${expTexto}`,
+      10,
+      b.y,
+    );
+    pdf.setTextColor(0);
+    b.y += 4;
   };
 
   const desenharPlano = () => {
   if (ctx.acoes.length === 0) {
       para(b, "Nenhuma ação registrada.");
     } else {
+      const iniAno = pgr.data_vigencia_inicio ? new Date(pgr.data_vigencia_inicio + "T00:00:00").getFullYear() : null;
+      const fimAno = pgr.data_vigencia_fim ? new Date(pgr.data_vigencia_fim + "T00:00:00").getFullYear() : null;
+      const anoVigencia = (iniAno && fimAno)
+        ? (iniAno === fimAno ? `${iniAno}` : `${iniAno}/${fimAno}`)
+        : (iniAno ? `${iniAno}` : (pgr.data_emissao ? `${new Date(pgr.data_emissao + "T00:00:00").getFullYear()}` : `${new Date().getFullYear()}`));
+
       /*
-       * Vinte e três colunas: as oito do 5W2H, os doze meses do cronograma e
-       * mais três. A soma, com a margem de 12 mm e 0,8 mm entre colunas, tem
-       * de caber nos 287 mm da borda. Estourando, as últimas são desenhadas
-       * fora do papel — e no PDF não há aviso: elas simplesmente somem.
+       * Vinte e duas colunas: as sete do 5W2H (sem Prioridade e sem Aferição),
+       * o Prazo Final (DD/MM/AAAA), os doze meses do cronograma com super-cabeçalho
+       * de vigência, Responsável e Status — idêntico à tabela do sistema.
        */
-      const MES_W = 3.8;
+      const MES_W = 3.6;
       const COLS_PLANO: { rotulo: string; chave: string; w: number }[] = [
-        { rotulo: "SETOR", chave: "setor", w: 17 },
-        { rotulo: "GES", chave: "ges", w: 8 },
-        { rotulo: "O QUÊ? (MEDIDA)", chave: "oque", w: 27 },
-        { rotulo: "POR QUÊ?", chave: "porque", w: 21 },
-        { rotulo: "COMO?", chave: "como", w: 23 },
-        { rotulo: "ONDE?", chave: "onde", w: 13 },
+        { rotulo: "SETOR", chave: "setor", w: 18 },
+        { rotulo: "GES", chave: "ges", w: 9 },
+        { rotulo: "O QUÊ? (MEDIDA)", chave: "oque", w: 34 },
+        { rotulo: "POR QUÊ?", chave: "porque", w: 26 },
+        { rotulo: "COMO?", chave: "como", w: 27 },
+        { rotulo: "ONDE?", chave: "onde", w: 15 },
         { rotulo: "QUANTO?", chave: "quanto", w: 13 },
-        { rotulo: "PRIOR.", chave: "prioridade", w: 10 },
+        { rotulo: "PRAZO FINAL", chave: "prazo", w: 17 },
         ...MESES_PDF.map((m) => ({ rotulo: m[0], chave: `mes_${m}`, w: MES_W })),
-        { rotulo: "RESPONSÁVEL", chave: "responsavel", w: 16 },
+        { rotulo: "RESPONSÁVEL", chave: "responsavel", w: 20 },
         { rotulo: "STATUS", chave: "status", w: 17 },
-        { rotulo: "ACOMPANHAMENTO E AFERIÇÃO", chave: "afericao", w: 20 },
       ];
       let xPlano = 12;
       const colunasPlano = COLS_PLANO.map((c) => {
         const col = { rotulo: c.rotulo, x: xPlano, w: c.w };
-        xPlano += c.w + 2;
+        const gap = c.chave.startsWith("mes_") ? 1.0 : 1.8;
+        xPlano += c.w + gap;
         return col;
       });
       const addAcao = tabela(b, colunasPlano, {
-        fonte: 6, fonteCabecalho: 5.6, grade: true, cabecalhoEscuro: true,
+        fonte: 6,
+        fonteCabecalho: 5.6,
+        grade: true,
+        cabecalhoEscuro: true,
+        superCabecalho: {
+          colInicio: 8,
+          colFim: 19,
+          titulo: `CRONOGRAMA (${anoVigencia})`,
+        },
       });
 
       const setorDaAcao = (a: any) => {
@@ -839,9 +1211,21 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
         const mapa: Record<string, string> = (ctx.ghes as any) || {};
         return item ? (mapa[item.ges_id] || mapa[item.ghe_id] || "") : "";
       };
+      const obterMesesDaAcao = (a: any): number[] => {
+        if (Array.isArray(a.meses_execucao) && a.meses_execucao.length > 0) {
+          return a.meses_execucao;
+        }
+        if (a.prazo) {
+          const mes = parseInt(String(a.prazo).slice(5, 7), 10);
+          if (!isNaN(mes) && mes >= 1 && mes <= 12) {
+            return [mes];
+          }
+        }
+        return [];
+      };
 
       ctx.acoes.forEach((a: any) => {
-        const meses: number[] = a.meses_execucao || [];
+        const meses: number[] = obterMesesDaAcao(a);
         const statusLabel = ACAO_STATUS_LABEL[a.status as PgrAcaoStatus] || a.status || "";
 
         const celulas = COLS_PLANO.map((c) => {
@@ -859,11 +1243,9 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
             case "como": return a.how || "";
             case "onde": return a.where_local || "";
             case "quanto": return a.how_much != null ? fmtMoeda(a.how_much) : (a.quanto_texto || "");
-            case "prioridade": return prioridadePdf(a.prioridade);
+            case "prazo": return a.prazo ? fmtDate(a.prazo) : "—";
             case "responsavel": return a.who || a.responsavel_nome || "";
             case "status": return statusLabel;
-            case "afericao":
-              return [a.forma_acompanhamento, a.indicador].filter(Boolean).join("; ");
             default: return "";
           }
         });
@@ -905,7 +1287,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
           .filter(Boolean),
       )];
       pdf.text(
-        "Mês marcado = prazo previsto para a ação."
+        `Mês marcado no cronograma anual (${anoVigencia}) conforme o prazo final estipulado para a ação.`
           + (statusNaTabela.length ? "  ·  Status: " + statusNaTabela.join("  ·  ") : ""),
         12, b.y,
       );
@@ -932,7 +1314,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
 
   /** Um bloco de seção, no mesmo formato do gerador de Word. */
   const bloco = (sec: typeof DEF_PGR.secoes[number]) => {
-    if (sec.ref) refNorma(b, sec.ref);
+    // Referências aos itens da norma retiradas para manter o PDF oficial e limpo sem poluição visual
     if (sec.texto) para(b, sec.texto, 9, [40, 40, 40]);
     if (sec.itens) {
       sec.itens.forEach((it) => {
@@ -1036,9 +1418,8 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
    * elabora tecnicamente e a organização, que responde pelo programa.
    */
   if (ctx.assinaturas.length === 0) {
-    para(b, "Nenhuma assinatura eletrônica registrada até a geração deste PDF.");
     ensure(b, 34);
-    b.y += 10;
+    b.y += 6;
     const linhaAssinatura = (x: number, nome: string, papel: string) => {
       pdf.setDrawColor(120); pdf.setLineWidth(0.3);
       pdf.line(x, b.y, x + 78, b.y);
@@ -1049,7 +1430,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       pdf.setTextColor(0);
     };
     linhaAssinatura(12, pgr.resp_tec_nome || "", "Responsável técnico pela elaboração");
-    linhaAssinatura(110, ctx.empresaNome || "", "Pela organização (NR-01, item 1.5.7.2)");
+    linhaAssinatura(110, ctx.empresaNome || "", "Pela organização");
     b.y += 14;
   }
   ctx.assinaturas.forEach((a) => {

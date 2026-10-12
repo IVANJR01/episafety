@@ -104,8 +104,8 @@ describe("seções do PGR", () => {
      * formato de novo.
      */
     const texto = await gerar();
-    expect(texto, 'letra "e" — grupo de trabalhadores exposto').toContain("GES: Marcenaria");
-    expect(texto, 'letra "e" — setor').toContain("Setor: Produção");
+    expect(texto, 'letra "e" — grupo de trabalhadores exposto').toContain("Marcenaria");
+    expect(texto, 'letra "e" — setor').toContain("Produção");
     expect(texto, 'letra "e" — funções').toContain("Marceneiro");
     expect(texto, 'letra "a" — ambiente').toContain("Galpão de produção");
     expect(texto, 'letra "b" — atividades').toContain("Corte e aparelhamento de madeira");
@@ -175,23 +175,11 @@ describe("o PDF e o Word têm a MESMA estrutura", () => {
     }
   });
 
-  it("imprime as referências normativas de cada seção", async () => {
-    const { DOCUMENTOS_SST } = await import("@/lib/documentos/docsSst");
-    const def = DOCUMENTOS_SST.find((d) => d.sigla === "PGR")!;
+  it("não imprime as referências de itens da norma nas seções do PDF (documento limpo)", async () => {
     const texto = await gerar();
-
-    const refs = [
-      ...def.secoes.map((x) => x.ref),
-      ...def.secoes.flatMap((x) => (x.sub || []).map((f) => f.ref)),
-    ].filter(Boolean) as string[];
-    expect(refs.length, "a definição deveria trazer referências").toBeGreaterThan(3);
-    for (const ref of refs) {
-      /* O travessão e as aspas saem em WinAnsi; compara pelo número do item. */
-      const itens = ref.match(/\d+(?:\.\d+)+/g) || [];
-      for (const item of itens) {
-        expect(texto, `faltou a citação ${item}`).toContain(item);
-      }
-    }
+    expect(texto).not.toContain("NR-01, itens 1.5.7.1");
+    expect(texto).not.toContain("Item 1.5.7.3.2");
+    expect(texto).not.toContain("Itens 1.5.7.3.3");
   });
 
   it("imprime as alíneas da revisão, uma a uma", async () => {

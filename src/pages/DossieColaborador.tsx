@@ -378,7 +378,7 @@ export default function DossieColaborador() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
+    <div className="tela-larga w-full p-4 md:p-6 space-y-5">
       <Button variant="ghost" size="sm" onClick={() => navigate("/arquivo-digital/dossies")}>
         <ArrowLeft className="w-4 h-4 mr-2" />Voltar para a lista
       </Button>

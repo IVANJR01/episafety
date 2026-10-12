@@ -11,7 +11,7 @@ export default function ArquivoDigitalModule() {
   const currentTab = location.pathname.split("/").pop() || "dossies";
 
   return (
-    <div className="space-y-6">
+    <div className="tela-larga w-full space-y-6">
       <PageHeader 
         title="Dossiê do Colaborador" 
         description="Gestão centralizada do dossiê dos colaboradores, vencimentos e histórico de arquivos."

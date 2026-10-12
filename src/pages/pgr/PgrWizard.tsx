@@ -17,18 +17,11 @@ import {
 } from "@/lib/pgrTypes";
 
 import PgrDadosStep from "@/components/pgr/PgrDadosStep";
-import PgrResponsaveisStep from "@/components/pgr/PgrResponsaveisStep";
 import { EstruturaOcupacionalTab } from "@/components/documentacao/EstruturaOcupacionalTab";
 import ColetasCampoRevisao from "@/components/pgr/ColetasCampoRevisao";
 import InventarioTab from "@/components/pgr/InventarioTab";
 import PlanoAcaoTab from "@/components/pgr/PlanoAcaoTab";
-import QuadroEpisTab from "@/components/pgr/QuadroEpisTab";
-import EmergenciasTab from "@/components/pgr/EmergenciasTab";
-import GovernancaTab from "@/components/pgr/GovernancaTab";
-import PgrChecklistTab from "@/components/pgr/PgrChecklistTab";
-import PgrPdfTab from "@/components/pgr/PgrPdfTab";
-import HistoricoRevisoes from "@/components/pgr/HistoricoRevisoes";
-import TextosTab from "@/components/pgr/TextosTab";
+import PgrEmissaoDashboard from "@/components/pgr/PgrEmissaoDashboard";
 import MatrizRisco from "@/components/pgr/MatrizRisco";
 import { PgrEtapaProvider, useAcoesEtapa } from "@/components/pgr/PgrEtapaContext";
 import PgrPendenciasPainel, { usePgrPendencias } from "@/components/pgr/PgrPendenciasPainel";
@@ -51,7 +44,7 @@ interface Etapa {
 }
 
 const ETAPAS: Etapa[] = [
-  { id: "escopo", n: 1, titulo: "Escopo e identificação", ajuda: "Identificação da unidade, escopo, datas e prazo de revisão." },
+  { id: "escopo", n: 1, titulo: "Identificação e vigência", ajuda: "Identificação da unidade, data de emissão e prazo de revisão." },
   { id: "estrutura", n: 2, titulo: "Estrutura ocupacional", ajuda: "Estabelecimento, ambientes e setores." },
   // A etapa "Processos" saiu: o processo passou a aparecer na linha do setor,
   // na Estrutura ocupacional, e é lá que se cadastra — abrindo o setor. Uma
@@ -279,22 +272,7 @@ function Assistente() {
   const conteudo = () => {
     switch (etapaAtual) {
       case "escopo":
-        return (
-          <div className="space-y-8">
-            <section className="space-y-4">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Identificação
-              </h3>
-              <PgrDadosStep pgr={pgr} canEdit={editavel} escopo />
-            </section>
-            <section className="space-y-4 border-t pt-8">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Vigência e escopo
-              </h3>
-              <PgrDadosStep pgr={pgr} canEdit={editavel} />
-            </section>
-          </div>
-        );
+        return <PgrDadosStep pgr={pgr} canEdit={editavel} />;
       case "estrutura":
         return <EstruturaOcupacionalTab only="setores" />;
       case "ges_funcoes":
@@ -345,66 +323,13 @@ function Assistente() {
         );
       case "emissao":
         return (
-          <div className="space-y-10">
-            <Secao titulo="O que falta para emitir"
-              descricao="Pendências que impedem a publicação da versão.">
-              <PgrPendenciasPainel pgrId={pgr.id} respTecNome={pgr.resp_tec_nome}
-                onIrParaEtapa={(e) => irPara(e as EtapaId)} />
-            </Secao>
-            <Secao titulo="Responsáveis e assinaturas"
-              descricao="A NR-01, no item 1.5.7.2, exige o documento datado e assinado.">
-              <PgrResponsaveisStep pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
-            </Secao>
-            <Secao titulo="Conferência normativa"
-              descricao="Confere o documento item a item contra a NR-01.">
-              <PgrChecklistTab pgr={pgr} />
-            </Secao>
-            <Secao titulo="Histórico de revisões"
-              descricao="Item 1.5.7.3.3.1 da NR-01: o histórico das atualizações é mantido por 20 anos.">
-              <HistoricoRevisoes pgrId={pgr.id} />
-            </Secao>
-            <Secao titulo="Gatilhos e aprovações"
-              descricao="Prazo de revisão e trâmite de aprovação interna.">
-              <GovernancaTab pgr={pgr} canEdit={editavel} />
-            </Secao>
-            {/*
-              Os textos institucionais também só existiam na tela clássica.
-              A NR-01 não os pede, e por isso eles ficam no fim, depois do que
-              a norma exige: só saem no PDF quando alguém escreve algum.
-            */}
-            <Secao titulo="Textos do documento"
-              descricao="Opcionais — introdução, objetivos, recomendações. A NR-01 não os exige, e só aparecem no PDF se forem preenchidos.">
-              <TextosTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
-            </Secao>
-            <Secao titulo="Documento"
-              descricao="Inventário de riscos e plano de ação — o conteúdo que a NR-01 exige do PGR.">
-              <PgrPdfTab pgr={pgr} canEdit={perms.canEdit} canExport={perms.canEdit} canAssinar={perms.canEdit} />
-            </Secao>
-
-            {/*
-              O quadro de EPIs e os cenários de emergência saíram do PDF do PGR:
-              a norma não pede o primeiro, e o FAQ GRO/PGR do MTE (pergunta 59)
-              diz que os procedimentos de emergência ficam na empresa "sem
-              integrar o PGR". Os dados continuam aqui, mas separados — deixá-los
-              no meio das seções do PGR sugeria que saem no documento.
-            */}
-            <div className="space-y-6 border-t pt-8">
-              <div className="space-y-1">
-                <h2 className="text-base font-semibold tracking-tight">Registros de apoio</h2>
-                <p className="text-sm text-muted-foreground">
-                  Ficam guardados na empresa e não saem no PDF do PGR.
-                </p>
-              </div>
-              <Secao titulo="Quadro de EPIs"
-                descricao="Apoio à gestão de EPI (NR-06); o PGR já traz o EPI como medida de controle no inventário.">
-                <QuadroEpisTab pgrId={pgr.id} empresaId={pgr.empresa_id} />
-              </Secao>
-              <Secao titulo="Preparação para emergências"
-                descricao="Exigida pelo item 1.5.6 da NR-01 como documento próprio, não como capítulo do PGR.">
-                <EmergenciasTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} pgr={pgr} />
-              </Secao>
-            </div>
-          </div>
+          <PgrEmissaoDashboard
+            pgr={pgr}
+            canEdit={perms.canEdit}
+            canExport={perms.canEdit}
+            canAssinar={perms.canEdit}
+            onIrParaEtapa={(e) => irPara(e as EtapaId)}
+          />
         );
     }
   };

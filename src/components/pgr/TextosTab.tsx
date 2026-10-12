@@ -87,8 +87,14 @@ export default function TextosTab({ pgrId, empresaId, canEdit }: Props) {
     setSaving(secao);
     try {
       const conteudo = valor(secao);
+      let empId = empresaId;
+      if (!empId) {
+        const { data: pgrDoc } = await (supabase.from as any)("pgr_documentos")
+          .select("empresa_id").eq("id", pgrId).maybeSingle();
+        empId = pgrDoc?.empresa_id;
+      }
       const { error } = await (supabase.from as any)("pgr_textos")
-        .upsert({ pgr_id: pgrId, empresa_id: empresaId, secao, conteudo }, { onConflict: "pgr_id,secao" });
+        .upsert({ pgr_id: pgrId, empresa_id: empId, secao, conteudo }, { onConflict: "pgr_id,secao" });
       if (error) throw error;
       toast.success("Texto salvo");
       setDrafts((d) => { const c = { ...d }; delete c[secao]; return c; });

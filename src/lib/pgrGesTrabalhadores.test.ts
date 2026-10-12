@@ -3,7 +3,7 @@ import { render } from "./pgrPdf";
 import { CTX } from "./pgrPdfContexto.fixture";
 
 /**
- * Trabalhadores expostos no cabeçalho de cada GES — NR-01, item 1.5.7.3.2 "e".
+ * Trabalhadores expostos no inventário — NR-01, item 1.5.7.3.2 "e".
  *
  * Um PGR real de 13 grupos saiu com "Trabalhadores expostos: não informado" em
  * TODOS eles, porque o número não existia no cadastro do GES e o documento só
@@ -37,7 +37,7 @@ function contexto(trabalhadores: number | null | undefined, expostosNoItem?: num
 
 const opcoes = { qrUrl: "https://x", pdfVersao: 1, comMarca: false };
 
-describe("nº de trabalhadores no cabeçalho do GES", () => {
+describe("nº de trabalhadores no inventário", () => {
   it("usa o número do cadastro do GES", async () => {
     const texto = textoDo(await render(contexto(7), opcoes));
     expect(texto).toContain("Trabalhadores expostos: 7");
@@ -46,11 +46,11 @@ describe("nº de trabalhadores no cabeçalho do GES", () => {
   it("o cadastro manda, mesmo que o item do inventário tenha outro número", async () => {
     /*
      * O grupo tem 7 pessoas; naquele perigo específico, 5 ficam expostas. O
-     * cabeçalho é do grupo, então sai 7 — não 5.
+     * número impresso é o do grupo, então sai 7 — não 5.
      */
     const texto = textoDo(await render(contexto(7, 5), opcoes));
     expect(texto).toContain("Trabalhadores expostos: 7");
-    expect(texto, "o cabeçalho pegou o número do item em vez do grupo")
+    expect(texto, "pegou o número do item em vez do cadastro do grupo")
       .not.toContain("Trabalhadores expostos: 5");
   }, 30_000);
 

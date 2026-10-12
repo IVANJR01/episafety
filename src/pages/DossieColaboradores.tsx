@@ -35,9 +35,10 @@ function Contador({ valor, icone: Icone, cor, titulo }: {
 }) {
   if (!valor) return null;
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border whitespace-nowrap ${cor}`}
+    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap shadow-2xs ${cor}`}
       title={titulo}>
-      <Icone className="w-3.5 h-3.5" aria-hidden="true" />{valor}
+      <Icone className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+      <span>{valor}</span>
     </span>
   );
 }
@@ -198,27 +199,27 @@ export default function DossieColaboradores() {
   if (!perms.canView) return null;
 
   const rodape = linhas.length > 0 && (
-    <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-      <p className="text-xs text-muted-foreground">
-        Mostrando {inicio + 1}–{Math.min(inicio + porPagina, linhas.length)} de {linhas.length}
+    <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 border-t bg-slate-50/50 dark:bg-slate-900/30">
+      <p className="text-xs sm:text-sm text-muted-foreground font-medium">
+        Mostrando <b>{inicio + 1}</b>–<b>{Math.min(inicio + porPagina, linhas.length)}</b> de <b>{linhas.length}</b> colaboradores
       </p>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <Select value={String(porPagina)} onValueChange={(v) => setPorPagina(Number(v))}>
-          <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-9 w-[140px] text-xs font-medium"><SelectValue /></SelectTrigger>
           <SelectContent>
             {[25, 50, 100, 200].map((n) => (
               <SelectItem key={n} value={String(n)}>{n} por página</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Button size="icon" variant="outline" className="h-8 w-8" disabled={paginaAtual <= 1}
+        <Button size="icon" variant="outline" className="h-9 w-9" disabled={paginaAtual <= 1}
           onClick={() => setPagina(paginaAtual - 1)} title="Página anterior">
           <ChevronLeft className="w-4 h-4" />
         </Button>
-        <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">
+        <span className="text-xs sm:text-sm tabular-nums text-muted-foreground whitespace-nowrap font-medium px-1">
           {paginaAtual} / {totalPaginas}
         </span>
-        <Button size="icon" variant="outline" className="h-8 w-8" disabled={paginaAtual >= totalPaginas}
+        <Button size="icon" variant="outline" className="h-9 w-9" disabled={paginaAtual >= totalPaginas}
           onClick={() => setPagina(paginaAtual + 1)} title="Próxima página">
           <ChevronRight className="w-4 h-4" />
         </Button>
@@ -228,23 +229,24 @@ export default function DossieColaboradores() {
 
   /** Pendências do colaborador — mesma leitura no cartão e na tabela. */
   const Pendencias = ({ c }: { c: any }) => (
-    <div className="flex gap-1.5 flex-wrap">
-      <Contador valor={c.vencido || 0} icone={XCircle} titulo="Vencidos"
-        cor="bg-red-50 text-red-700 border-red-200" />
-      <Contador valor={c.vence_em_breve || 0} icone={Clock} titulo="Vencendo"
-        cor="bg-orange-50 text-orange-700 border-orange-200" />
-      <Contador valor={c.nao_enviado || 0} icone={AlertCircle} titulo="Não enviados"
-        cor="bg-amber-50 text-amber-700 border-amber-200" />
+    <div className="flex gap-2 flex-wrap items-center">
+      <Contador valor={c.vencido || 0} icone={XCircle} titulo="Documentos vencidos"
+        cor="bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900" />
+      <Contador valor={c.vence_em_breve || 0} icone={Clock} titulo="Documentos vencendo em breve"
+        cor="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900" />
+      <Contador valor={c.nao_enviado || 0} icone={AlertCircle} titulo="Documentos obrigatórios não enviados"
+        cor="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900" />
       {!(c.vencido || c.vence_em_breve || c.nao_enviado) && (
-        <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full whitespace-nowrap font-medium">
-          <CheckCircle2 className="w-3.5 h-3.5" />Sem pendência
+        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-3 py-1 rounded-full whitespace-nowrap font-medium shadow-2xs">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+          <span>Em dia</span>
         </span>
       )}
     </div>
   );
 
   return (
-    <div className="space-y-4 max-w-6xl mx-auto">
+    <div className="w-full space-y-5">
 
       {indisponivel && (
         <Card className="border-amber-300 bg-amber-50">
@@ -255,33 +257,37 @@ export default function DossieColaboradores() {
         </Card>
       )}
 
-      <Card>
-        <CardContent className="p-4 space-y-3">
+      <Card className="shadow-xs border border-border/80">
+        <CardContent className="p-4 sm:p-5 space-y-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="relative flex-1 min-w-[280px]">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input value={busca} onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar por nome, CPF, matrícula, função ou setor…" className="pl-8 bg-muted/20" />
+            <div className="relative flex-1 min-w-[300px]">
+              <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por nome, CPF, matrícula, função ou setor…"
+                className="h-11 pl-10 pr-4 text-sm bg-muted/20 border-slate-200 dark:border-slate-800 focus:bg-background rounded-lg"
+              />
             </div>
-            <div className="flex items-center gap-4 bg-muted/40 px-3 py-1.5 rounded-md border border-muted">
-              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer hover:opacity-80 transition-opacity">
-                <Checkbox checked={soPendentes} onCheckedChange={(v) => setSoPendentes(!!v)} className="rounded-[4px]" />
+            <div className="flex items-center gap-4 bg-muted/40 px-4 py-2 rounded-lg border border-muted">
+              <label className="flex items-center gap-2.5 text-sm text-foreground cursor-pointer hover:opacity-80 transition-opacity select-none font-medium">
+                <Checkbox checked={soPendentes} onCheckedChange={(v) => setSoPendentes(!!v)} className="rounded-[4px] h-4 w-4" />
                 Só com pendência
               </label>
-              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer hover:opacity-80 transition-opacity">
-                <Checkbox checked={incluirDesligados} onCheckedChange={(v) => setIncluirDesligados(!!v)} className="rounded-[4px]" />
+              <label className="flex items-center gap-2.5 text-sm text-foreground cursor-pointer hover:opacity-80 transition-opacity select-none font-medium">
+                <Checkbox checked={incluirDesligados} onCheckedChange={(v) => setIncluirDesligados(!!v)} className="rounded-[4px] h-4 w-4" />
                 Incluir desligados
               </label>
             </div>
             <div className="ml-auto">
-               <Badge variant="secondary" className="font-normal">{linhas.length} colaborador(es)</Badge>
+              <Badge variant="secondary" className="text-xs sm:text-sm font-semibold px-3.5 py-1.5 bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 rounded-lg">
+                {linhas.length} colaborador(es)
+              </Badge>
             </div>
           </div>
 
-          {/* Celular: cartões. Tabela de 5 colunas em tela estreita vira
-              rolagem lateral, e o botão Abrir — o motivo de a tela existir —
-              fica justamente na coluna que some da vista. */}
-          <div className="space-y-2 lg:hidden">
+          {/* Celular: cartões */}
+          <div className="space-y-3 lg:hidden">
             {isLoading && <p className="text-center py-8 text-sm text-muted-foreground">Carregando…</p>}
             {!isLoading && linhas.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
@@ -294,79 +300,120 @@ export default function DossieColaboradores() {
                 key={f.id}
                 type="button"
                 onClick={() => navigate(`/arquivo-digital/dossie/${f.id}`)}
-                className={`w-full text-left rounded-lg border p-3 active:bg-muted/60 transition-colors ${f.data_demissao ? "opacity-60" : ""}`}
+                className={`w-full text-left rounded-xl border p-4 active:bg-muted/60 transition-colors shadow-2xs ${f.data_demissao ? "opacity-60 bg-muted/20" : "bg-card"}`}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm flex items-center gap-2 flex-wrap">
-                      {f.nome}
-                      {f.data_demissao && (
-                        <Badge variant="outline" className="text-[10px] text-muted-foreground">Desligado</Badge>
-                      )}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {[f.cargo, f.setor].filter(Boolean).join(" • ") || "Sem função e setor"}
-                    </p>
-                    {f.matricula && <p className="text-[11px] text-muted-foreground">Mat. {f.matricula}</p>}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-sm shrink-0">
+                      {getInitials(f.nome)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm flex items-center gap-2 flex-wrap text-foreground">
+                        {f.nome}
+                        {f.data_demissao && (
+                          <Badge variant="outline" className="text-[10px] text-muted-foreground">Desligado</Badge>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {[f.cargo, f.setor].filter(Boolean).join(" • ") || "Sem função e setor"}
+                      </p>
+                      {f.matricula && <p className="text-[11px] text-muted-foreground font-mono">Mat. {f.matricula}</p>}
+                    </div>
                   </div>
-                  <FolderOpen className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <FolderOpen className="w-5 h-5 text-primary shrink-0 mt-1" />
                 </div>
-                <div className="mt-2"><Pendencias c={c} /></div>
+                <div className="mt-3 pt-2.5 border-t border-border/40"><Pendencias c={c} /></div>
               </button>
             ))}
             {rodape}
           </div>
 
-          <div className="rounded-lg border overflow-x-auto hidden lg:block">
+          {/* Desktop: Tabela Ampla e Confortável */}
+          <div className="rounded-xl border overflow-x-auto hidden lg:block shadow-xs bg-card">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[220px]">Colaborador</TableHead>
-                  <TableHead>Função</TableHead>
-                  <TableHead>Setor</TableHead>
-                  <TableHead>Pendências</TableHead>
-                  <TableHead className="text-right">Dossiê</TableHead>
+                <TableRow className="h-12 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800">
+                  <TableHead className="py-3.5 px-6 min-w-[320px] text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Colaborador
+                  </TableHead>
+                  <TableHead className="py-3.5 px-6 min-w-[200px] text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Função
+                  </TableHead>
+                  <TableHead className="py-3.5 px-6 min-w-[180px] text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Setor
+                  </TableHead>
+                  <TableHead className="py-3.5 px-6 min-w-[200px] text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Pendências
+                  </TableHead>
+                  <TableHead className="py-3.5 px-6 text-right w-[140px] text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Dossiê
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading && (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Carregando…</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">Carregando colaboradores…</TableCell></TableRow>
                 )}
                 {!isLoading && linhas.length === 0 && (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    <Users className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                  <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                    <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     Nenhum colaborador encontrado.
                   </TableCell></TableRow>
                 )}
                 {itensPagina.map(({ f, c }) => (
-                  <TableRow key={f.id} className={`hover:bg-muted/30 transition-colors ${f.data_demissao ? "opacity-60" : ""}`}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0 select-none">
+                  <TableRow
+                    key={f.id}
+                    className={`h-18 hover:bg-slate-50/90 dark:hover:bg-slate-900/60 transition-colors border-b border-slate-100 dark:border-slate-800/80 cursor-pointer ${
+                      f.data_demissao ? "opacity-60 bg-slate-50/40" : ""
+                    }`}
+                    onClick={() => navigate(`/arquivo-digital/dossie/${f.id}`)}
+                  >
+                    <TableCell className="py-4 px-6">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs select-none">
                           {getInitials(f.nome)}
                         </div>
-                        <div className="flex flex-col">
-                          <div className="font-semibold text-[13px] flex items-center gap-2">
-                            {f.nome}
+                        <div className="flex flex-col min-w-0">
+                          <div className="font-semibold text-sm sm:text-[15px] text-slate-900 dark:text-slate-100 flex items-center gap-2 flex-wrap">
+                            <span className="truncate">{f.nome}</span>
                             {f.data_demissao && (
-                              <Badge variant="outline" className="text-[10px] text-muted-foreground font-normal">Desligado</Badge>
+                              <Badge variant="outline" className="text-[10px] text-muted-foreground font-normal border-slate-300">
+                                Desligado
+                              </Badge>
                             )}
                           </div>
-                          {f.matricula && (
-                            <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
-                              Matrícula: {f.matricula}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                            {f.matricula && (
+                              <span className="font-mono">Matrícula: {f.matricula}</span>
+                            )}
+                            {f.cpf && (
+                              <span className="text-[11px] opacity-80">CPF: {f.cpf}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm">{f.cargo || "—"}</TableCell>
-                    <TableCell className="text-sm">{f.setor || "—"}</TableCell>
-                    <TableCell><Pendencias c={c} /></TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="outline" className="h-8 text-xs"
-                        onClick={() => navigate(`/arquivo-digital/dossie/${f.id}`)}>
-                        <FolderOpen className="w-3.5 h-3.5 mr-1" />Abrir
+                    <TableCell className="py-4 px-6 text-sm font-medium text-slate-800 dark:text-slate-200">
+                      {f.cargo || "—"}
+                    </TableCell>
+                    <TableCell className="py-4 px-6 text-sm font-medium text-slate-600 dark:text-slate-400">
+                      {f.setor || "—"}
+                    </TableCell>
+                    <TableCell className="py-4 px-6">
+                      <Pendencias c={c} />
+                    </TableCell>
+                    <TableCell className="py-4 px-6 text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 px-3.5 text-xs font-semibold rounded-lg bg-background hover:bg-primary hover:text-primary-foreground border-slate-200 dark:border-slate-700 shadow-2xs transition-all gap-1.5 ml-auto"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/arquivo-digital/dossie/${f.id}`);
+                        }}
+                      >
+                        <FolderOpen className="w-4 h-4 mr-0.5" />
+                        Abrir
                       </Button>
                     </TableCell>
                   </TableRow>

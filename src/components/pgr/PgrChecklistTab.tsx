@@ -307,12 +307,20 @@ export default function PgrChecklistTab({ pgr }: Props) {
   const semGrupoExposto = inventario.filter((i) => !i.trabalhadores_expostos && !i.ghe_id && !i.setor_id);
   const semFonte = inventario.filter((i) => !(i.fonte_geradora || "").trim() && !(i.circunstancia || "").trim() && !(i.perigo_descricao || "").trim());
   const semJustificativa = inventario.filter(
-    (i) => !(i.justificativa_severidade || "").trim() || !(i.justificativa_probabilidade || "").trim(),
+    (i) =>
+      !(i.justificativa_severidade || "").trim() &&
+      !(i.justificativa_probabilidade || "").trim() &&
+      !(i.justificativa || "").trim() &&
+      !(i.tecnica_utilizada || "").trim() &&
+      !(i.classificacao && i.severidade && i.probabilidade),
   );
   const naoAvaliados = inventario.filter((i) => !i.classificacao);
   const ergoSemAvaliacao = inventario.filter(
-    (i) => (i.grupo === "ergonomico" || i.grupo === "psicossocial")
-      && !medicoes.some((m) => m.inventario_item_id === i.id),
+    (i) =>
+      (i.grupo === "ergonomico" || i.grupo === "psicossocial") &&
+      !(i.tecnica_utilizada || "").trim() &&
+      i.avaliacao_estado !== "avaliado" &&
+      !medicoes.some((m) => m.inventario_item_id === i.id),
   );
   const quantSemFonteLimite = medicoes.filter((m) => m.resultado != null && !(m.limite_fonte || "").trim());
   const soEpi = inventario.filter((i) => {
@@ -324,9 +332,6 @@ export default function PgrChecklistTab({ pgr }: Props) {
 
   const acoesSemResponsavel = acoesAtivas.filter((a) => !(a.responsavel_nome || "").trim());
   const acoesSemPrazo = acoesAtivas.filter((a) => !a.prazo);
-  const acoesSemAcompanhamento = acoesAtivas.filter(
-    (a) => !(a.forma_acompanhamento || "").trim() || !(a.indicador || "").trim(),
-  );
   const atrasadas = acoes.filter((a) => isAtrasada(a));
   const concluidasSemVerificacao = acoes.filter(
     (a) => a.status === "concluida"
@@ -415,10 +420,6 @@ export default function PgrChecklistTab({ pgr }: Props) {
     { label: "Ações com prazo definido",
       sev: sevSe(n(acoesSemPrazo) > 0, "bloqueante"),
       detail: n(acoesSemPrazo) > 0 ? `${n(acoesSemPrazo)} ação(ões) sem prazo` : undefined },
-    { label: "Ações com forma de acompanhamento e indicador",
-      sev: sevSe(n(acoesSemAcompanhamento) > 0, "recomendacao"),
-      detail: n(acoesSemAcompanhamento) > 0
-        ? `${n(acoesSemAcompanhamento)} ação(ões) sem acompanhamento/indicador` : undefined },
     { label: "Ações concluídas com verificação de eficácia",
       sev: sevSe(n(concluidasSemVerificacao) > 0, "alerta"),
       detail: n(concluidasSemVerificacao) > 0
@@ -437,15 +438,6 @@ export default function PgrChecklistTab({ pgr }: Props) {
     { label: "Responsável técnico declarado",
       sev: temRT ? "ok" : "bloqueante",
       norma: "NR-01 1.5.7.2 — documento datado e assinado" },
-    { label: "Aprovador / responsável pela organização declarado",
-      sev: temAprovador ? "ok" : "recomendacao",
-      detail: temAprovador ? undefined : "Nenhum aprovador cadastrado em Responsáveis" },
-    { label: "Gatilhos de revisão tratados",
-      sev: sevSe(n(gatilhosAbertos) > 0, "bloqueante"),
-      detail: n(gatilhosAbertos) > 0
-        ? `${n(gatilhosAbertos)} gatilho(s) em aberto — tratar ou dispensar com justificativa`
-        : "Nenhum gatilho pendente",
-      norma: "NR-01 1.5.4.4.6" },
     { label: "Revisão da avaliação dentro do prazo",
       sev: !pgr.proxima_revisao ? "recomendacao" : revisaoVencida ? "bloqueante" : "ok",
       detail: !pgr.proxima_revisao
@@ -456,16 +448,19 @@ export default function PgrChecklistTab({ pgr }: Props) {
       norma: pgr.sgsst_certificado
         ? "Até 3 anos — organização certificada em SGSST"
         : "Máx. 2 anos (NR-01 1.5.4.4.6)" },
-    { label: "PDF gerado", sev: ultimoPdf ? "ok" : "bloqueante",
-      detail: ultimoPdf ? `Última versão: PDF v${ultimoPdf.pdf_versao}` : "Nenhum PDF gerado" },
+    { label: "PDF gerado",
+      sev: ultimoPdf ? "ok" : pgr.status === "vigente" ? "bloqueante" : "info",
+      detail: ultimoPdf ? `Última versão: PDF v${ultimoPdf.pdf_versao}` : "Será gerado na aba '1. Documento Oficial' ao emitir" },
     { label: "PDF atualizado em relação ao conteúdo",
-      sev: !ultimoPdf ? "bloqueante" : pdfDesatualizado ? "alerta" : "ok",
-      detail: pdfDesatualizado ? "Regenerar o PDF antes de publicar" : undefined },
+      sev: !ultimoPdf ? "info" : pdfDesatualizado ? "alerta" : "ok",
+      detail: !ultimoPdf ? "Sincronizado na geração do PDF" : pdfDesatualizado ? "Regenerar o PDF antes de publicar" : undefined },
     { label: "PDF final sem marca d'água de rascunho",
-      sev: !ultimoPdf ? "bloqueante" : ultimoPdf.com_marca_dagua ? "alerta" : "ok" },
+      sev: !ultimoPdf ? "info" : ultimoPdf.com_marca_dagua ? "alerta" : "ok",
+      detail: !ultimoPdf ? "Marca d'água é removida na versão final emitida" : undefined },
     { label: "Assinatura visual conferida com o PDF atual",
-      sev: !temRT ? "info" : assinPdfAtual ? "ok" : "alerta",
+      sev: !temRT ? "info" : !ultimoPdf ? "info" : assinPdfAtual ? "ok" : "alerta",
       detail: !temRT ? "Sem responsável técnico declarado"
+        : !ultimoPdf ? "Disponível na aba '1. Documento Oficial' após gerar o PDF"
         : assinPdfAtual ? `Conferida com PDF v${ultimoPdf?.pdf_versao}`
         : "Falta assinatura visual do PDF atual" },
   ];

@@ -110,7 +110,7 @@ export default function HistoricoVersoes() {
   if (!perms.canView) return null;
 
   return (
-    <div className="space-y-4 max-w-6xl mx-auto">
+    <div className="w-full space-y-4">
 
       {indisponivel && (
         <Card className="border-amber-300 bg-amber-50">
