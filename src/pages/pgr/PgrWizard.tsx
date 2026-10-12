@@ -44,7 +44,7 @@ interface Etapa {
 }
 
 const ETAPAS: Etapa[] = [
-  { id: "escopo", n: 1, titulo: "Escopo e identificação", ajuda: "Identificação da unidade, escopo, datas e prazo de revisão." },
+  { id: "escopo", n: 1, titulo: "Identificação e vigência", ajuda: "Identificação da unidade, data de emissão e prazo de revisão." },
   { id: "estrutura", n: 2, titulo: "Estrutura ocupacional", ajuda: "Estabelecimento, ambientes e setores." },
   // A etapa "Processos" saiu: o processo passou a aparecer na linha do setor,
   // na Estrutura ocupacional, e é lá que se cadastra — abrindo o setor. Uma
@@ -272,22 +272,7 @@ function Assistente() {
   const conteudo = () => {
     switch (etapaAtual) {
       case "escopo":
-        return (
-          <div className="space-y-8">
-            <section className="space-y-4">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Identificação
-              </h3>
-              <PgrDadosStep pgr={pgr} canEdit={editavel} escopo />
-            </section>
-            <section className="space-y-4 border-t pt-8">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Vigência e escopo
-              </h3>
-              <PgrDadosStep pgr={pgr} canEdit={editavel} />
-            </section>
-          </div>
-        );
+        return <PgrDadosStep pgr={pgr} canEdit={editavel} />;
       case "estrutura":
         return <EstruturaOcupacionalTab only="setores" />;
       case "ges_funcoes":
