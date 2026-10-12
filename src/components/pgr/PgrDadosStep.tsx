@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { PGR_TIPO_LABEL, PgrDocumento, PgrTipo } from "@/lib/pgrTypes";
 import { useRegistrarEtapa } from "./PgrEtapaContext";
-import { Building2, Calendar, Copy } from "lucide-react";
+import { Building2, Calendar, Copy, UserCheck } from "lucide-react";
 
 interface Props {
   pgr: PgrDocumento;
@@ -29,9 +29,31 @@ export default function PgrDadosStep({ pgr, canEdit }: Props) {
   const [busy, setBusy] = useState(false);
   const [f, setF] = useState<any>({});
 
+  const { data: rtExistente } = useQuery({
+    queryKey: ["pgr-rt-step", pgr.id],
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("pgr_responsaveis")
+        .select("*")
+        .eq("pgr_id", pgr.id)
+        .eq("papel", "responsavel_tecnico")
+        .order("ordem")
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+  });
+
   useEffect(() => {
-    setF({ ...pgr });
-  }, [pgr]);
+    setF((prev: any) => ({
+      ...pgr,
+      ...prev,
+      resp_tec_nome: prev.resp_tec_nome ?? pgr.resp_tec_nome ?? rtExistente?.nome ?? "",
+      resp_tec_profissao: prev.resp_tec_profissao ?? rtExistente?.profissao ?? "",
+      resp_tec_registro: prev.resp_tec_registro ?? rtExistente?.registro_profissional ?? pgr.resp_tec_registro ?? "",
+      resp_tec_uf: prev.resp_tec_uf ?? rtExistente?.uf_registro ?? "",
+      resp_tec_art: prev.resp_tec_art ?? rtExistente?.numero_art ?? "",
+    }));
+  }, [pgr, rtExistente]);
 
   const { data: unidades = [] } = useQuery({
     queryKey: ["pgr-step-unidades", pgr.empresa_id],
@@ -53,6 +75,7 @@ export default function PgrDadosStep({ pgr, canEdit }: Props) {
       // Define vigência e referências automaticamente a partir das duas datas essenciais da NR-01
       const emissao = f.data_emissao || null;
       const revisao = f.proxima_revisao || null;
+      const regFormatado = [f.resp_tec_registro?.trim(), f.resp_tec_uf?.trim()].filter(Boolean).join("/") || null;
 
       const campos = {
         unidade_id: f.unidade_id === "__matriz__" ? null : f.unidade_id || null,
@@ -71,6 +94,10 @@ export default function PgrDadosStep({ pgr, canEdit }: Props) {
         contrato_numero: f.contrato_numero || null,
         local_prestacao: f.local_prestacao || null,
 
+        // Responsável técnico em pgr_documentos
+        resp_tec_nome: f.resp_tec_nome?.trim() || null,
+        resp_tec_registro: regFormatado,
+
         // Datas essenciais solicitadas pela NR-01
         data_emissao: emissao,
         data_levantamento: emissao,
@@ -85,8 +112,32 @@ export default function PgrDadosStep({ pgr, canEdit }: Props) {
         .update(campos)
         .eq("id", pgr.id);
       if (error) throw error;
+
+      // Sincroniza tabela pgr_responsaveis (usada na Seção 3 e Seção 7 do PDF)
+      if (f.resp_tec_nome?.trim()) {
+        const payloadRt = {
+          pgr_id: pgr.id,
+          empresa_id: pgr.empresa_id,
+          papel: "responsavel_tecnico",
+          nome: f.resp_tec_nome.trim(),
+          profissao: f.resp_tec_profissao?.trim() || null,
+          registro_profissional: f.resp_tec_registro?.trim() || null,
+          uf_registro: f.resp_tec_uf?.trim()?.toUpperCase() || null,
+          numero_art: f.resp_tec_art?.trim() || null,
+          ordem: 1,
+        };
+        if (rtExistente?.id) {
+          await (supabase.from as any)("pgr_responsaveis").update(payloadRt).eq("id", rtExistente.id);
+        } else {
+          await (supabase.from as any)("pgr_responsaveis").insert(payloadRt);
+        }
+      }
+
       toast.success("Dados salvos");
       qc.invalidateQueries({ queryKey: ["pgr-detalhe", pgr.id] });
+      qc.invalidateQueries({ queryKey: ["pgr-rt-step", pgr.id] });
+      qc.invalidateQueries({ queryKey: ["pgr-responsaveis-step", pgr.id] });
+      qc.invalidateQueries({ queryKey: ["pgr-pdf-context", pgr.id] });
     } catch (e: any) {
       toast.error(e.message || "Falha ao salvar");
     } finally {
@@ -338,6 +389,91 @@ export default function PgrDadosStep({ pgr, canEdit }: Props) {
               className="h-11"
               value={f.proxima_revisao || ""}
               onChange={set("proxima_revisao")}
+              disabled={!canEdit}
+            />
+          </Campo>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* SEÇÃO 3: RESPONSÁVEL TÉCNICO PELA ELABORAÇÃO (NR-01 1.5.7.2)   */}
+      {/* ------------------------------------------------------------- */}
+      <div className="space-y-4 border-t pt-6">
+        <div className="space-y-0.5 border-b pb-2">
+          <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+            <UserCheck className="w-4 h-4 text-primary" />
+            Responsável Técnico pela Elaboração
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Profissional legalmente habilitado responsável pelas avaliações técnicas e assinatura do documento (NR-01, item 1.5.7.2).
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Campo
+            label="Nome do Responsável Técnico"
+            dica="Nome completo do Engenheiro ou Técnico de Segurança."
+          >
+            <Input
+              className="h-11"
+              value={f.resp_tec_nome || ""}
+              onChange={set("resp_tec_nome")}
+              placeholder="Ex.: Engenheiro Silva..."
+              disabled={!canEdit}
+            />
+          </Campo>
+
+          <Campo
+            label="Formação / Especialidade"
+            dica="Aparece na Seção 3 do PDF (ex.: Engenheiro de Segurança do Trabalho)."
+          >
+            <Input
+              className="h-11"
+              value={f.resp_tec_profissao || ""}
+              onChange={set("resp_tec_profissao")}
+              placeholder="Ex.: Engenheiro de Segurança do Trabalho"
+              disabled={!canEdit}
+            />
+          </Campo>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Campo
+            label="Registro Profissional"
+            dica="Número do registro (ex.: CREA 12345, MTE 00123)."
+          >
+            <Input
+              className="h-11"
+              value={f.resp_tec_registro || ""}
+              onChange={set("resp_tec_registro")}
+              placeholder="Ex.: CREA 12345"
+              disabled={!canEdit}
+            />
+          </Campo>
+
+          <Campo
+            label="UF do Registro"
+            dica="Estado do conselho profissional (ex.: CE, SP)."
+          >
+            <Input
+              className="h-11 uppercase"
+              maxLength={2}
+              value={f.resp_tec_uf || ""}
+              onChange={set("resp_tec_uf")}
+              placeholder="CE"
+              disabled={!canEdit}
+            />
+          </Campo>
+
+          <Campo
+            label="Nº da ART / RRT (opcional)"
+            dica="Anotação de Responsabilidade Técnica (se aplicável)."
+          >
+            <Input
+              className="h-11"
+              value={f.resp_tec_art || ""}
+              onChange={set("resp_tec_art")}
+              placeholder="Ex.: 2026/12345"
               disabled={!canEdit}
             />
           </Campo>
