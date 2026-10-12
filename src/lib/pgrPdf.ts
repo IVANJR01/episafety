@@ -1269,7 +1269,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
 
   /** Um bloco de seção, no mesmo formato do gerador de Word. */
   const bloco = (sec: typeof DEF_PGR.secoes[number]) => {
-    if (sec.ref) refNorma(b, sec.ref);
+    // Referências aos itens da norma retiradas para manter o PDF oficial e limpo sem poluição visual
     if (sec.texto) para(b, sec.texto, 9, [40, 40, 40]);
     if (sec.itens) {
       sec.itens.forEach((it) => {
@@ -1385,7 +1385,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       pdf.setTextColor(0);
     };
     linhaAssinatura(12, pgr.resp_tec_nome || "", "Responsável técnico pela elaboração");
-    linhaAssinatura(110, ctx.empresaNome || "", "Pela organização (NR-01, item 1.5.7.2)");
+    linhaAssinatura(110, ctx.empresaNome || "", "Pela organização");
     b.y += 14;
   }
   ctx.assinaturas.forEach((a) => {
