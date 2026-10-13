@@ -341,7 +341,12 @@ function Assistente() {
 
   const avancar = async () => {
     if (acoes.temSalvar && !(await acoes.salvar())) return;
-    if (idx < ETAPAS.length - 1) irPara(ETAPAS[idx + 1].id);
+    if (idx < ETAPAS.length - 1) {
+      irPara(ETAPAS[idx + 1].id);
+    } else {
+      toast.success("Elaboração do PGR finalizada!");
+      navigate("/pgr");
+    }
   };
 
   return (
@@ -503,7 +508,7 @@ function Assistente() {
                 </Button>
               )}
               <Button size="lg" onClick={avancar}
-                disabled={acoes.ocupado || (idx === ETAPAS.length - 1 && !acoes.temSalvar)}>
+                disabled={acoes.ocupado}>
                 {acoes.ocupado && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {acoes.temSalvar
                   ? "Salvar e continuar"
