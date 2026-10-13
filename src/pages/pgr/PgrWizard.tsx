@@ -142,7 +142,7 @@ function Assistente() {
     queryKey: ["pgr-wiz-progresso", id],
     enabled: !!pgr,
     queryFn: async () => {
-      const [inv, acs, resp, amb, set, fun, proc] = await Promise.all([
+      const [inv, acs, resp, amb, set, fun, proc, pdfs, ass] = await Promise.all([
         (supabase.from as any)("pgr_inventario_itens").select("id").eq("pgr_id", id).limit(1),
         (supabase.from as any)("pgr_acoes").select("id").eq("pgr_id", id).limit(1),
         (supabase.from as any)("pgr_responsaveis").select("id").eq("pgr_id", id).limit(1),
@@ -150,6 +150,8 @@ function Assistente() {
         (supabase.from as any)("sst_setores").select("id").eq("empresa_id", pgr!.empresa_id).limit(1),
         (supabase.from as any)("sst_funcoes").select("id").eq("empresa_id", pgr!.empresa_id).limit(1),
         (supabase.from as any)("sst_processos").select("id").eq("empresa_id", pgr!.empresa_id).limit(1),
+        (supabase.from as any)("pgr_pdf_versoes").select("id").eq("pgr_id", id).limit(1),
+        (supabase.from as any)("pgr_assinaturas").select("id").eq("pgr_id", id).limit(1),
       ]);
       const tem = (r: any) => (r?.data?.length ?? 0) > 0;
       return {
@@ -162,7 +164,10 @@ function Assistente() {
         inventario: tem(inv),
         acoes: tem(acs),
         emissao: pgr!.status === "vigente"
-          && (tem(resp) || !!(pgr!.resp_tec_nome || "").trim()),
+          || (
+            (tem(resp) || !!(pgr!.resp_tec_nome || "").trim())
+            && (tem(pdfs) || tem(ass))
+          ),
       } as Record<EtapaId, boolean>;
     },
   });

@@ -299,9 +299,37 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
       refetch();
       qc.invalidateQueries({ queryKey: ["pgr-detalhe", pgr.id] });
       qc.invalidateQueries({ queryKey: ["pgr-revisoes", pgr.id] });
+      qc.invalidateQueries({ queryKey: ["pgr-wiz-progresso", pgr.id] });
     } catch (e: any) {
       toast.error(e.message || "Falha ao gerar PDF");
     } finally { setBusy(false); }
+  }
+
+  async function handlePublicar() {
+    if (!ultima) { toast.error("Gere o PDF oficial antes de publicar."); return; }
+    if (ultima.com_marca_dagua) { toast.error("O PDF oficial não pode ter marca de rascunho."); return; }
+    setBusy(true);
+    try {
+      const { error } = await (supabase.rpc as any)("pgr_publicar", {
+        _pgr_id: pgr.id,
+      });
+      if (error) {
+        // Fallback direto via update caso RPC encontre permissão específica de transição
+        const { error: upErr } = await (supabase.from as any)("pgr_documentos")
+          .update({ status: "vigente", data_emissao: new Date().toISOString().slice(0, 10) })
+          .eq("id", pgr.id);
+        if (upErr) throw error;
+      }
+      toast.success("PGR publicado com sucesso como Vigente!");
+      refetch();
+      qc.invalidateQueries({ queryKey: ["pgr-detalhe", pgr.id] });
+      qc.invalidateQueries({ queryKey: ["pgr-revisoes", pgr.id] });
+      qc.invalidateQueries({ queryKey: ["pgr-wiz-progresso", pgr.id] });
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao publicar o PGR");
+    } finally {
+      setBusy(false);
+    }
   }
 
   /*
@@ -470,6 +498,17 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
                   <PenLine className="h-4 w-4 mr-1.5 text-emerald-400" />
                   Assinar (visual)
                 </MfaActionButton>
+              )}
+              {ultima && !ultima.com_marca_dagua && status !== "vigente" && (
+                <Button
+                  size="sm"
+                  onClick={handlePublicar}
+                  disabled={busy}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-md shadow-emerald-600/30 border border-emerald-400/30"
+                >
+                  <ShieldCheck className="h-4 w-4 mr-1.5" />
+                  Publicar PGR
+                </Button>
               )}
             </div>
           </div>

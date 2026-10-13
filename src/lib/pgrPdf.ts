@@ -1420,80 +1420,95 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
    * As duas linhas são as duas responsabilidades que a norma distingue: quem
    * elabora tecnicamente e a organização, que responde pelo programa.
    */
-  if (ctx.assinaturas.length === 0) {
-    ensure(b, 38);
-    b.y += 18;
+  /*
+   * As duas assinaturas (Responsável Técnico e Organização) ficam lado a lado
+   * no encerramento, exatamente como exige o item 1.5.7.2 da NR-01.
+   */
+  ensure(b, 38);
+  b.y += 18;
 
-    const respTecnico = (ctx.responsaveis || []).find(
-      (r: any) => r.papel === "responsavel_tecnico" || r.papel === "elaborador",
-    ) as any;
+  const rtFinal = ((ctx.responsaveis || []).find(
+    (r: any) => r.papel === "responsavel_tecnico" || r.papel === "elaborador",
+  ) || respTecnico) as any;
 
-    const nomeRt = respTecnico?.nome || pgr.resp_tec_nome || "";
-    const detRt = [
-      respTecnico?.profissao,
-      respTecnico?.registro_profissional
-        ? `Registro ${respTecnico.registro_profissional}${respTecnico.uf_registro ? `/${respTecnico.uf_registro}` : ""}`
-        : (pgr.resp_tec_registro ? `Registro ${pgr.resp_tec_registro}` : null),
-      respTecnico?.numero_art ? `ART ${respTecnico.numero_art}` : null,
+  const nomeRt = rtFinal?.nome || pgr.resp_tec_nome || "";
+  const detRt = [
+    rtFinal?.profissao,
+    rtFinal?.registro_profissional
+      ? `Registro ${rtFinal.registro_profissional}${rtFinal.uf_registro ? `/${rtFinal.uf_registro}` : ""}`
+      : (pgr.resp_tec_registro ? `Registro ${pgr.resp_tec_registro}` : null),
+    rtFinal?.numero_art ? `ART ${rtFinal.numero_art}` : null,
+  ].filter(Boolean).join("  ·  ");
+
+  const detOrg = [
+    ctx.empresaCnpj ? `CNPJ ${ctx.empresaCnpj}` : null,
+    pgr.cnpj_snapshot && pgr.cnpj_snapshot !== ctx.empresaCnpj ? `Unidade ${pgr.cnpj_snapshot}` : null,
+  ].filter(Boolean).join("  ·  ");
+
+  const yLinhas = b.y;
+  const primeiraAssinatura = ctx.assinaturas?.[0];
+
+  // 1) COLUNA ESQUERDA (x: 12): Responsável Técnico pela elaboração
+  pdf.setDrawColor(120); pdf.setLineWidth(0.3);
+  pdf.line(12, yLinhas, 12 + 82, yLinhas);
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5); pdf.setTextColor(15, 23, 42);
+  pdf.text(primeiraAssinatura?.responsavel_nome || nomeRt || "—", 12, yLinhas + 4.5);
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(71, 85, 105);
+  pdf.text("Responsável técnico pela elaboração", 12, yLinhas + 8);
+
+  if (primeiraAssinatura) {
+    pdf.setFontSize(7); pdf.setTextColor(100, 116, 139);
+    const infoAss = [
+      primeiraAssinatura.responsavel_registro || detRt,
+      fmtDT(primeiraAssinatura.assinado_em),
+      `PDF v${primeiraAssinatura.pdf_versao}`,
     ].filter(Boolean).join("  ·  ");
+    pdf.text(infoAss, 12, yLinhas + 11.5);
+    if (primeiraAssinatura.pdf_hash) {
+      pdf.setFontSize(5.5);
+      pdf.text(`Hash: ${primeiraAssinatura.pdf_hash}`, 12, yLinhas + 14.5);
+    }
+  } else if (detRt) {
+    pdf.setFontSize(7); pdf.setTextColor(100, 116, 139);
+    pdf.text(detRt, 12, yLinhas + 11.5);
+  }
 
-    const detOrg = [
-      ctx.empresaCnpj ? `CNPJ ${ctx.empresaCnpj}` : null,
-      pgr.cnpj_snapshot && pgr.cnpj_snapshot !== ctx.empresaCnpj ? `Unidade ${pgr.cnpj_snapshot}` : null,
-    ].filter(Boolean).join("  ·  ");
+  // 2) COLUNA DIREITA (x: 110): Pela organização (SEMPRE PRESENTE!)
+  pdf.setDrawColor(120); pdf.setLineWidth(0.3);
+  pdf.line(110, yLinhas, 110 + 82, yLinhas);
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5); pdf.setTextColor(15, 23, 42);
+  pdf.text(ctx.empresaNome || "—", 110, yLinhas + 4.5);
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(71, 85, 105);
+  pdf.text("Pela organização", 110, yLinhas + 8);
+  if (detOrg) {
+    pdf.setFontSize(7); pdf.setTextColor(100, 116, 139);
+    pdf.text(detOrg, 110, yLinhas + 11.5);
+  }
 
-    const linhaAssinatura = (
-      x: number,
-      nome: string,
-      papel: string,
-      detalhe?: string | null,
-    ) => {
-      pdf.setDrawColor(120); pdf.setLineWidth(0.3);
-      pdf.line(x, b.y, x + 82, b.y);
+  pdf.setTextColor(0);
+  b.y = yLinhas + (primeiraAssinatura?.pdf_hash ? 22 : 18);
+
+  // 3) Assinaturas adicionais (se houver mais de uma registrada)
+  if (ctx.assinaturas.length > 1) {
+    ctx.assinaturas.slice(1).forEach((a) => {
+      ensure(b, 20);
+      b.y += 12;
+      pdf.setDrawColor(180); pdf.setLineWidth(0.3);
+      pdf.line(12, b.y, 12 + 82, b.y);
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5); pdf.setTextColor(15, 23, 42);
-      pdf.text(nome || "—", x, b.y + 4.5);
+      pdf.text(a.responsavel_nome || "—", 12, b.y + 4.5);
       pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(71, 85, 105);
-      pdf.text(papel, x, b.y + 8);
-      if (detalhe) {
-        pdf.setFontSize(7); pdf.setTextColor(100, 116, 139);
-        pdf.text(detalhe, x, b.y + 11.5);
+      pdf.text("Responsável técnico adicional", 12, b.y + 8);
+      pdf.setFontSize(7); pdf.setTextColor(100, 116, 139);
+      pdf.text(`${a.responsavel_registro || "—"}  ·  ${fmtDT(a.assinado_em)}  ·  PDF v${a.pdf_versao}`, 12, b.y + 11.5);
+      if (a.pdf_hash) {
+        pdf.setFontSize(5.5);
+        pdf.text(`Hash: ${a.pdf_hash}`, 12, b.y + 14.5);
       }
       pdf.setTextColor(0);
-    };
-
-    linhaAssinatura(12, nomeRt, "Responsável técnico pela elaboração", detRt || undefined);
-    linhaAssinatura(110, ctx.empresaNome || "", "Pela organização", detOrg || undefined);
-    b.y += 18;
-  } else {
-    // Se há assinaturas eletrônicas registradas, lista responsáveis adicionais caso não tenham assinado
-    const resps = ctx.responsaveis || [];
-    if (resps.length > 0) {
-      resps.forEach((r) => {
-        ensure(b, 10);
-        pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-        pdf.text(`${PAPEL_PDF_LABEL[r.papel] || r.papel}: ${r.nome}`, 12, b.y + 4);
-        pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-        const det = [
-          r.profissao,
-          r.registro_profissional ? `Registro ${r.registro_profissional}${r.uf_registro ? `/${r.uf_registro}` : ""}` : null,
-          r.numero_art ? `ART ${r.numero_art}` : null,
-        ].filter(Boolean).join("  ·  ");
-        if (det) { pdf.text(det, 12, b.y + 8); b.y += 11; } else { b.y += 6; }
-      });
-    }
+      b.y += 18;
+    });
   }
-  ctx.assinaturas.forEach((a) => {
-    ensure(b, 18);
-    pdf.setDrawColor(180); pdf.line(12, b.y + 12, 100, b.y + 12);
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-    /* Nome em branco no registro não pode derrubar a geração do PDF inteiro:
-       o jsPDF recusa `undefined` e o documento não sai. */
-    pdf.text(a.responsavel_nome || "—", 12, b.y + 16);
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(7);
-    pdf.text(`${a.responsavel_registro || "—"}  ·  ${fmtDT(a.assinado_em)}  ·  MFA ${a.mfa_verificado ? "OK" : "—"}  ·  PDF v${a.pdf_versao}`, 12, b.y + 19);
-    pdf.text(`Hash assinado: ${a.pdf_hash || "—"}`, 12, b.y + 22);
-    b.y += 26;
-  });
 
 
 
