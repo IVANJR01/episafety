@@ -14,8 +14,6 @@ ON CONFLICT (id) DO UPDATE SET
   file_size_limit = 52428800,
   allowed_mime_types = ARRAY['application/pdf', 'application/xml', 'text/xml', 'application/octet-stream'];
 
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
 DROP POLICY IF EXISTS "sst_doc_select_tenant" ON storage.objects;
 CREATE POLICY "sst_doc_select_tenant"
 ON storage.objects FOR SELECT

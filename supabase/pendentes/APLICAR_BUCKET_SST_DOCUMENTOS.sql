@@ -39,10 +39,7 @@ ON CONFLICT (id) DO UPDATE SET
   file_size_limit = 52428800,
   allowed_mime_types = ARRAY['application/pdf', 'application/xml', 'text/xml', 'application/octet-stream'];
 
--- 2) Habilitar RLS em storage.objects
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
--- 3) Políticas de acesso (SELECT, INSERT, UPDATE, DELETE)
+-- 2) Políticas de acesso (SELECT, INSERT, UPDATE, DELETE)
 DROP POLICY IF EXISTS "sst_doc_select_tenant" ON storage.objects;
 CREATE POLICY "sst_doc_select_tenant"
 ON storage.objects FOR SELECT
