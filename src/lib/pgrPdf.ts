@@ -1440,9 +1440,11 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     rtFinal?.numero_art ? `ART ${rtFinal.numero_art}` : null,
   ].filter(Boolean).join("  ·  ");
 
+  const nomeEmpresaFinal = ctx.empresaNome || principal?.nome_fantasia || principal?.nome || "";
+  const cnpjEmpresaFinal = ctx.empresaCnpj || principal?.cnpj || "";
   const detOrg = [
-    ctx.empresaCnpj ? `CNPJ ${ctx.empresaCnpj}` : null,
-    pgr.cnpj_snapshot && pgr.cnpj_snapshot !== ctx.empresaCnpj ? `Unidade ${pgr.cnpj_snapshot}` : null,
+    cnpjEmpresaFinal ? `CNPJ ${cnpjEmpresaFinal}` : null,
+    pgr.cnpj_snapshot && pgr.cnpj_snapshot !== cnpjEmpresaFinal ? `Unidade ${pgr.cnpj_snapshot}` : null,
   ].filter(Boolean).join("  ·  ");
 
   const yLinhas = b.y;
@@ -1477,7 +1479,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   pdf.setDrawColor(120); pdf.setLineWidth(0.3);
   pdf.line(110, yLinhas, 110 + 82, yLinhas);
   pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5); pdf.setTextColor(15, 23, 42);
-  pdf.text(ctx.empresaNome || "—", 110, yLinhas + 4.5);
+  pdf.text(nomeEmpresaFinal || "—", 110, yLinhas + 4.5);
   pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(71, 85, 105);
   pdf.text("Pela organização", 110, yLinhas + 8);
   if (detOrg) {
