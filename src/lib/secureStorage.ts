@@ -136,15 +136,44 @@ export async function uploadDocumentoSeguro(
       throw new Error("Path fora do tenant — abortado");
     }
 
-    const { error } = await supabase.storage
+    let uploadResult = await supabase.storage
       .from(SST_BUCKET)
       .upload(path, p.blob, {
         upsert: true,
         contentType:
           p.kind === "pdf" ? "application/pdf" : "application/xml",
       });
-    if (error) {
-      throw new Error(`Falha no upload Supabase Storage: ${error.message}`);
+
+    if (uploadResult.error && /bucket not found/i.test(uploadResult.error.message)) {
+      // Tenta criar o bucket automaticamente caso o usuário atual tenha permissão
+      try {
+        const { error: cErr } = await supabase.storage.createBucket(SST_BUCKET, {
+          public: false,
+          fileSizeLimit: 52428800,
+          allowedMimeTypes: ["application/pdf", "application/xml", "text/xml"],
+        });
+        if (!cErr) {
+          uploadResult = await supabase.storage
+            .from(SST_BUCKET)
+            .upload(path, p.blob, {
+              upsert: true,
+              contentType:
+                p.kind === "pdf" ? "application/pdf" : "application/xml",
+            });
+        }
+      } catch {
+        // Falha silenciosa na auto-criação; mensagem amigável abaixo
+      }
+    }
+
+    if (uploadResult.error) {
+      const msg = uploadResult.error.message;
+      if (/bucket not found/i.test(msg)) {
+        throw new Error(
+          `O bucket de armazenamento seguro (${SST_BUCKET}) ainda não foi criado no Supabase. Execute o script APLICAR_BUCKET_SST_DOCUMENTOS.sql no SQL Editor do Supabase.`
+        );
+      }
+      throw new Error(`Falha no upload Supabase Storage: ${msg}`);
     }
     return {
       provider,

@@ -9,6 +9,7 @@ há a chave pública, que lê e grava linhas mas não altera estrutura).
 
 | Arquivo | O que faz |
 |---|---|
+| `APLICAR_BUCKET_SST_DOCUMENTOS.sql` | Cria o bucket `sst-documentos` e alinha as permissões para PDFs e XMLs do PGR, LTCAT, PPP e eSocial. Sem ele, gerar o PDF oficial devolve **"Bucket not found"**. |
 | `APLICAR_BUCKET_LOGO.sql` | Cria o bucket `company-logos` e alinha as permissões dele ao modelo de empresa ativa. Sem ele, enviar a logo em Empresas / Unidades devolve **"Bucket not found"**. |
 | `DIAGNOSTICO_INSPECOES_CG3.sql` | **Só consulta, não altera nada.** Mostra o que existe de verdade: inspeções por empresa e por local, quais têm foto, fotos no Storage e obras cadastradas. Rode primeiro. |
 | `FOTOS_INSPECOES_CG3.sql` | Grava as 22 fotos das inspeções da CG3, recuperadas de dentro do relatório em PDF. Cada imagem vai no próprio registro (campo `foto_antes`), que a tela e o PDF já sabem exibir. Só preenche quem está sem foto. |
