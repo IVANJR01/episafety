@@ -1554,7 +1554,10 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
  * Aqui o documento e o MESMO: mesma funcao de desenho, mesma marca d'agua de
  * rascunho. So nao existe depois de fechada a aba.
  */
-export async function previsualizarPgrPdf(ctx: PgrPdfContext, opts?: { comMarca?: boolean }): Promise<void> {
+export async function gerarBlobPgrPdf(
+  ctx: PgrPdfContext,
+  opts?: { comMarca?: boolean },
+): Promise<{ blob: Blob; url: string; proxVersao: number; pdf: jsPDF }> {
   const { doc: pgr } = ctx;
   const comMarca = opts?.comMarca ?? false;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -1570,10 +1573,14 @@ export async function previsualizarPgrPdf(ctx: PgrPdfContext, opts?: { comMarca?
     pdfVersao: proxVersao,
     comMarca,
   });
-  const url = URL.createObjectURL(pdf.output("blob"));
+  const blob = pdf.output("blob");
+  const url = URL.createObjectURL(blob);
+  return { blob, url, proxVersao, pdf };
+}
+
+export async function previsualizarPgrPdf(ctx: PgrPdfContext, opts?: { comMarca?: boolean }): Promise<void> {
+  const { url } = await gerarBlobPgrPdf(ctx, opts);
   window.open(url, "_blank", "noopener,noreferrer");
-  // Solta o endereco depois de o navegador ter tido tempo de abrir a aba; sem
-  // isso o binario do PDF fica preso na memoria ate a aba principal fechar.
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
