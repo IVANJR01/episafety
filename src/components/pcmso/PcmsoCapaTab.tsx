@@ -37,23 +37,33 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
   const [dataInicio, setDataInicio] = useState(pcmso.data_vigencia_inicio || "");
   const [dataFim, setDataFim] = useState(pcmso.data_vigencia_fim || "");
 
-  const { data: pgrs = [], isLoading: loadPgrs } = useQuery({
+  const { data: pgrs = [], isLoading: loadPgrs, refetch: refetchPgrs } = useQuery({
     queryKey: ["pgr-lista-base", alvoEmpresaId, empresaScopeIds?.join(",")],
     queryFn: async () => {
+      // 1. Tenta buscar pela empresa do documento / URL
       let q = (supabase.from as any)("pgr_documentos")
         .select("id, versao, status, data_vigencia_inicio, data_vigencia_fim, empresa_id");
 
       if (alvoEmpresaId) {
         q = q.eq("empresa_id", alvoEmpresaId);
-      } else if (empresaScopeIds?.length && !isSuperAdmin) {
-        q = q.in("empresa_id", empresaScopeIds);
       }
 
-      const { data, error } = await q
+      let { data, error } = await q
         .neq("status", "inativo")
-        .order("created_at", { ascending: false });
+        .order("versao", { ascending: false });
 
-      if (error) {
+      // 2. Se a busca específica não encontrar nada, busca sem restrição (Super Admin / RLS)
+      if (!data || data.length === 0) {
+        const fb = await (supabase.from as any)("pgr_documentos")
+          .select("id, versao, status, data_vigencia_inicio, data_vigencia_fim, empresa_id")
+          .neq("status", "inativo")
+          .order("versao", { ascending: false });
+        if (fb.data && fb.data.length > 0) {
+          data = fb.data;
+        }
+      }
+
+      if (error && (!data || data.length === 0)) {
         console.error("Erro ao carregar PGRs:", error);
         return [];
       }
@@ -62,19 +72,31 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
     enabled: true,
   });
 
-  const { data: medicos = [], isLoading: loadMedicos } = useQuery({
+  const { data: medicos = [], isLoading: loadMedicos, refetch: refetchMedicos } = useQuery({
     queryKey: ["medicos-trabalho-lista", alvoEmpresaId],
     queryFn: async () => {
       let q = (supabase.from as any)("aso_medicos")
-        .select("id, nome, crm, uf_crm, responsavel_pcmso")
+        .select("id, nome, crm, uf_crm, responsavel_pcmso, empresa_id")
         .eq("ativo", true);
 
       if (alvoEmpresaId) {
         q = q.or(`empresa_id.eq.${alvoEmpresaId},empresa_id.is.null`);
       }
 
-      const { data, error } = await q.order("nome");
-      if (error) {
+      let { data, error } = await q.order("nome");
+
+      // Fallback: se não houver médicos vinculados à empresa, traz os médicos ativos do sistema
+      if (!data || data.length === 0) {
+        const fb = await (supabase.from as any)("aso_medicos")
+          .select("id, nome, crm, uf_crm, responsavel_pcmso, empresa_id")
+          .eq("ativo", true)
+          .order("nome");
+        if (fb.data && fb.data.length > 0) {
+          data = fb.data;
+        }
+      }
+
+      if (error && (!data || data.length === 0)) {
         console.error("Erro ao carregar médicos:", error);
         return [];
       }
@@ -88,7 +110,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
 
   // Auto-selecionar o PGR mais recente se não estiver selecionado
   useEffect(() => {
-    if (!pgrBaseId && pgrs.length > 0) {
+    if ((!pgrBaseId || pgrBaseId === "none") && pgrs.length > 0) {
       const primeiro = pgrs[0];
       setPgrBaseId(primeiro.id);
       if (!dataInicio && primeiro.data_vigencia_inicio) setDataInicio(primeiro.data_vigencia_inicio);
@@ -98,7 +120,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
 
   // Auto-selecionar médico coordenador se houver médico cadastrado
   useEffect(() => {
-    if (!medicoId && medicos.length > 0) {
+    if ((!medicoId || medicoId === "none") && medicos.length > 0) {
       const resp = medicos.find((m: any) => m.responsavel_pcmso) || (medicos.length === 1 ? medicos[0] : null);
       if (resp) setMedicoId(resp.id);
     }
@@ -178,9 +200,16 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <Label>PGR Origem (Obrigatório)</Label>
+            <div className="flex items-center justify-between">
+              <Label>PGR Origem (Obrigatório)</Label>
+              {loadPgrs && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Buscando PGRs...
+                </span>
+              )}
+            </div>
             <Select 
-              value={pgrBaseId} 
+              value={pgrBaseId || (pgrs.length > 0 ? pgrs[0].id : "none")} 
               onValueChange={handlePgrChange} 
               disabled={formDisabled || loadPgrs}
             >
@@ -191,13 +220,13 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
                 <SelectItem value="none" className="text-muted-foreground italic">Nenhum (Não recomendado)</SelectItem>
                 {pgrs.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    PGR Versão {p.versao} — Status: {PGR_STATUS_LABEL[p.status as PgrStatus]} 
+                    PGR Versão {p.versao} — Status: {PGR_STATUS_LABEL[p.status as PgrStatus] || p.status} 
                     {p.data_vigencia_inicio ? ` (De ${new Date(p.data_vigencia_inicio).toLocaleDateString()})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {!pgrBaseId && pcmso.status === "rascunho" && (
+            {(!pgrBaseId || pgrBaseId === "none") && pcmso.status === "rascunho" && (
               <p className="text-xs text-amber-600 font-medium">Atenção: A Matriz de Saúde não listará riscos enquanto o PGR não for vinculado.</p>
             )}
           </div>
