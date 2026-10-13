@@ -321,9 +321,9 @@ export interface GenerateLtcatPdfResult {
   blob: Blob;
 }
 
-export async function generateAndUploadLtcatPdf(ctx: LtcatPdfContext): Promise<GenerateLtcatPdfResult> {
+export async function generateAndUploadLtcatPdf(ctx: LtcatPdfContext, opts?: { comMarca?: boolean }): Promise<GenerateLtcatPdfResult> {
   const { doc: lt } = ctx;
-  const comMarca = lt.status === "rascunho" || lt.status === "em_revisao";
+  const comMarca = opts?.comMarca ?? false;
 
   const { data: ultimaV } = await (supabase.from as any)("ltcat_pdf_versoes")
     .select("pdf_versao").eq("ltcat_id", lt.id)

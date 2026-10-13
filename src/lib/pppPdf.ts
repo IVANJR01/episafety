@@ -254,9 +254,9 @@ export interface GeneratePppPdfResult {
   blob: Blob;
 }
 
-export async function generateAndUploadPppPdf(ctx: PppPdfContext): Promise<GeneratePppPdfResult> {
+export async function generateAndUploadPppPdf(ctx: PppPdfContext, opts?: { comMarca?: boolean }): Promise<GeneratePppPdfResult> {
   const { doc: pp } = ctx;
-  const comMarca = pp.status === "rascunho" || pp.status === "em_revisao";
+  const comMarca = opts?.comMarca ?? false;
   const marcaLabel = pp.status === "em_revisao" ? "EM REVISÃO" : "RASCUNHO";
 
   const { data: ultimaV } = await (supabase.from as any)("ppp_pdf_versoes")

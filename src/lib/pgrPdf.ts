@@ -1537,9 +1537,9 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
  * Aqui o documento e o MESMO: mesma funcao de desenho, mesma marca d'agua de
  * rascunho. So nao existe depois de fechada a aba.
  */
-export async function previsualizarPgrPdf(ctx: PgrPdfContext): Promise<void> {
+export async function previsualizarPgrPdf(ctx: PgrPdfContext, opts?: { comMarca?: boolean }): Promise<void> {
   const { doc: pgr } = ctx;
-  const comMarca = pgr.status === "rascunho" || pgr.status === "em_revisao";
+  const comMarca = opts?.comMarca ?? false;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   // A proxima versao ainda NAO existe: e so o que sairia impresso se a pessoa
@@ -1569,9 +1569,10 @@ export interface GeneratePgrPdfResult {
   blob: Blob;
 }
 
-export async function generateAndUploadPgrPdf(ctx: PgrPdfContext): Promise<GeneratePgrPdfResult> {
+export async function generateAndUploadPgrPdf(ctx: PgrPdfContext, opts?: { comMarca?: boolean }): Promise<GeneratePgrPdfResult> {
   const { doc: pgr } = ctx;
-  const comMarca = pgr.status === "rascunho" || pgr.status === "em_revisao";
+  // O PDF gerado pelo botão oficial nunca deve levar marca d'água de rascunho
+  const comMarca = opts?.comMarca ?? false;
 
   // Versão preliminar (RPC vai conferir e gravar o oficial)
   const { data: ultimaV } = await (supabase.from as any)("pgr_pdf_versoes")
