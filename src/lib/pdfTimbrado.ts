@@ -45,7 +45,14 @@ export const direitaDe = (b: B) => b.direita ?? 200;
 export const limiteYDe = (b: B) => b.limiteY ?? 278;
 
 export const ensure = (b: B, h: number) => {
-  if (b.y + h > limiteYDe(b)) { b.doc.addPage(); b.y = 15; }
+  if (b.y + h > limiteYDe(b)) {
+    if (b.direita && b.direita > 250) {
+      b.doc.addPage([297, 210], "landscape");
+    } else {
+      b.doc.addPage();
+    }
+    b.y = 15;
+  }
 };
 
 /**

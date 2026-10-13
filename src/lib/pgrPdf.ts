@@ -489,14 +489,13 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
    */
   title(b, "Controle de Revisões");
   {
-    const largura = (b.direita ?? 200) - 20;
     const linhaRev = tabela(
       b,
       [
         { rotulo: "REVISÃO", x: 12, w: 18 },
-        { rotulo: "DATA", x: 34, w: 24 },
-        { rotulo: "DESCRIÇÃO", x: 62, w: largura - 18 - 24 - 38 },
-        { rotulo: "RESPONSÁVEL", x: (b.direita ?? 200) - 48, w: 44 },
+        { rotulo: "DATA", x: 34, w: 22 },
+        { rotulo: "DESCRIÇÃO", x: 60, w: 80 },
+        { rotulo: "RESPONSÁVEL", x: 145, w: 52 },
       ],
       { fonte: 8, fonteCabecalho: 7.5, grade: true, cabecalhoEscuro: true },
     );
@@ -1367,6 +1366,10 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     title(b, sec.t);
     bloco(sec);
     (sec.sub || []).forEach((filho) => {
+      if (filho.inventario) {
+        pdf.addPage([297, 210], "landscape");
+        b.y = 15;
+      }
       subNumerado(b, filho.t);
       bloco(filho);
     });
