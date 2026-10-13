@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Component, ErrorInfo, ReactNode } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
-  ArrowLeft, ArrowRight, FileText, Loader2, Menu, Activity, CalendarDays, CheckCircle, FileBarChart
+  ArrowLeft, ArrowRight, FileText, Loader2, Menu, Activity, CalendarDays, CheckCircle, FileBarChart, AlertTriangle
 } from "lucide-react";
 import { PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus } from "@/lib/pgrTypes";
 
@@ -17,6 +17,41 @@ import PcmsoMatrizTab from "@/components/pcmso/PcmsoMatrizTab";
 import PcmsoRelatorioTab from "@/components/pcmso/PcmsoRelatorioTab";
 import PcmsoEmissaoTab from "@/components/pcmso/PcmsoEmissaoTab";
 
+class TabErrorBoundary extends Component<
+  { children: ReactNode; etapa: string },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Erro na etapa do PCMSO:", error, errorInfo);
+  }
+  componentDidUpdate(prevProps: any) {
+    if (prevProps.etapa !== this.props.etapa && this.state.hasError) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 border border-destructive/20 bg-destructive/5 rounded-xl text-center max-w-lg mx-auto space-y-4">
+          <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
+          <h3 className="font-semibold text-lg text-foreground">Não foi possível carregar esta etapa</h3>
+          <p className="text-sm text-muted-foreground">{this.state.error?.message || "Erro inesperado ao renderizar componente."}</p>
+          <Button variant="outline" size="sm" onClick={() => this.setState({ hasError: false, error: null })}>
+            Recarregar Etapa
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 type EtapaId = "configuracao" | "cronograma" | "matriz" | "relatorio" | "emissao";
 
@@ -181,7 +216,9 @@ export default function PcmsoElaboracao() {
 
               {/* Renderização do Componente da Aba */}
               <div className="mt-6">
-                <Conteudo pcmso={pcmso} />
+                <TabErrorBoundary etapa={etapaAtual}>
+                  <Conteudo pcmso={pcmso} />
+                </TabErrorBoundary>
               </div>
 
               {/* Paginação entre abas */}

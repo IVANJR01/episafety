@@ -68,6 +68,8 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
     enabled: !!pgrIdAtivo && pgrIdAtivo !== "none",
   });
 
+  const pgrBaseId = pgrIdAtivo;
+
   return (
     <div className="space-y-6">
       <Card className="border-t-4 border-t-amber-500 shadow-sm">
@@ -81,7 +83,7 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!pgrBaseId ? (
+          {!pgrIdAtivo ? (
             <div className="flex flex-col items-center justify-center p-8 bg-amber-50 dark:bg-amber-950/20 rounded-lg text-amber-800 dark:text-amber-500 text-center gap-3">
               <AlertTriangle className="h-8 w-8" />
               <p className="font-medium">Nenhum PGR Base Vinculado</p>
