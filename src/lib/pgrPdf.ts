@@ -1378,26 +1378,6 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
    * 1.5.7.2 da NR-01: os documentos do PGR são elaborados sob
    * responsabilidade da organização, datados e assinados.
    */
-  const resps = ctx.responsaveis || [];
-  if (resps.length === 0) {
-    kv(b, "Responsável Técnico", pgr.resp_tec_nome || "—");
-    // Registro em branco vira "REGISTRO PROFISSIONAL —" logo abaixo do nome
-    // de quem assina: um campo vazio anunciado no fecho do documento.
-    if (pgr.resp_tec_registro) kv(b, "Registro Profissional", pgr.resp_tec_registro);
-  } else {
-    resps.forEach((r) => {
-      ensure(b, 10);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-      pdf.text(`${PAPEL_PDF_LABEL[r.papel] || r.papel}: ${r.nome}`, 12, b.y + 4);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-      const det = [
-        r.profissao,
-        r.registro_profissional ? `Registro ${r.registro_profissional}${r.uf_registro ? `/${r.uf_registro}` : ""}` : null,
-        r.numero_art ? `ART ${r.numero_art}` : null,
-      ].filter(Boolean).join("  ·  ");
-      if (det) { pdf.text(det, 12, b.y + 8); b.y += 11; } else { b.y += 6; }
-    });
-  }
   /*
    * A nota sobre hash e MFA descreve as assinaturas REGISTRADAS. Saindo
    * sempre, o documento sem assinatura nenhuma afirmava "assinatura visual com
@@ -1407,31 +1387,75 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   if (ctx.assinaturas.length > 0) {
     para(b, "Assinatura visual com hash SHA-256 e MFA verificado. Não constitui assinatura digital ICP-Brasil.");
   }
+
   /*
    * Sem assinatura registrada, o documento ganha as linhas para assinar à
-   * mão.
+   * mão com os dados completos de cada responsável imediatamente abaixo do traço.
    *
-   * Antes o fecho era a frase "Nenhuma assinatura visual registrada" e mais
-   * nada — um PGR impresso para levar à fiscalização terminava sem lugar
-   * onde assinar, e o item 1.5.7.2 da NR-01 pede documento datado e assinado.
    * As duas linhas são as duas responsabilidades que a norma distingue: quem
    * elabora tecnicamente e a organização, que responde pelo programa.
    */
   if (ctx.assinaturas.length === 0) {
-    ensure(b, 34);
-    b.y += 6;
-    const linhaAssinatura = (x: number, nome: string, papel: string) => {
+    ensure(b, 38);
+    b.y += 18;
+
+    const respTecnico = (ctx.responsaveis || []).find(
+      (r: any) => r.papel === "responsavel_tecnico" || r.papel === "elaborador",
+    ) as any;
+
+    const nomeRt = respTecnico?.nome || pgr.resp_tec_nome || "";
+    const detRt = [
+      respTecnico?.profissao,
+      respTecnico?.registro_profissional
+        ? `Registro ${respTecnico.registro_profissional}${respTecnico.uf_registro ? `/${respTecnico.uf_registro}` : ""}`
+        : (pgr.resp_tec_registro ? `Registro ${pgr.resp_tec_registro}` : null),
+      respTecnico?.numero_art ? `ART ${respTecnico.numero_art}` : null,
+    ].filter(Boolean).join("  ·  ");
+
+    const detOrg = [
+      ctx.empresaCnpj ? `CNPJ ${ctx.empresaCnpj}` : null,
+      pgr.cnpj_snapshot && pgr.cnpj_snapshot !== ctx.empresaCnpj ? `Unidade ${pgr.cnpj_snapshot}` : null,
+    ].filter(Boolean).join("  ·  ");
+
+    const linhaAssinatura = (
+      x: number,
+      nome: string,
+      papel: string,
+      detalhe?: string | null,
+    ) => {
       pdf.setDrawColor(120); pdf.setLineWidth(0.3);
-      pdf.line(x, b.y, x + 78, b.y);
+      pdf.line(x, b.y, x + 82, b.y);
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5); pdf.setTextColor(15, 23, 42);
-      pdf.text(nome, x, b.y + 4);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7); pdf.setTextColor(110);
-      pdf.text(papel, x, b.y + 7.5);
+      pdf.text(nome || "—", x, b.y + 4.5);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(71, 85, 105);
+      pdf.text(papel, x, b.y + 8);
+      if (detalhe) {
+        pdf.setFontSize(7); pdf.setTextColor(100, 116, 139);
+        pdf.text(detalhe, x, b.y + 11.5);
+      }
       pdf.setTextColor(0);
     };
-    linhaAssinatura(12, pgr.resp_tec_nome || "", "Responsável técnico pela elaboração");
-    linhaAssinatura(110, ctx.empresaNome || "", "Pela organização");
-    b.y += 14;
+
+    linhaAssinatura(12, nomeRt, "Responsável técnico pela elaboração", detRt || undefined);
+    linhaAssinatura(110, ctx.empresaNome || "", "Pela organização", detOrg || undefined);
+    b.y += 18;
+  } else {
+    // Se há assinaturas eletrônicas registradas, lista responsáveis adicionais caso não tenham assinado
+    const resps = ctx.responsaveis || [];
+    if (resps.length > 0) {
+      resps.forEach((r) => {
+        ensure(b, 10);
+        pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
+        pdf.text(`${PAPEL_PDF_LABEL[r.papel] || r.papel}: ${r.nome}`, 12, b.y + 4);
+        pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
+        const det = [
+          r.profissao,
+          r.registro_profissional ? `Registro ${r.registro_profissional}${r.uf_registro ? `/${r.uf_registro}` : ""}` : null,
+          r.numero_art ? `ART ${r.numero_art}` : null,
+        ].filter(Boolean).join("  ·  ");
+        if (det) { pdf.text(det, 12, b.y + 8); b.y += 11; } else { b.y += 6; }
+      });
+    }
   }
   ctx.assinaturas.forEach((a) => {
     ensure(b, 18);
