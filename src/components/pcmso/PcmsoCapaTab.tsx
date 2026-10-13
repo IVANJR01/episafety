@@ -52,14 +52,29 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("aso_medicos")
-        .select("id, nome, crm, uf")
-        .eq("empresa_id", empresaId)
-        .eq("ativo", true);
+        .select("id, nome, crm, uf_crm, responsavel_pcmso")
+        .or(`empresa_id.eq.${empresaId},empresa_id.is.null`)
+        .eq("ativo", true)
+        .order("nome");
       if (error) throw error;
-      return data;
+      return (data || []).map((m: any) => ({
+        ...m,
+        uf: m.uf_crm || "",
+      }));
     },
     enabled: !!empresaId,
   });
+
+  const handlePgrChange = (val: string) => {
+    setPgrBaseId(val);
+    if (val && val !== "none") {
+      const p = pgrs.find((item: any) => item.id === val);
+      if (p) {
+        if (!dataInicio && p.data_vigencia_inicio) setDataInicio(p.data_vigencia_inicio);
+        if (!dataFim && p.data_vigencia_fim) setDataFim(p.data_vigencia_fim);
+      }
+    }
+  };
 
   const updateMutation = useMutation({
     mutationFn: async (dados: any) => {
@@ -80,14 +95,17 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
 
   const handleSalvar = () => {
     const obj: any = {};
-    if (pgrBaseId !== (pcmso.pgr_base_id || "")) obj.pgr_base_id = pgrBaseId || null;
-    if (medicoId !== (pcmso.medico_coordenador_id || "")) {
-      obj.medico_coordenador_id = medicoId || null;
-      const med = medicos.find(m => m.id === medicoId);
+    const pgrIdFinal = pgrBaseId === "none" ? null : (pgrBaseId || null);
+    const medIdFinal = medicoId === "none" ? null : (medicoId || null);
+
+    if (pgrIdFinal !== (pcmso.pgr_base_id || null)) obj.pgr_base_id = pgrIdFinal;
+    if (medIdFinal !== (pcmso.medico_coordenador_id || null)) {
+      obj.medico_coordenador_id = medIdFinal;
+      const med = medicos.find(m => m.id === medIdFinal);
       if (med) {
         obj.medico_nome = med.nome;
         obj.medico_crm = med.crm;
-        obj.medico_uf = med.uf;
+        obj.medico_uf = med.uf || med.uf_crm || null;
       } else {
         obj.medico_nome = null;
         obj.medico_crm = null;
@@ -124,7 +142,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
             <Label>PGR Origem (Obrigatório)</Label>
             <Select 
               value={pgrBaseId} 
-              onValueChange={setPgrBaseId} 
+              onValueChange={handlePgrChange} 
               disabled={formDisabled || loadPgrs}
             >
               <SelectTrigger>
@@ -175,6 +193,19 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
                     ))}
                   </SelectContent>
                 </Select>
+                {medicos.length === 0 && !loadMedicos && (
+                  <div className="rounded-lg p-2.5 bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between gap-2">
+                    <span>Nenhum médico cadastrado ainda.</span>
+                    <a
+                      href="/aso/medicos"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline font-semibold text-primary hover:text-primary/80"
+                    >
+                      Cadastrar Médico
+                    </a>
+                  </div>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
                 O médico selecionado será o assinante oficial do documento. Ele precisa estar cadastrado na tela de "Médicos".
