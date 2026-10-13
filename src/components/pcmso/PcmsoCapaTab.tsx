@@ -40,7 +40,8 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
   const { data: pgrs = [], isLoading: loadPgrs, refetch: refetchPgrs } = useQuery({
     queryKey: ["pgr-lista-base", alvoEmpresaId, empresaScopeIds?.join(",")],
     queryFn: async () => {
-      // 1. Tenta buscar pela empresa do documento / URL
+      // Não filtra status no servidor: o enum pgr_status não tem "inativo" e
+      // um valor inválido faz a consulta inteira falhar (lista vazia).
       let q = (supabase.from as any)("pgr_documentos")
         .select("id, versao, status, data_vigencia_inicio, data_vigencia_fim, empresa_id");
 
@@ -48,26 +49,16 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
         q = q.eq("empresa_id", alvoEmpresaId);
       }
 
-      let { data, error } = await q
-        .neq("status", "inativo")
-        .order("versao", { ascending: false });
+      const { data, error } = await q.order("versao", { ascending: false });
 
-      // 2. Se a busca específica não encontrar nada, busca sem restrição (Super Admin / RLS)
-      if (!data || data.length === 0) {
-        const fb = await (supabase.from as any)("pgr_documentos")
-          .select("id, versao, status, data_vigencia_inicio, data_vigencia_fim, empresa_id")
-          .neq("status", "inativo")
-          .order("versao", { ascending: false });
-        if (fb.data && fb.data.length > 0) {
-          data = fb.data;
-        }
-      }
-
-      if (error && (!data || data.length === 0)) {
+      if (error) {
         console.error("Erro ao carregar PGRs:", error);
         return [];
       }
-      return (data || []) as any[];
+      // PGR arquivado ou substituído não serve de base para um novo PCMSO
+      return ((data || []) as any[]).filter(
+        (p) => p.status !== "arquivado" && p.status !== "substituido",
+      );
     },
     enabled: true,
   });
