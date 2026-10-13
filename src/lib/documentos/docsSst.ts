@@ -64,57 +64,6 @@ export const DOCUMENTOS_SST: DocumentoSst[] = [
             "matriz": true
           },
           {
-            "t": "Conteúdo Mínimo do Inventário",
-            "ref": "Item 1.5.7.3.2",
-            "exig": [
-              [
-                "a",
-                "Caracterização dos processos e ambientes de trabalho",
-                "Ambiente (cabeçalho de cada GES)"
-              ],
-              [
-                "b",
-                "Caracterização das atividades",
-                "Processo / atividades (cabeçalho de cada GES)"
-              ],
-              [
-                "c",
-                "Descrição dos perigos, com identificação das fontes ou circunstâncias",
-                "Colunas Agente, Perigo e Fonte / Circunstância"
-              ],
-              [
-                "d",
-                "Possíveis lesões ou agravos à saúde",
-                "Coluna Possíveis Lesões ou Agravos"
-              ],
-              [
-                "e",
-                "Grupos de trabalhadores expostos",
-                "GES, Setor e Funções (cabeçalho de cada GES)"
-              ],
-              [
-                "f",
-                "Medidas de prevenção implementadas",
-                "Colunas EPC / Procedimento Administrativo, EPI e Atenuação"
-              ],
-              [
-                "g",
-                "Caracterização da exposição",
-                "Coluna Tipo / Tempo de Exposição"
-              ],
-              [
-                "h",
-                "Dados da análise preliminar ou monitoramento das exposições e da avaliação ergonômica (NR-17)",
-                "Colunas Limite de Exposição, Intensidade / Concentração e Técnica Utilizada"
-              ],
-              [
-                "i",
-                "Avaliação dos riscos e classificação para o plano de ação",
-                "Colunas P, S, Nível e Classificação"
-              ]
-            ]
-          },
-          {
             "t": "Inventário por GES",
             "ref": "Item 1.5.7.3.2 \"a\" a \"i\"",
             "inventario": true

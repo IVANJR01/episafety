@@ -118,7 +118,7 @@ describe("a tabela tem grade", () => {
     const rects = await retangulos();
     /* 277 mm = 785 pt: só o cabeçalho tem essa largura. */
     const faixas = rects.filter((r) => r.cor === NAVY_TABELA && r.largura > 700);
-    expect(faixas.length, "o cabeçalho não saiu escuro").toBeGreaterThanOrEqual(2);
+    expect(faixas.length, "o cabeçalho não saiu escuro").toBeGreaterThanOrEqual(1);
   }, 30_000);
 
   it("pinta o mês previsto no cronograma, não só um X solto", async () => {

@@ -1208,8 +1208,30 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       };
       const gesDaAcao = (a: any) => {
         const item = (ctx.inventario as any[]).find((i) => i.id === a.inventario_item_id);
+        const gesId = item?.ges_id || item?.ghe_id;
+
+        // 1. Busca código em ghesCodigos
+        if (gesId && ctx.ghesCodigos && ctx.ghesCodigos[gesId]) {
+          return ctx.ghesCodigos[gesId];
+        }
+
+        // 2. Busca código em gesDetalhes
+        if (gesId && Array.isArray(ctx.gesDetalhes)) {
+          const g = ctx.gesDetalhes.find((det: any) => det.id === gesId);
+          if (g?.codigo) return g.codigo;
+        }
+
+        // 3. Campos diretos no item ou na ação
+        if (item?.ges_codigo) return item.ges_codigo;
+        if (item?.ges?.codigo) return item.ges.codigo;
+        if (a.ges_codigo) return a.ges_codigo;
+        if (a.ges && /^\d+/.test(String(a.ges).trim())) return String(a.ges).trim();
+
+        // 4. Fallback para mapa de nomes
         const mapa: Record<string, string> = (ctx.ghes as any) || {};
-        return item ? (mapa[item.ges_id] || mapa[item.ghe_id] || "") : "";
+        if (gesId && mapa[gesId]) return mapa[gesId];
+
+        return a.ges || "";
       };
       const obterMesesDaAcao = (a: any): number[] => {
         if (Array.isArray(a.meses_execucao) && a.meses_execucao.length > 0) {

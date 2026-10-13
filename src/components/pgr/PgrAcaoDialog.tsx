@@ -65,20 +65,30 @@ export default function PgrAcaoDialog({
       (async () => {
         const { data } = await (supabase.from as any)("pgr_acoes").select("*").eq("id", acaoId).maybeSingle();
         if (data) {
+          let meses = data.meses_execucao ?? [];
+          if ((!meses || meses.length === 0) && data.prazo) {
+            const m = parseInt(String(data.prazo).slice(5, 7), 10);
+            if (!isNaN(m) && m >= 1 && m <= 12) meses = [m];
+          }
           setForm({
             ...data,
             what: data.what || data.descricao || "",
             custo_estimado: data.custo_estimado ?? "",
-            meses_execucao: data.meses_execucao ?? [],
+            meses_execucao: meses,
           });
         }
       })();
     } else if (defaults) {
+      let mesesIniciais = defaults.meses_execucao || [];
+      if (mesesIniciais.length === 0 && defaults.prazo) {
+        const m = parseInt(String(defaults.prazo).slice(5, 7), 10);
+        if (!isNaN(m) && m >= 1 && m <= 12) mesesIniciais = [m];
+      }
       setForm((f: any) => ({
         ...f,
         ...defaults,
         what: defaults.what || defaults.descricao || "",
-        meses_execucao: defaults.meses_execucao || [],
+        meses_execucao: mesesIniciais,
       }));
     }
   }, [open, acaoId, defaults]);
@@ -445,7 +455,19 @@ export default function PgrAcaoDialog({
           <Input
             type="date"
             value={form.prazo || ""}
-            onChange={(e) => setForm({ ...form, prazo: e.target.value })}
+            onChange={(e) => {
+              const novoPrazo = e.target.value;
+              let novosMeses = [...(form.meses_execucao || [])];
+              if (novoPrazo) {
+                const mes = parseInt(novoPrazo.slice(5, 7), 10);
+                if (!isNaN(mes) && mes >= 1 && mes <= 12) {
+                  if (!novosMeses.includes(mes)) {
+                    novosMeses = [...novosMeses, mes].sort((a, b) => a - b);
+                  }
+                }
+              }
+              setForm({ ...form, prazo: novoPrazo, meses_execucao: novosMeses });
+            }}
             disabled={!editavel}
             className="mt-1"
           />

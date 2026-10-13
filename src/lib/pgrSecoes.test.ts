@@ -89,7 +89,6 @@ describe("seções do PGR", () => {
       "Responsável Técnico",                        // 1.5.7.2 — quem assina
       "Inventário de Riscos Ocupacionais",          // 1.5.7.1 "a"
       "Critérios de Avaliação e Classificação dos Riscos", // 1.5.4.4.2 e 1.5.4.4.3
-      "Conteúdo Mínimo do Inventário",              // 1.5.7.3.2 "a" a "i"
       "Plano de Ação",                              // 1.5.7.1 "b"
       "Revisão do PGR",                             // 1.5.4.4.6
       "Encerramento",                               // 1.5.7.2 — fecha o documento
