@@ -17,15 +17,18 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
   const { data: riscos = [], isLoading } = useQuery({
     queryKey: ["pcmso-riscos-base", pgrBaseId],
     queryFn: async () => {
-      if (!pgrBaseId) return [];
+      if (!pgrBaseId || pgrBaseId === "none") return [];
       const { data, error } = await supabase
         .from("pgr_inventario_itens")
-        .select("id, agente, fonte_geradora, classificacao")
+        .select("id, perigo_descricao, fonte_geradora, classificacao")
         .eq("pgr_id", pgrBaseId);
       if (error) throw error;
-      return data;
+      return (data || []).map((r: any) => ({
+        ...r,
+        agente: r.perigo_descricao || "Agente / Risco",
+      }));
     },
-    enabled: !!pgrBaseId,
+    enabled: !!pgrBaseId && pgrBaseId !== "none",
   });
 
   return (
