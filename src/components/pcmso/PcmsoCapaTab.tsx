@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,9 +24,13 @@ interface PcmsoCapaTabProps {
 }
 
 export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
-  const { empresaId } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
   const perms = usePermissions("pgr"); // Reutilizando a permissão master do módulo
   const queryClient = useQueryClient();
+
+  // Garante a empresa correta: prioriza o documento do PCMSO ou parâmetro de URL
+  const alvoEmpresaId = pcmso?.empresa_id || searchParams.get("empresa_id") || empresaId;
 
   const [pgrBaseId, setPgrBaseId] = useState(pcmso.pgr_base_id || "");
   const [medicoId, setMedicoId] = useState(pcmso.medico_coordenador_id || "");
@@ -33,37 +38,71 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
   const [dataFim, setDataFim] = useState(pcmso.data_vigencia_fim || "");
 
   const { data: pgrs = [], isLoading: loadPgrs } = useQuery({
-    queryKey: ["pgr-lista-base", empresaId],
+    queryKey: ["pgr-lista-base", alvoEmpresaId, empresaScopeIds?.join(",")],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pgr_documentos")
-        .select("id, versao, status, data_vigencia_inicio, data_vigencia_fim")
-        .eq("empresa_id", empresaId)
+      let q = (supabase.from as any)("pgr_documentos")
+        .select("id, versao, status, data_vigencia_inicio, data_vigencia_fim, empresa_id");
+
+      if (alvoEmpresaId) {
+        q = q.eq("empresa_id", alvoEmpresaId);
+      } else if (empresaScopeIds?.length && !isSuperAdmin) {
+        q = q.in("empresa_id", empresaScopeIds);
+      }
+
+      const { data, error } = await q
         .neq("status", "inativo")
         .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+
+      if (error) {
+        console.error("Erro ao carregar PGRs:", error);
+        return [];
+      }
+      return (data || []) as any[];
     },
-    enabled: !!empresaId,
+    enabled: true,
   });
 
   const { data: medicos = [], isLoading: loadMedicos } = useQuery({
-    queryKey: ["medicos-trabalho-lista", empresaId],
+    queryKey: ["medicos-trabalho-lista", alvoEmpresaId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("aso_medicos")
+      let q = (supabase.from as any)("aso_medicos")
         .select("id, nome, crm, uf_crm, responsavel_pcmso")
-        .or(`empresa_id.eq.${empresaId},empresa_id.is.null`)
-        .eq("ativo", true)
-        .order("nome");
-      if (error) throw error;
+        .eq("ativo", true);
+
+      if (alvoEmpresaId) {
+        q = q.or(`empresa_id.eq.${alvoEmpresaId},empresa_id.is.null`);
+      }
+
+      const { data, error } = await q.order("nome");
+      if (error) {
+        console.error("Erro ao carregar médicos:", error);
+        return [];
+      }
       return (data || []).map((m: any) => ({
         ...m,
         uf: m.uf_crm || "",
       }));
     },
-    enabled: !!empresaId,
+    enabled: true,
   });
+
+  // Auto-selecionar o PGR mais recente se não estiver selecionado
+  useEffect(() => {
+    if (!pgrBaseId && pgrs.length > 0) {
+      const primeiro = pgrs[0];
+      setPgrBaseId(primeiro.id);
+      if (!dataInicio && primeiro.data_vigencia_inicio) setDataInicio(primeiro.data_vigencia_inicio);
+      if (!dataFim && primeiro.data_vigencia_fim) setDataFim(primeiro.data_vigencia_fim);
+    }
+  }, [pgrs, pgrBaseId]);
+
+  // Auto-selecionar médico coordenador se houver médico cadastrado
+  useEffect(() => {
+    if (!medicoId && medicos.length > 0) {
+      const resp = medicos.find((m: any) => m.responsavel_pcmso) || (medicos.length === 1 ? medicos[0] : null);
+      if (resp) setMedicoId(resp.id);
+    }
+  }, [medicos, medicoId]);
 
   const handlePgrChange = (val: string) => {
     setPgrBaseId(val);
