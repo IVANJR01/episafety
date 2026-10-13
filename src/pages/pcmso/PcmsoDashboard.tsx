@@ -7,9 +7,10 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, FileText, Activity } from "lucide-react";
+import { ArrowLeft, Plus, FileText, Activity, Trash2 } from "lucide-react";
 import { PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus } from "@/lib/pgrTypes";
 import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
+import { toast } from "sonner";
 
 // Definindo a interface base (parecida com a do PGR)
 interface PcmsoDocumento {
@@ -50,6 +51,15 @@ export default function PcmsoDashboard() {
 
   const criarNovoPcmso = async () => {
     if (!empresaId) return;
+
+    // Se já existe um rascunho em aberto, redireciona para ele em vez de duplicar
+    const rascunhoExistente = pcmsos.find((p) => p.status === "rascunho");
+    if (rascunhoExistente) {
+      toast.info("Você já possui um rascunho em andamento. Redirecionando para ele...");
+      navigate(`/pcmso/elaborar/${rascunhoExistente.id}`);
+      return;
+    }
+
     setLoadingNovo(true);
     try {
       const { data, error } = await (supabase.from as any)("pcmso_documentos")
@@ -66,9 +76,22 @@ export default function PcmsoDashboard() {
         navigate(`/pcmso/elaborar/${data.id}`);
       }
     } catch (e: any) {
-      alert("Erro ao criar documento: " + e.message);
+      toast.error("Erro ao criar documento: " + e.message);
     } finally {
       setLoadingNovo(false);
+    }
+  };
+
+  const excluirRascunho = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("Deseja realmente excluir este rascunho do PCMSO?")) return;
+    try {
+      const { error } = await (supabase.from as any)("pcmso_documentos").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Rascunho excluído com sucesso.");
+      refetch();
+    } catch (err: any) {
+      toast.error("Erro ao excluir rascunho: " + err.message);
     }
   };
 
@@ -143,15 +166,33 @@ export default function PcmsoDashboard() {
                       <Badge variant="outline" className={PGR_STATUS_COLOR[p.status] || ""}>
                         {PGR_STATUS_LABEL[p.status] || p.status}
                       </Badge>
+                      {p.created_at && (
+                        <span className="text-xs text-muted-foreground">
+                          • Criado em {new Date(p.created_at).toLocaleDateString()} às {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-muted-foreground mt-1">
                       {p.medico_nome ? `Coord: ${p.medico_nome}` : "Sem médico definido"}
                       {p.data_vigencia_inicio ? ` • Vigência: ${new Date(p.data_vigencia_inicio).toLocaleDateString()} a ${p.data_vigencia_fim ? new Date(p.data_vigencia_fim).toLocaleDateString() : '?'}` : ""}
                     </div>
                   </div>
-                  <Button variant="outline" onClick={() => navigate(`/pcmso/elaborar/${p.id}`)}>
-                    {p.status === "rascunho" ? "Continuar" : "Visualizar"}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {p.status === "rascunho" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:bg-destructive/10 h-8 w-8"
+                        title="Excluir este rascunho"
+                        onClick={(e) => excluirRascunho(p.id, e)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button variant="outline" onClick={() => navigate(`/pcmso/elaborar/${p.id}`)}>
+                      {p.status === "rascunho" ? "Continuar" : "Visualizar"}
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

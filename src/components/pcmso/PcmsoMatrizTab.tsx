@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,24 +12,60 @@ interface PcmsoMatrizTabProps {
 }
 
 export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
-  const pgrBaseId = pcmso.pgr_base_id;
+  const queryClient = useQueryClient();
+  const [pgrIdAtivo, setPgrIdAtivo] = useState<string | null>(pcmso.pgr_base_id || null);
+
+  // Se o documento ainda não tem o vínculo salvo, busca o PGR mais recente da empresa e vincula
+  useEffect(() => {
+    if (pcmso.pgr_base_id) {
+      setPgrIdAtivo(pcmso.pgr_base_id);
+      return;
+    }
+
+    if (!pgrIdAtivo && pcmso.empresa_id) {
+      (async () => {
+        const { data } = await supabase
+          .from("pgr_documentos")
+          .select("id, status, versao, data_vigencia_inicio, data_vigencia_fim")
+          .eq("empresa_id", pcmso.empresa_id)
+          .order("versao", { ascending: false });
+
+        const valido = ((data || []) as any[]).find(
+          (p) => p.status !== "arquivado" && p.status !== "substituido"
+        );
+
+        if (valido) {
+          setPgrIdAtivo(valido.id);
+          await supabase
+            .from("pcmso_documentos")
+            .update({
+              pgr_base_id: valido.id,
+              data_vigencia_inicio: pcmso.data_vigencia_inicio || valido.data_vigencia_inicio,
+              data_vigencia_fim: pcmso.data_vigencia_fim || valido.data_vigencia_fim,
+            })
+            .eq("id", pcmso.id);
+          queryClient.invalidateQueries({ queryKey: ["pcmso-detalhe", pcmso.id] });
+        }
+      })();
+    }
+  }, [pcmso.pgr_base_id, pcmso.empresa_id, pcmso.id, pgrIdAtivo]);
 
   // Busca o inventário de riscos do PGR base vinculado
   const { data: riscos = [], isLoading } = useQuery({
-    queryKey: ["pcmso-riscos-base", pgrBaseId],
+    queryKey: ["pcmso-riscos-base", pgrIdAtivo],
     queryFn: async () => {
-      if (!pgrBaseId || pgrBaseId === "none") return [];
+      if (!pgrIdAtivo || pgrIdAtivo === "none") return [];
       const { data, error } = await supabase
         .from("pgr_inventario_itens")
         .select("id, perigo_descricao, fonte_geradora, classificacao")
-        .eq("pgr_id", pgrBaseId);
+        .eq("pgr_id", pgrIdAtivo);
       if (error) throw error;
       return (data || []).map((r: any) => ({
         ...r,
         agente: r.perigo_descricao || "Agente / Risco",
       }));
     },
-    enabled: !!pgrBaseId && pgrBaseId !== "none",
+    enabled: !!pgrIdAtivo && pgrIdAtivo !== "none",
   });
 
   return (

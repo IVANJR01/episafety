@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -16,6 +16,35 @@ export default function PcmsoEmissaoTab({ pcmso }: PcmsoEmissaoTabProps) {
   const perms = usePermissions("pgr");
   const queryClient = useQueryClient();
   const [gerando, setGerando] = useState(false);
+
+  // Auto-vincula o PGR da empresa se ainda não estiver salvo
+  useEffect(() => {
+    if (!pcmso.pgr_base_id && pcmso.empresa_id) {
+      (async () => {
+        const { data } = await supabase
+          .from("pgr_documentos")
+          .select("id, status, versao, data_vigencia_inicio, data_vigencia_fim")
+          .eq("empresa_id", pcmso.empresa_id)
+          .order("versao", { ascending: false });
+
+        const valido = ((data || []) as any[]).find(
+          (p) => p.status !== "arquivado" && p.status !== "substituido"
+        );
+
+        if (valido) {
+          await supabase
+            .from("pcmso_documentos")
+            .update({
+              pgr_base_id: valido.id,
+              data_vigencia_inicio: pcmso.data_vigencia_inicio || valido.data_vigencia_inicio,
+              data_vigencia_fim: pcmso.data_vigencia_fim || valido.data_vigencia_fim,
+            })
+            .eq("id", pcmso.id);
+          queryClient.invalidateQueries({ queryKey: ["pcmso-detalhe", pcmso.id] });
+        }
+      })();
+    }
+  }, [pcmso.pgr_base_id, pcmso.empresa_id, pcmso.id]);
 
   const ativarMutation = useMutation({
     mutationFn: async () => {
@@ -46,8 +75,8 @@ export default function PcmsoEmissaoTab({ pcmso }: PcmsoEmissaoTabProps) {
   
   // Condições impeditivas simples
   const semPgr = !pcmso.pgr_base_id;
-  const semMedico = !pcmso.medico_coordenador_id;
-  const prontoParaAtivar = !semPgr && !semMedico;
+  const semMedico = !pcmso.medico_coordenador_id && !pcmso.medico_nome;
+  const prontoParaAtivar = !semPgr;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">

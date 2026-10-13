@@ -99,35 +99,6 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
     enabled: true,
   });
 
-  // Auto-selecionar o PGR mais recente se não estiver selecionado
-  useEffect(() => {
-    if ((!pgrBaseId || pgrBaseId === "none") && pgrs.length > 0) {
-      const primeiro = pgrs[0];
-      setPgrBaseId(primeiro.id);
-      if (!dataInicio && primeiro.data_vigencia_inicio) setDataInicio(primeiro.data_vigencia_inicio);
-      if (!dataFim && primeiro.data_vigencia_fim) setDataFim(primeiro.data_vigencia_fim);
-    }
-  }, [pgrs, pgrBaseId]);
-
-  // Auto-selecionar médico coordenador se houver médico cadastrado
-  useEffect(() => {
-    if ((!medicoId || medicoId === "none") && medicos.length > 0) {
-      const resp = medicos.find((m: any) => m.responsavel_pcmso) || (medicos.length === 1 ? medicos[0] : null);
-      if (resp) setMedicoId(resp.id);
-    }
-  }, [medicos, medicoId]);
-
-  const handlePgrChange = (val: string) => {
-    setPgrBaseId(val);
-    if (val && val !== "none") {
-      const p = pgrs.find((item: any) => item.id === val);
-      if (p) {
-        if (!dataInicio && p.data_vigencia_inicio) setDataInicio(p.data_vigencia_inicio);
-        if (!dataFim && p.data_vigencia_fim) setDataFim(p.data_vigencia_fim);
-      }
-    }
-  };
-
   const updateMutation = useMutation({
     mutationFn: async (dados: any) => {
       const { error } = await supabase
@@ -137,13 +108,90 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Dados iniciais salvos com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["pcmso-detalhe", pcmso.id] });
     },
     onError: (err: any) => {
       toast.error(`Erro ao salvar: ${err.message}`);
     },
   });
+
+  // Auto-selecionar e vincular o PGR mais recente automaticamente no banco
+  useEffect(() => {
+    if ((!pgrBaseId || pgrBaseId === "none" || !pcmso.pgr_base_id) && pgrs.length > 0) {
+      const primeiro = pgrs[0];
+      setPgrBaseId(primeiro.id);
+      const ini = dataInicio || primeiro.data_vigencia_inicio || null;
+      const fim = dataFim || primeiro.data_vigencia_fim || null;
+      if (!dataInicio && primeiro.data_vigencia_inicio) setDataInicio(primeiro.data_vigencia_inicio);
+      if (!dataFim && primeiro.data_vigencia_fim) setDataFim(primeiro.data_vigencia_fim);
+
+      // Se ainda não estiver vinculado no banco de dados, grava agora
+      if (!pcmso.pgr_base_id) {
+        updateMutation.mutate({
+          pgr_base_id: primeiro.id,
+          data_vigencia_inicio: ini,
+          data_vigencia_fim: fim,
+        });
+      }
+    }
+  }, [pgrs, pcmso.pgr_base_id]);
+
+  // Auto-selecionar médico coordenador se houver médico cadastrado
+  useEffect(() => {
+    if ((!medicoId || medicoId === "none" || !pcmso.medico_coordenador_id) && medicos.length > 0) {
+      const resp = medicos.find((m: any) => m.responsavel_pcmso) || (medicos.length === 1 ? medicos[0] : null);
+      if (resp && !pcmso.medico_coordenador_id) {
+        setMedicoId(resp.id);
+        updateMutation.mutate({
+          medico_coordenador_id: resp.id,
+          medico_nome: resp.nome,
+          medico_crm: resp.crm,
+          medico_uf: resp.uf || resp.uf_crm || null,
+        });
+      }
+    }
+  }, [medicos, pcmso.medico_coordenador_id]);
+
+  const handlePgrChange = (val: string) => {
+    setPgrBaseId(val);
+    const pgrIdFinal = val === "none" ? null : val;
+    let novIni = dataInicio;
+    let novFim = dataFim;
+    if (val && val !== "none") {
+      const p = pgrs.find((item: any) => item.id === val);
+      if (p) {
+        if (!novIni && p.data_vigencia_inicio) novIni = p.data_vigencia_inicio;
+        if (!novFim && p.data_vigencia_fim) novFim = p.data_vigencia_fim;
+        setDataInicio(novIni);
+        setDataFim(novFim);
+      }
+    }
+    // Salva imediatamente para que as próximas etapas já encontrem o PGR vinculado
+    updateMutation.mutate({
+      pgr_base_id: pgrIdFinal,
+      data_vigencia_inicio: novIni || null,
+      data_vigencia_fim: novFim || null,
+    });
+  };
+
+  const handleMedicoChange = (val: string) => {
+    setMedicoId(val);
+    const medIdFinal = val === "none" ? null : val;
+    const med = medicos.find((m: any) => m.id === medIdFinal);
+    updateMutation.mutate({
+      medico_coordenador_id: medIdFinal,
+      medico_nome: med?.nome || null,
+      medico_crm: med?.crm || null,
+      medico_uf: med?.uf || med?.uf_crm || null,
+    });
+  };
+
+  const salvarVigencia = () => {
+    updateMutation.mutate({
+      data_vigencia_inicio: dataInicio || null,
+      data_vigencia_fim: dataFim || null,
+    });
+  };
 
   const handleSalvar = () => {
     const obj: any = {};
@@ -237,7 +285,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
                 <Label>Médico do Trabalho (Responsável Técnico)</Label>
                 <Select 
                   value={medicoId} 
-                  onValueChange={setMedicoId} 
+                  onValueChange={handleMedicoChange} 
                   disabled={formDisabled || loadMedicos}
                 >
                   <SelectTrigger>
@@ -287,6 +335,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
                   type="date" 
                   value={dataInicio} 
                   onChange={(e) => setDataInicio(e.target.value)}
+                  onBlur={salvarVigencia}
                   disabled={formDisabled}
                 />
               </div>
@@ -296,6 +345,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
                   type="date" 
                   value={dataFim} 
                   onChange={(e) => setDataFim(e.target.value)}
+                  onBlur={salvarVigencia}
                   disabled={formDisabled}
                 />
               </div>
