@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadDocumentoSeguro } from "@/lib/secureStorage";
+import { capaTimbrada, rodapePaginas, fmtDate } from "@/lib/pdfTimbrado";
 import type { PcmsoPdfContext } from "./pcmsoPdfContextoLoader";
 
 const LARGURA = 210;
@@ -10,81 +11,28 @@ const MARGEM = 15;
 const DIREITA = LARGURA - MARGEM;
 const LARGURA_UTIL = DIREITA - MARGEM;
 
-const COR_PRIMARIA: [number, number, number] = [15, 42, 68]; // Azul Marinho
-const COR_SECUNDARIA: [number, number, number] = [59, 130, 246]; // Azul Médio
+const COR_PRIMARIA: [number, number, number] = [15, 42, 68]; // Azul Marinho Oficial
+const COR_SECUNDARIA: [number, number, number] = [242, 169, 0]; // Laranja Safety
 const COR_TEXTO: [number, number, number] = [30, 41, 59];
-const COR_CINZA_CLARO: [number, number, number] = [241, 245, 249];
+const COR_CINZA_CLARO: [number, number, number] = [248, 250, 252];
 const COR_BORDA: [number, number, number] = [203, 213, 225];
 
 interface BuilderState {
   doc: jsPDF;
   y: number;
   paginaAtual: number;
-  totalPaginasEstimada?: number;
 }
 
-const fmtDate = (s?: string | null) =>
-  s ? new Date(s.length <= 10 ? s + "T00:00:00" : s).toLocaleDateString("pt-BR") : "—";
-
-function ensureSpace(b: BuilderState, needed: number, ctx: PcmsoPdfContext) {
+function ensureSpace(b: BuilderState, needed: number) {
   if (b.y + needed > ALTURA - 22) {
     b.doc.addPage();
     b.paginaAtual++;
-    desenharCabecalhoTimbrado(b, ctx);
-    b.y = 38;
+    b.y = 25; // Deixa espaço para o cabeçalho timbrado oficial
   }
 }
 
-function desenharCabecalhoTimbrado(b: BuilderState, ctx: PcmsoPdfContext) {
-  const doc = b.doc;
-  const emissor = ctx.emissor;
-  const logo = ctx.emissorLogoDataUrl || ctx.empresaLogoDataUrl;
-
-  doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-  doc.setLineWidth(0.3);
-
-  // Logo ou placeholder do emissor
-  if (logo) {
-    try {
-      doc.addImage(logo, "PNG", MARGEM, 8, 22, 14);
-    } catch {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-      doc.text(emissor?.nome || "SAFETY SOLUÇÕES", MARGEM, 16);
-    }
-  } else {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text(emissor?.nome || "SAFETY SOLUÇÕES", MARGEM, 16);
-  }
-
-  // Texto centralizado/alinhado do emissor
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-  const nomeEmissor = emissor?.nome ? `${emissor.nome} - PCMSO` : "PCMSO - Programa de Controle Médico de Saúde Ocupacional";
-  doc.text(nomeEmissor, LARGURA / 2, 11, { align: "center" });
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(100, 116, 139);
-  const endEmissor = emissor?.endereco || "Consultoria em Gestão de Saúde e Segurança do Trabalho";
-  doc.text(endEmissor, LARGURA / 2, 15, { align: "center" });
-
-  const cnpjEmissor = emissor?.cnpj ? `CNPJ: ${emissor.cnpj}` : "";
-  const telEmissor = emissor?.contato ? `Telefone: ${emissor.contato}` : "";
-  const infoEmissor = [cnpjEmissor, telEmissor].filter(Boolean).join("  •  ");
-  if (infoEmissor) {
-    doc.text(infoEmissor, LARGURA / 2, 19, { align: "center" });
-  }
-
-  doc.line(MARGEM, 23, DIREITA, 23);
-}
-
-function desenharTituloSecao(b: BuilderState, num: string, titulo: string, ctx: PcmsoPdfContext) {
-  ensureSpace(b, 16, ctx);
+function desenharTituloSecao(b: BuilderState, num: string, titulo: string) {
+  ensureSpace(b, 16);
   const doc = b.doc;
   b.y += 4;
   doc.setFont("helvetica", "bold");
@@ -101,131 +49,81 @@ function desenharTituloSecao(b: BuilderState, num: string, titulo: string, ctx: 
   b.y += 6;
 }
 
-function desenharParagrafo(b: BuilderState, texto: string, ctx: PcmsoPdfContext, fontSize = 8.5, espacoAbaixo = 4) {
+function desenharParagrafo(b: BuilderState, texto: string, fontSize = 8.5, espacoAbaixo = 4) {
   const doc = b.doc;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(fontSize);
   doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
   const linhas = doc.splitTextToSize(texto, LARGURA_UTIL);
   const altura = linhas.length * (fontSize * 0.44);
-  ensureSpace(b, altura + espacoAbaixo, ctx);
+  ensureSpace(b, altura + espacoAbaixo);
   doc.text(linhas, MARGEM, b.y);
   b.y += altura + espacoAbaixo;
 }
 
-export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
+export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: string }): Promise<jsPDF> {
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
     format: "a4",
   });
 
-  const b: BuilderState = {
-    doc,
-    y: 0,
-    paginaAtual: 1,
-  };
-
-  const { empresa, medicoCoordenador, pcmso, emissor } = ctx;
-
-  // =========================================================================
-  // PÁGINA 1: CAPA OFICIAL
-  // =========================================================================
-  doc.setFillColor(248, 250, 252);
-  doc.rect(0, 0, LARGURA, ALTURA, "F");
-
-  // Faixa lateral estética
-  doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-  doc.rect(0, 0, 10, ALTURA, "F");
-  doc.setFillColor(COR_SECUNDARIA[0], COR_SECUNDARIA[1], COR_SECUNDARIA[2]);
-  doc.rect(10, 0, 3, ALTURA, "F");
-
-  // Logo da consultoria/emissor no topo
-  if (ctx.emissorLogoDataUrl || ctx.empresaLogoDataUrl) {
-    try {
-      doc.addImage(ctx.emissorLogoDataUrl || ctx.empresaLogoDataUrl!, "PNG", 30, 30, 45, 25);
-    } catch {}
-  }
-
-  // Título e Subtítulo
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(36);
-  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-  doc.text("PCMSO", 30, 105);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
-  doc.setTextColor(COR_SECUNDARIA[0], COR_SECUNDARIA[1], COR_SECUNDARIA[2]);
-  doc.text("Programa de Controle Médico de Saúde Ocupacional", 30, 116);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text("Norma Regulamentadora NR-07 (Portaria SEPRT nº 6.734/2020)", 30, 124);
-
-  // Linha divisória
-  doc.setDrawColor(COR_SECUNDARIA[0], COR_SECUNDARIA[1], COR_SECUNDARIA[2]);
-  doc.setLineWidth(1);
-  doc.line(30, 132, 175, 132);
-
-  // Caixa de identificação da empresa na capa
-  doc.setFillColor(255, 255, 255);
-  doc.roundedRect(30, 155, 150, 65, 3, 3, "FD");
-  doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-  doc.setLineWidth(0.3);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(100, 116, 139);
-  doc.text("EMPREGADOR / EMPRESA CONTRATANTE", 36, 166);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-  const nomeEmpLinhas = doc.splitTextToSize(empresa.nome, 138);
-  doc.text(nomeEmpLinhas, 36, 174);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-  doc.text(`CNPJ: ${empresa.cnpj || "Não informado"}`, 36, 187);
-  doc.text(`CNAE: ${empresa.cnae_principal || "—"}  •  Grau de Risco: ${empresa.grau_risco || "02"}`, 36, 193);
-  doc.text(`Endereço: ${empresa.endereco_completo || "—"}`, 36, 199, { maxWidth: 138 });
-
-  // Rodapé da capa com vigência
+  const { empresa, medicoCoordenador, pcmso } = ctx;
+  const anoCapa = (pcmso.data_emissao || pcmso.data_vigencia_inicio || new Date().toISOString()).slice(0, 4);
   const vigenciaInicio = fmtDate(pcmso.data_vigencia_inicio);
   const vigenciaFim = fmtDate(pcmso.data_vigencia_fim);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-  doc.text(`Vigência: ${vigenciaInicio} a ${vigenciaFim}`, 30, 255);
+  const logo = ctx.emissorLogoDataUrl || ctx.empresaLogoDataUrl;
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Médico do Trabalho Coordenador: ${medicoCoordenador.nome} — CRM/${medicoCoordenador.uf} ${medicoCoordenador.crm}`, 30, 261);
-  doc.text(`Documento emitido via Sistema Integrado SSAS Safety Soluções`, 30, 267);
+  // =========================================================================
+  // PÁGINA 1: CAPA OFICIAL (IDÊNTICA AO PGR DO SAFETY SOLUÇÕES)
+  // =========================================================================
+  capaTimbrada(doc, {
+    logoDataUrl: logo,
+    revisao: `REV. ${String(Math.max(0, (pcmso.versao || 1) - 1)).padStart(2, "0")}`,
+    meta: `PCMSO v${pcmso.versao || 1}`,
+    sigla: "PCMSO",
+    titulo: "Programa de Controle Médico de Saúde Ocupacional",
+    subtitulo: "NR-07",
+    nota: pcmso.data_vigencia_inicio && pcmso.data_vigencia_fim
+      ? `Vigência: ${vigenciaInicio} a ${vigenciaFim}`
+      : null,
+    empresaNome: empresa.nome || "Empresa",
+    identificacao: [],
+    campos: [],
+    linhasTabela: [
+      ["Empresa", empresa.nome],
+      ["CNPJ", empresa.cnpj || "—"],
+      ["CNAE", `${empresa.cnae_principal || "—"}`],
+      ["Grau de Risco", `0${empresa.grau_risco || 2}`],
+      ["Médico Coord.", `${medicoCoordenador.nome} — CRM/${medicoCoordenador.uf} ${medicoCoordenador.crm}`],
+    ],
+    rodapeLocal: [empresa.cidade || "Alto Santo", empresa.uf || "CE"].filter(Boolean).join(" / ")
+      ? `${[empresa.cidade || "Alto Santo", empresa.uf || "CE"].filter(Boolean).join(" / ")} – ${anoCapa}`
+      : anoCapa,
+  });
 
   // =========================================================================
   // PÁGINA 2: FOLHA DE ROSTO E SUMÁRIO COMPLETO
   // =========================================================================
   doc.addPage();
-  b.paginaAtual++;
-  desenharCabecalhoTimbrado(b, ctx);
-  b.y = 28;
+  const b: BuilderState = {
+    doc,
+    y: 25,
+    paginaAtual: 2,
+  };
 
   // Tabela superior de vigência
   doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
   doc.setLineWidth(0.3);
-  doc.setFillColor(255, 255, 255);
-  doc.rect(MARGEM, b.y, LARGURA_UTIL, 12, "FD");
+  doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 10, "FD");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-  doc.text(`INÍCIO DA VALIDADE: ${vigenciaInicio}`, MARGEM + 5, b.y + 7);
-  doc.text(`REVISAR ATÉ: ${vigenciaFim}`, MARGEM + 95, b.y + 7);
-  b.y += 14;
+  doc.text(`INÍCIO DA VALIDADE: ${vigenciaInicio}`, MARGEM + 5, b.y + 6.5);
+  doc.text(`REVISAR ATÉ: ${vigenciaFim}`, MARGEM + 105, b.y + 6.5);
+  b.y += 12;
 
   // Bloco de Identificação Detalhado
   const dadosId: [string, string][] = [
@@ -236,9 +134,10 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
     ["Autor / Médico Resp.:", `${medicoCoordenador.nome}          CRM: ${medicoCoordenador.crm} / ${medicoCoordenador.uf}`],
   ];
 
+  doc.setFillColor(255, 255, 255);
   doc.rect(MARGEM, b.y, LARGURA_UTIL, dadosId.length * 7.5, "FD");
   let iy = b.y;
-  dadosId.forEach(([rotulo, val], index) => {
+  dadosId.forEach(([rotulo, val]) => {
     doc.line(MARGEM, iy + 7.5, DIREITA, iy + 7.5);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
@@ -282,71 +181,67 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
   ];
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
   sumarioItens.forEach((item) => {
     doc.text(item, MARGEM + 2, b.y);
-    b.y += 5.2;
+    b.y += 5;
   });
+
+  // Quebra para iniciar a Seção 01 na página seguinte com layout limpo
+  doc.addPage();
+  b.paginaAtual++;
+  b.y = 25;
 
   // =========================================================================
   // SEÇÃO 01: APRESENTAÇÃO
   // =========================================================================
-  desenharTituloSecao(b, "01", "Apresentação", ctx);
+  desenharTituloSecao(b, "01", "Apresentação");
   desenharParagrafo(
     b,
-    "O Programa de Controle Médico de Saúde Ocupacional – PCMSO é um programa médico de atenção à saúde do trabalhador, implementado pela Organização, visando a prevenção e/ou o diagnóstico precoce de danos causados à saúde por agentes agressivos presentes no ambiente de trabalho. O programa deve considerar todos os aspectos e questões que incidem na saúde dos trabalhadores, tanto no plano individual quanto coletivo.",
-    ctx
+    "O Programa de Controle Médico de Saúde Ocupacional – PCMSO é um programa médico de atenção à saúde do trabalhador, implementado pela Organização, visando a prevenção e/ou o diagnóstico precoce de danos causados à saúde por agentes agressivos presentes no ambiente de trabalho. O programa deve considerar todos os aspectos e questões que incidem na saúde dos trabalhadores, tanto no plano individual quanto coletivo."
   );
   desenharParagrafo(
     b,
-    "A Norma Regulamentadora 07 estabelece diretrizes e requisitos para o desenvolvimento do Programa de Controle Médico de Saúde Ocupacional - PCMSO nas organizações, com o objetivo de proteger e preservar a saúde de seus empregados em relação aos riscos ocupacionais, conforme avaliação de riscos do Programa de Gerenciamento de Risco - PGR da organização.",
-    ctx
+    "A Norma Regulamentadora 07 estabelece diretrizes e requisitos para o desenvolvimento do Programa de Controle Médico de Saúde Ocupacional - PCMSO nas organizações, com o objetivo de proteger e preservar a saúde de seus empregados em relação aos riscos ocupacionais, conforme avaliação de riscos do Programa de Gerenciamento de Risco - PGR da organização."
   );
   desenharParagrafo(
     b,
-    "Esta Norma se aplica às organizações e aos órgãos públicos da administração direta e indireta, bem como aos órgãos dos poderes legislativo e judiciário e ao Ministério Público, que possuam empregados regidos pela Consolidação das Leis do Trabalho - CLT.",
-    ctx
+    "Esta Norma se aplica às organizações e aos órgãos públicos da administração direta e indireta, bem como aos órgãos dos poderes legislativo e judiciário e ao Ministério Público, que possuam empregados regidos pela Consolidação das Leis do Trabalho - CLT."
   );
 
   // =========================================================================
   // SEÇÃO 02: LEGISLAÇÕES APLICADAS
   // =========================================================================
-  desenharTituloSecao(b, "02", "Legislações Aplicadas", ctx);
+  desenharTituloSecao(b, "02", "Legislações Aplicadas");
   desenharParagrafo(
     b,
-    "O Programa de Controle Médico de Saúde Ocupacional – PCMSO tem sua origem e vigência baseado nas seguintes legislações:",
-    ctx
+    "O Programa de Controle Médico de Saúde Ocupacional – PCMSO tem sua origem e vigência baseado nas seguintes legislações:"
   );
   desenharParagrafo(
     b,
-    "• A Lei N. 6.514, de 22 de dezembro de 1977 – Alteração do Capítulo V do Título II da Consolidação das Leis do Trabalho, aprovado pelo Decreto-Lei N. 5.452 de 1 de Maio de 1943: Incumbe ao Ministério do Trabalho estabelecer normas, coordenar, orientar e supervisionar a fiscalização em todo o Território Nacional na matéria de Segurança e Medicina do Trabalho.",
-    ctx
+    "• A Lei N. 6.514, de 22 de dezembro de 1977 – Alteração do Capítulo V do Título II da Consolidação das Leis do Trabalho, aprovado pelo Decreto-Lei N. 5.452 de 1 de Maio de 1943: Incumbe ao Ministério do Trabalho estabelecer normas, coordenar, orientar e supervisionar a fiscalização em todo o Território Nacional na matéria de Segurança e Medicina do Trabalho."
   );
   desenharParagrafo(
     b,
-    "• Portaria N. 3.214, de 08 de junho de 1978 – Aprova as Normas Regulamentadoras – NRs – relativas à Segurança e Medicina do Trabalho.",
-    ctx
+    "• Portaria N. 3.214, de 08 de junho de 1978 – Aprova as Normas Regulamentadoras – NRs – relativas à Segurança e Medicina do Trabalho."
   );
   desenharParagrafo(
     b,
-    "• A Portaria SEPRT n.º 6.734, de 10 de março de 2020, estabelece a nova NR 7 - PROGRAMA DE CONTROLE MÉDICO DE SAÚDE OCUPACIONAL, regulamentando todo o processo de desenvolvimento e execução do PCMSO.",
-    ctx
+    "• A Portaria SEPRT n.º 6.734, de 10 de março de 2020, estabelece a nova NR 7 - PROGRAMA DE CONTROLE MÉDICO DE SAÚDE OCUPACIONAL, regulamentando todo o processo de desenvolvimento e execução do PCMSO."
   );
   desenharParagrafo(
     b,
-    "Este documento está atualizado de acordo com a versão mais recente da NR-7 (Portaria SEPRT n.º 6.734/2020, que passou a vigorar em 03 de janeiro de 2022). Os parâmetros e diretrizes deste PCMSO estão plenamente harmonizados com o Inventário de Riscos do PGR (NR-01) da organização.",
-    ctx
+    "Este documento está atualizado de acordo com a versão mais recente da NR-7 (Portaria SEPRT n.º 6.734/2020, que passou a vigorar em 03 de janeiro de 2022). Os parâmetros e diretrizes deste PCMSO estão plenamente harmonizados com o Inventário de Riscos do PGR (NR-01) da organização."
   );
 
   // =========================================================================
   // SEÇÃO 03: CONSIDERAÇÕES GERAIS SOBRE O PCMSO
   // =========================================================================
-  desenharTituloSecao(b, "03", "Considerações Gerais sobre o PCMSO", ctx);
+  desenharTituloSecao(b, "03", "Considerações Gerais sobre o PCMSO");
   desenharParagrafo(
     b,
-    "O PCMSO é parte integrante do conjunto mais amplo de iniciativas da organização no campo da saúde de seus empregados, devendo estar harmonizado com o disposto nas demais Normas Regulamentadoras. São diretrizes do PCMSO:",
-    ctx
+    "O PCMSO é parte integrante do conjunto mais amplo de iniciativas da organização no campo da saúde de seus empregados, devendo estar harmonizado com o disposto nas demais Normas Regulamentadoras. São diretrizes do PCMSO:"
   );
 
   const diretrizes = [
@@ -363,55 +258,44 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
     "k) subsidiar ações de readaptação profissional;",
     "l) controlar a imunização ativa dos empregados, relacionada a riscos ocupacionais, sempre que houver recomendação do Ministério da Saúde.",
   ];
-  diretrizes.forEach((d) => desenharParagrafo(b, d, ctx, 8, 2.5));
+  diretrizes.forEach((d) => desenharParagrafo(b, d, 8, 2.2));
 
   desenharParagrafo(
     b,
     "O PCMSO inclui ações de vigilância passiva da saúde ocupacional (demanda espontânea) e vigilância ativa (exames dirigidos com foco em sinais e sintomas de agravos à saúde ocupacional). O PCMSO não tem caráter de seleção de pessoal.",
-    ctx,
     8.5,
-    5
+    4
   );
 
   // =========================================================================
   // SEÇÃO 04: RESPONSABILIDADES DA EMPRESA
   // =========================================================================
-  desenharTituloSecao(b, "04", "Responsabilidades da Empresa", ctx);
+  desenharTituloSecao(b, "04", "Responsabilidades da Empresa");
   desenharParagrafo(
     b,
-    "Compete ao empregador: garantir a elaboração e efetiva implantação do PCMSO; custear sem ônus para o empregado todos os procedimentos e exames relacionados ao programa; indicar médico do trabalho responsável pelo PCMSO.",
-    ctx
+    "Compete ao empregador: garantir a elaboração e efetiva implantação do PCMSO; custear sem ônus para o empregado todos os procedimentos e exames relacionados ao programa; indicar médico do trabalho responsável pelo PCMSO."
   );
   desenharParagrafo(
     b,
-    "Em caso de substituição do médico responsável pelo PCMSO, a organização deve garantir que os prontuários médicos sejam formalmente transferidos para seu sucessor. O prontuário do empregado deve ser mantido pela organização, no mínimo, por 20 (vinte) anos após o seu desligamento, exceto em caso de previsão diversa constante nos Anexos da NR-07.",
-    ctx
+    "Em caso de substituição do médico responsável pelo PCMSO, a organização deve garantir que os prontuários médicos sejam formalmente transferidos para seu sucessor. O prontuário do empregado deve ser mantido pela organização, no mínimo, por 20 (vinte) anos após o seu desligamento, exceto em caso de previsão diversa constante nos Anexos da NR-07."
   );
 
   // =========================================================================
   // SEÇÃO 05: EXAMES E PLANEJAMENTO CONFORME NR-7
   // =========================================================================
-  desenharTituloSecao(b, "05", "Exames e Planejamento conforme NR-7", ctx);
+  desenharTituloSecao(b, "05", "Exames e Planejamento conforme NR-7");
   desenharParagrafo(
     b,
-    "O PCMSO inclui a realização obrigatória dos exames médicos ocupacionais nas seguintes modalidades: a) Admissional; b) Periódico; c) Retorno ao trabalho; d) Mudança de riscos ocupacionais; e) Demissional.",
-    ctx
+    "O PCMSO inclui a realização obrigatória dos exames médicos ocupacionais nas seguintes modalidades: a) Admissional; b) Periódico; c) Retorno ao trabalho; d) Mudança de riscos ocupacionais; e) Demissional."
   );
   desenharParagrafo(
     b,
-    "Periodicidade estabelecida pela NR-07:",
-    ctx,
-    8.5,
-    2
-  );
-  desenharParagrafo(
-    b,
-    "• Admissional: realizado antes que o empregado assuma suas atividades.\n" +
+    "Periodicidade estabelecida pela NR-07:\n" +
+      "• Admissional: realizado antes que o empregado assuma suas atividades.\n" +
       "• Periódico: a cada 1 ano para empregados expostos a riscos ocupacionais identificados e classificados no PGR ou portadores de doenças crônicas; a cada 2 anos para os demais empregados não expostos a riscos ocupacionais específicos.\n" +
       "• Retorno ao Trabalho: realizado antes do retorno às funções quando ausente por período igual ou superior a 30 (trinta) dias por motivo de doença ou acidente, de natureza ocupacional ou não.\n" +
       "• Mudança de Riscos Ocupacionais: realizado obrigatoriamente antes da data da mudança de função ou setor que implique novos riscos.\n" +
       "• Demissional: realizado em até 10 (dez) dias contados do término do contrato, sendo dispensado se o exame mais recente tiver sido feito há menos de 135 dias (Grau de Risco 1 e 2) ou menos de 90 dias (Grau de Risco 3 e 4).",
-    ctx,
     8,
     4
   );
@@ -419,26 +303,24 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
   // =========================================================================
   // SEÇÃO 06: DEFINIÇÕES SOBRE O ASO
   // =========================================================================
-  desenharTituloSecao(b, "06", "Definições sobre o ASO - Atestado de Saúde Ocupacional", ctx);
+  desenharTituloSecao(b, "06", "Definições sobre o ASO - Atestado de Saúde Ocupacional");
   desenharParagrafo(
     b,
-    "Para cada exame clínico ocupacional realizado, o médico emitirá o ASO (em duas vias físicas ou meio digital formal), contendo: razão social e CNPJ da empresa; nome, CPF e função do empregado; descrição dos perigos ou fatores de risco identificados no PGR; indicação e data dos exames clínicos e complementares; definição de apto ou inapto para a função; nome e registro profissional do médico responsável pelo PCMSO e do médico examinador que realizou o exame.",
-    ctx
+    "Para cada exame clínico ocupacional realizado, o médico emitirá o ASO (em duas vias físicas ou meio digital formal), contendo: razão social e CNPJ da empresa; nome, CPF e função do empregado; descrição dos perigos ou fatores de risco identificados no PGR; indicação e data dos exames clínicos e complementares; definição de apto ou inapto para a função; nome e registro profissional do médico responsável pelo PCMSO e do médico examinador que realizou o exame."
   );
 
   // =========================================================================
   // SEÇÃO 07: MÉDICO RESPONSÁVEL E RELATÓRIO ANALÍTICO
   // =========================================================================
-  desenharTituloSecao(b, "07", "Médico Responsável e Relatório Analítico mediante NR-7", ctx);
+  desenharTituloSecao(b, "07", "Médico Responsável e Relatório Analítico mediante NR-7");
   desenharParagrafo(
     b,
-    "O médico responsável pelo PCMSO elabora anualmente o Relatório Analítico, contendo estatística dos exames realizados, resultados anormais, incidência de doenças ocupacionais e dados epidemiológicos.",
-    ctx
+    "O médico responsável pelo PCMSO elabora anualmente o Relatório Analítico, contendo estatística dos exames realizados, resultados anormais, incidência de doenças ocupacionais e dados epidemiológicos."
   );
 
   // Tabela de Balanço Estatístico de ASOs
   const estat = ctx.estatisticasAsos;
-  ensureSpace(b, 35, ctx);
+  ensureSpace(b, 35);
   doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
   doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "F");
   doc.setFont("helvetica", "bold");
@@ -488,13 +370,13 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
   b.y += 4;
 
   if (ctx.relatorioAnaliticoTexto) {
-    desenharParagrafo(b, `Parecer do Médico Coordenador:\n${ctx.relatorioAnaliticoTexto}`, ctx, 8, 4);
+    desenharParagrafo(b, `Parecer do Médico Coordenador:\n${ctx.relatorioAnaliticoTexto}`, 8, 4);
   }
 
   // =========================================================================
   // SEÇÃO 08: TELEFONES ÚTEIS EM CASO DE EMERGÊNCIA
   // =========================================================================
-  desenharTituloSecao(b, "08", "Telefones Úteis em Caso de Emergência", ctx);
+  desenharTituloSecao(b, "08", "Telefones Úteis em Caso de Emergência");
   const telefones = [
     ["Ambulância / SAMU - Serviço Público de Remoção de Doentes", "192"],
     ["Corpo de Bombeiros Militar", "193"],
@@ -503,7 +385,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
     ["Disque Intoxicação (ANVISA / CEATOX)", "0800 722 6001"],
   ];
 
-  ensureSpace(b, telefones.length * 6 + 5, ctx);
+  ensureSpace(b, telefones.length * 6 + 5);
   telefones.forEach(([servico, numero]) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
@@ -524,16 +406,14 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
   // =========================================================================
   // SEÇÃO 09: CAIXA DE PRIMEIROS SOCORROS (NR 1.5.6.2)
   // =========================================================================
-  desenharTituloSecao(b, "09", "Caixa de Primeiros Socorros", ctx);
+  desenharTituloSecao(b, "09", "Caixa de Primeiros Socorros");
   desenharParagrafo(
     b,
-    "(NR 1.5.6.2) Os procedimentos de respostas aos cenários de emergências da organização devem prever os meios e recursos necessários para os primeiros socorros e encaminhamento de acidentados.",
-    ctx
+    "(NR 1.5.6.2) Os procedimentos de respostas aos cenários de emergências da organização devem prever os meios e recursos necessários para os primeiros socorros e encaminhamento de acidentados."
   );
   desenharParagrafo(
     b,
-    "A empresa deve manter caixa de primeiros socorros de madeira ou de plástico na cor branca com uma cruz verde encimada na porta ou na tampa, afixada em local de fácil acesso aos colaboradores, com materiais, instrumentos e soluções prescritos pelo médico do trabalho:",
-    ctx
+    "A empresa deve manter caixa de primeiros socorros de madeira ou de plástico na cor branca com uma cruz verde encimada na porta ou na tampa, afixada em local de fácil acesso aos colaboradores, com materiais, instrumentos e soluções prescritos pelo médico do trabalho:"
   );
 
   const kitPrimeirosSocorros: [string, string][] = [
@@ -542,7 +422,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
     ["SOLUÇÕES:", "Água oxigenada (10 volumes), soro fisiológico a 0,9% para lavagem ocular/ferimentos e solução antisséptica tópica (clorexidina ou iodopovidona)."],
   ];
 
-  ensureSpace(b, 25, ctx);
+  ensureSpace(b, 25);
   kitPrimeirosSocorros.forEach(([tipo, desc]) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
@@ -560,18 +440,17 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
   // =========================================================================
   // SEÇÃO 10: AMBIENTES, CARGOS, RISCOS OCUPACIONAIS E EXAMES CLÍNICOS
   // =========================================================================
-  desenharTituloSecao(b, "10", "Ambientes, Cargos, Riscos Ocupacionais e Exames Clínicos", ctx);
+  desenharTituloSecao(b, "10", "Ambientes, Cargos, Riscos Ocupacionais e Exames Clínicos");
   desenharParagrafo(
     b,
-    `Abaixo estão relacionados todos os ${ctx.ambientes.length} ambientes identificados no levantamento da empresa onde os trabalhadores desempenham suas atividades:`,
-    ctx
+    `Abaixo estão relacionados todos os ${ctx.ambientes.length} ambientes identificados no levantamento da empresa onde os trabalhadores desempenham suas atividades:`
   );
 
   // Listagem dos Ambientes
   ctx.ambientes.forEach((amb) => {
     const descLines = doc.splitTextToSize(`Descrição do Ambiente: ${amb.descricao}`, LARGURA_UTIL - 6);
     const boxHeight = descLines.length * 4 + 9;
-    ensureSpace(b, boxHeight + 3, ctx);
+    ensureSpace(b, boxHeight + 3);
 
     doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
     doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
@@ -580,7 +459,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text(`⬛  ${amb.nome.toUpperCase()}`, MARGEM + 3, b.y + 5);
+    doc.text(`+   ${amb.nome.toUpperCase()}`, MARGEM + 3, b.y + 5);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
@@ -592,9 +471,9 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
 
   b.y += 6;
 
-  // Detalhamento Cargo a Cargo (Fichas Oficiais idênticas ao modelo de 52 páginas)
+  // Detalhamento Cargo a Cargo
   ctx.cargos.forEach((cargo) => {
-    ensureSpace(b, 55, ctx);
+    ensureSpace(b, 55);
 
     // Faixa do Cargo
     doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
@@ -634,8 +513,8 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
     b.y += hAtiv + 2;
 
     // Quadro CONTROLE MÉDICO
-    ensureSpace(b, 35, ctx);
-    doc.setFillColor(248, 250, 252);
+    ensureSpace(b, 35);
+    doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
     doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.5, "FD");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
@@ -644,6 +523,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
     b.y += 5.5;
 
     // Avaliação Clínica Ocupacional (Código eSocial: 0295)
+    doc.setFillColor(255, 255, 255);
     doc.rect(MARGEM, b.y, 55, 20, "FD");
     doc.rect(MARGEM + 55, b.y, 65, 20, "FD");
     doc.rect(MARGEM + 120, b.y, LARGURA_UTIL - 120, 20, "FD");
@@ -659,11 +539,11 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    doc.text("✔ Fazer no Admissional", MARGEM + 58, b.y + 4.5);
-    doc.text("✔ Fazer no Demissional", MARGEM + 58, b.y + 8);
-    doc.text("✔ Fazer no Retorno ao Trabalho", MARGEM + 58, b.y + 11.5);
-    doc.text("✔ Fazer na Mudança de Riscos*", MARGEM + 58, b.y + 15);
-    doc.text("✔ Fazer no Periódico", MARGEM + 58, b.y + 18.5);
+    doc.text("✔  Fazer no Admissional", MARGEM + 58, b.y + 4.5);
+    doc.text("✔  Fazer no Demissional", MARGEM + 58, b.y + 8);
+    doc.text("✔  Fazer no Retorno ao Trabalho", MARGEM + 58, b.y + 11.5);
+    doc.text("✔  Fazer na Mudança de Riscos*", MARGEM + 58, b.y + 15);
+    doc.text("✔  Fazer no Periódico", MARGEM + 58, b.y + 18.5);
 
     doc.setFont("helvetica", "bold");
     doc.text(cargo.exameClinicoPeriodicidade || "O periódico será feito a cada 12 meses.", MARGEM + 123, b.y + 10, { maxWidth: 55 });
@@ -671,7 +551,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
 
     // Exames complementares do cargo (se houver)
     cargo.examesComplementares.forEach((ec) => {
-      ensureSpace(b, 14, ctx);
+      ensureSpace(b, 14);
       doc.rect(MARGEM, b.y, 55, 12, "FD");
       doc.rect(MARGEM + 55, b.y, 65, 12, "FD");
       doc.rect(MARGEM + 120, b.y, LARGURA_UTIL - 120, 12, "FD");
@@ -687,8 +567,8 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7);
       doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-      doc.text("✔ Fazer no Admissional", MARGEM + 58, b.y + 5);
-      doc.text("✔ Fazer no Periódico", MARGEM + 58, b.y + 9);
+      doc.text("✔  Fazer no Admissional", MARGEM + 58, b.y + 5);
+      doc.text("✔  Fazer no Periódico", MARGEM + 58, b.y + 9);
 
       doc.setFont("helvetica", "bold");
       doc.text(ec.periodicidade, MARGEM + 123, b.y + 7, { maxWidth: 55 });
@@ -700,9 +580,8 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
     // Tabelas de Riscos Ocupacionais do Cargo
     const desenharQuadroRisco = (tituloGrupo: string, bgCor: [number, number, number], listaRiscos: any[]) => {
       if (listaRiscos.length === 0) return;
-      ensureSpace(b, 25, ctx);
+      ensureSpace(b, 25);
 
-      // Faixa do Grupo
       doc.setFillColor(bgCor[0], bgCor[1], bgCor[2]);
       doc.rect(MARGEM, b.y, LARGURA_UTIL, 5, "F");
       doc.setFont("helvetica", "bold");
@@ -717,7 +596,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
         const dLines = doc.splitTextToSize(`Possíveis danos à saúde: ${r.danos}`, LARGURA_UTIL - 4);
         const totH = (pLines.length + mLines.length + dLines.length) * 3.6 + 14;
 
-        ensureSpace(b, totH, ctx);
+        ensureSpace(b, totH);
         doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
         doc.setFillColor(255, 255, 255);
         doc.rect(MARGEM, b.y, LARGURA_UTIL, totH, "FD");
@@ -760,14 +639,13 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
   // =========================================================================
   // SEÇÃO 11: PROFISSIONAIS EXAMINADORES
   // =========================================================================
-  desenharTituloSecao(b, "11", "Profissionais Examinadores", ctx);
+  desenharTituloSecao(b, "11", "Profissionais Examinadores");
   desenharParagrafo(
     b,
-    "Médicos examinadores e profissionais capacitados autorizados a realizar os exames clínicos ocupacionais (ASO) vinculados a este PCMSO:",
-    ctx
+    "Médicos examinadores e profissionais capacitados autorizados a realizar os exames clínicos ocupacionais (ASO) vinculados a este PCMSO:"
   );
 
-  ensureSpace(b, ctx.medicosExaminadores.length * 5 + 6, ctx);
+  ensureSpace(b, ctx.medicosExaminadores.length * 5 + 6);
   ctx.medicosExaminadores.forEach((med) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
@@ -784,24 +662,22 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
   // =========================================================================
   // SEÇÃO 12: CONSIDERAÇÕES FINAIS
   // =========================================================================
-  desenharTituloSecao(b, "12", "Considerações Finais", ctx);
+  desenharTituloSecao(b, "12", "Considerações Finais");
   desenharParagrafo(
     b,
-    "Este programa PCMSO poderá sofrer modificações quando forem constatadas significativas alterações nas condições ambientais ou no exercício profissional que justifiquem novas medidas ou ações de saúde, tendo por objetivo a preservação e promoção da saúde dos colaboradores. Sendo assim, sempre que houver qualquer modificação nos processos produtivos, aquisição de novos maquinários ou novos locais de trabalho devem ser imediatamente comunicados ao elaborador do PGR, a fim de manter-se informado e tomar as medidas necessárias para as boas práticas de saúde e segurança no local de trabalho, dentre elas a atualização dos programas PGR e PCMSO.",
-    ctx
+    "Este programa PCMSO poderá sofrer modificações quando forem constatadas significativas alterações nas condições ambientais ou no exercício profissional que justifiquem novas medidas ou ações de saúde, tendo por objetivo a preservação e promoção da saúde dos colaboradores. Sendo assim, sempre que houver qualquer modificação nos processos produtivos, aquisição de novos maquinários ou novos locais de trabalho devem ser imediatamente comunicados ao elaborador do PGR, a fim de manter-se informado e tomar as medidas necessárias para as boas práticas de saúde e segurança no local de trabalho, dentre elas a atualização dos programas PGR e PCMSO."
   );
 
   // =========================================================================
   // SEÇÃO 13: TERMO DE COMPROMISSO
   // =========================================================================
-  desenharTituloSecao(b, "13", "Termo de Compromisso", ctx);
+  desenharTituloSecao(b, "13", "Termo de Compromisso");
   desenharParagrafo(
     b,
-    "Pelo presente instrumento, nos propomos garantir a viabilização e efetiva implantação do Programa de Controle Médico de Saúde Ocupacional (PCMSO), zelando e custeando sem ônus para os funcionários, os procedimentos e exames em todas as suas etapas, por ser parte integrante do conjunto mais amplo da iniciativa da empresa no campo da prevenção da saúde dos trabalhadores.",
-    ctx
+    "Pelo presente instrumento, nos propomos garantir a viabilização e efetiva implantação do Programa de Controle Médico de Saúde Ocupacional (PCMSO), zelando e custeando sem ônus para os funcionários, os procedimentos e exames em todas as suas etapas, por ser parte integrante do conjunto mais amplo da iniciativa da empresa no campo da prevenção da saúde dos trabalhadores."
   );
 
-  ensureSpace(b, 45, ctx);
+  ensureSpace(b, 45);
   b.y += 12;
 
   // Assinatura Médico
@@ -834,7 +710,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
   // =========================================================================
   // SEÇÃO 14: REFERÊNCIA BIBLIOGRÁFICA
   // =========================================================================
-  desenharTituloSecao(b, "14", "Referência Bibliográfica", ctx);
+  desenharTituloSecao(b, "14", "Referência Bibliográfica");
   const biblio = [
     "• NR-7 - Programa de Controle Médico de Saúde Ocupacional: Portaria SEPRT n.º 6.734, de 09/03/2020.",
     "• NR-1 - Disposições Gerais e Gerenciamento de Riscos Ocupacionais: Portaria SEPRT n.º 6.730, de 09/03/2020.",
@@ -843,20 +719,19 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
     "• FUNDACENTRO: Guias de Vigilância em Saúde dos Trabalhadores e Critérios de Avaliação de Riscos Ocupacionais.",
     "• CLT - Consolidação das Leis do Trabalho: Decreto-Lei 5.452/1943 e Lei 6.514/1977.",
   ];
-  biblio.forEach((item) => desenharParagrafo(b, item, ctx, 8, 2.5));
+  biblio.forEach((item) => desenharParagrafo(b, item, 8, 2.5));
 
   // =========================================================================
   // SEÇÃO 15: CRONOGRAMA DE AÇÕES
   // =========================================================================
-  desenharTituloSecao(b, "15", "Cronograma de Ações", ctx);
+  desenharTituloSecao(b, "15", "Cronograma de Ações");
   desenharParagrafo(
     b,
-    "Plano de Ação e Cronograma Anual do PCMSO para atendimento aos requisitos normativos e prevenção da saúde dos colaboradores:",
-    ctx
+    "Plano de Ação e Cronograma Anual do PCMSO para atendimento aos requisitos normativos e prevenção da saúde dos colaboradores:"
   );
 
   ctx.cronograma.forEach((acao) => {
-    ensureSpace(b, 28, ctx);
+    ensureSpace(b, 28);
 
     doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
     doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
@@ -889,30 +764,21 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext): Promise<jsPDF> {
   });
 
   // =========================================================================
-  // RODAPÉ COM PAGINAÇÃO EM TODAS AS PÁGINAS (Menos a Capa)
+  // CABEÇALHO E RODAPÉ OFICIAL TIMBRADO (IDÊNTICO AO PGR DO SAFETY SOLUÇÕES)
   // =========================================================================
-  const total = doc.getNumberOfPages();
-  for (let p = 2; p <= total; p++) {
-    doc.setPage(p);
-    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-    doc.setLineWidth(0.3);
-    doc.line(MARGEM, ALTURA - 14, DIREITA, ALTURA - 14);
+  const qrUrl = opts?.qrUrl || (typeof window !== "undefined" ? `${window.location.origin}/pcmso/validar/${pcmso.id}` : `https://safetysolucoes.com/pcmso/validar/${pcmso.id}`);
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text(
-      `PCMSO — ${empresa.nome} (Vigência: ${vigenciaInicio} a ${vigenciaFim})`,
-      MARGEM,
-      ALTURA - 9
-    );
-    doc.text(
-      `Página ${p} de ${total}`,
-      DIREITA,
-      ALTURA - 9,
-      { align: "right" }
-    );
-  }
+  await rodapePaginas(doc, {
+    qrUrl,
+    logoDataUrl: logo,
+    tituloCabecalho: "PCMSO — Programa de Controle Médico de Saúde Ocupacional",
+    subtituloCabecalho: `${empresa.nome} (NR-07)`,
+    linhas: (pagina, total) => [
+      `PCMSO — ${empresa.nome}`,
+      `Vigência: ${vigenciaInicio} a ${vigenciaFim}`,
+      `Página ${pagina} de ${total}`,
+    ],
+  });
 
   return doc;
 }
