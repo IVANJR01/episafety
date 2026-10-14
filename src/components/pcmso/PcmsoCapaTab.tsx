@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save, Loader2, Link2, Stethoscope, CalendarRange } from "lucide-react";
+import { Save, Loader2, Link2, Stethoscope, CalendarRange, Building2, UserPlus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { PgrStatus, PGR_STATUS_LABEL } from "@/lib/pgrTypes";
 
@@ -25,23 +25,38 @@ interface PcmsoCapaTabProps {
 
 export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
   const [searchParams] = useSearchParams();
-  const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
-  const perms = usePermissions("pgr"); // Reutilizando a permissão master do módulo
+  const { empresaId, empresaScopeIds } = useAuth();
+  const perms = usePermissions("pgr");
   const queryClient = useQueryClient();
 
-  // Garante a empresa correta: prioriza o documento do PCMSO ou parâmetro de URL
   const alvoEmpresaId = pcmso?.empresa_id || searchParams.get("empresa_id") || empresaId;
 
   const [pgrBaseId, setPgrBaseId] = useState(pcmso.pgr_base_id || "");
   const [medicoId, setMedicoId] = useState(pcmso.medico_coordenador_id || "");
+  const [medicoNome, setMedicoNome] = useState(pcmso.medico_nome || "");
+  const [medicoCrm, setMedicoCrm] = useState(pcmso.medico_crm || "");
+  const [medicoUf, setMedicoUf] = useState(pcmso.medico_uf || "CE");
+  const [modoManualMedico, setModoManualMedico] = useState(!pcmso.medico_coordenador_id && !!pcmso.medico_nome);
+
   const [dataInicio, setDataInicio] = useState(pcmso.data_vigencia_inicio || "");
   const [dataFim, setDataFim] = useState(pcmso.data_vigencia_fim || "");
 
-  const { data: pgrs = [], isLoading: loadPgrs, refetch: refetchPgrs } = useQuery({
+  // Busca dados da empresa para conferência
+  const { data: dadosEmpresa } = useQuery({
+    queryKey: ["empresa-info-pcmso", alvoEmpresaId],
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("empresa_config")
+        .select("nome, cnpj, cnae_principal, grau_risco, telefone, email, endereco, logradouro, numero, bairro, cidade, uf, cep")
+        .eq("id", alvoEmpresaId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!alvoEmpresaId,
+  });
+
+  const { data: pgrs = [], isLoading: loadPgrs } = useQuery({
     queryKey: ["pgr-lista-base", alvoEmpresaId, empresaScopeIds?.join(",")],
     queryFn: async () => {
-      // Não filtra status no servidor: o enum pgr_status não tem "inativo" e
-      // um valor inválido faz a consulta inteira falhar (lista vazia).
       let q = (supabase.from as any)("pgr_documentos")
         .select("id, versao, status, data_vigencia_inicio, data_vigencia_fim, empresa_id");
 
@@ -55,7 +70,6 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
         console.error("Erro ao carregar PGRs:", error);
         return [];
       }
-      // PGR arquivado ou substituído não serve de base para um novo PCMSO
       return ((data || []) as any[]).filter(
         (p) => p.status !== "arquivado" && p.status !== "substituido",
       );
@@ -76,7 +90,6 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
 
       let { data, error } = await q.order("nome");
 
-      // Fallback: se não houver médicos vinculados à empresa, traz os médicos ativos do sistema
       if (!data || data.length === 0) {
         const fb = await (supabase.from as any)("aso_medicos")
           .select("id, nome, crm, uf_crm, responsavel_pcmso, empresa_id")
@@ -88,7 +101,6 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
       }
 
       if (error && (!data || data.length === 0)) {
-        console.error("Erro ao carregar médicos:", error);
         return [];
       }
       return (data || []).map((m: any) => ({
@@ -109,13 +121,14 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pcmso-detalhe", pcmso.id] });
+      toast.success("Dados do PCMSO atualizados!");
     },
     onError: (err: any) => {
       toast.error(`Erro ao salvar: ${err.message}`);
     },
   });
 
-  // Auto-selecionar e vincular o PGR mais recente automaticamente no banco
+  // Auto-selecionar PGR
   useEffect(() => {
     if ((!pgrBaseId || pgrBaseId === "none" || !pcmso.pgr_base_id) && pgrs.length > 0) {
       const primeiro = pgrs[0];
@@ -125,7 +138,6 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
       if (!dataInicio && primeiro.data_vigencia_inicio) setDataInicio(primeiro.data_vigencia_inicio);
       if (!dataFim && primeiro.data_vigencia_fim) setDataFim(primeiro.data_vigencia_fim);
 
-      // Se ainda não estiver vinculado no banco de dados, grava agora
       if (!pcmso.pgr_base_id) {
         updateMutation.mutate({
           pgr_base_id: primeiro.id,
@@ -136,21 +148,12 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
     }
   }, [pgrs, pcmso.pgr_base_id]);
 
-  // Auto-selecionar médico coordenador se houver médico cadastrado
+  // Se já tiver médico nos dados do PCMSO, preenche
   useEffect(() => {
-    if ((!medicoId || medicoId === "none" || !pcmso.medico_coordenador_id) && medicos.length > 0) {
-      const resp = medicos.find((m: any) => m.responsavel_pcmso) || (medicos.length === 1 ? medicos[0] : null);
-      if (resp && !pcmso.medico_coordenador_id) {
-        setMedicoId(resp.id);
-        updateMutation.mutate({
-          medico_coordenador_id: resp.id,
-          medico_nome: resp.nome,
-          medico_crm: resp.crm,
-          medico_uf: resp.uf || resp.uf_crm || null,
-        });
-      }
-    }
-  }, [medicos, pcmso.medico_coordenador_id]);
+    if (pcmso.medico_nome && !medicoNome) setMedicoNome(pcmso.medico_nome);
+    if (pcmso.medico_crm && !medicoCrm) setMedicoCrm(pcmso.medico_crm);
+    if (pcmso.medico_uf && !medicoUf) setMedicoUf(pcmso.medico_uf);
+  }, [pcmso]);
 
   const handlePgrChange = (val: string) => {
     setPgrBaseId(val);
@@ -166,7 +169,6 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
         setDataFim(novFim);
       }
     }
-    // Salva imediatamente para que as próximas etapas já encontrem o PGR vinculado
     updateMutation.mutate({
       pgr_base_id: pgrIdFinal,
       data_vigencia_inicio: novIni || null,
@@ -178,47 +180,73 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
     setMedicoId(val);
     const medIdFinal = val === "none" ? null : val;
     const med = medicos.find((m: any) => m.id === medIdFinal);
-    updateMutation.mutate({
-      medico_coordenador_id: medIdFinal,
-      medico_nome: med?.nome || null,
-      medico_crm: med?.crm || null,
-      medico_uf: med?.uf || med?.uf_crm || null,
-    });
+    if (med) {
+      setMedicoNome(med.nome);
+      setMedicoCrm(med.crm);
+      setMedicoUf(med.uf || med.uf_crm || "CE");
+      updateMutation.mutate({
+        medico_coordenador_id: medIdFinal,
+        medico_nome: med.nome,
+        medico_crm: med.crm,
+        medico_uf: med.uf || med.uf_crm || null,
+      });
+    } else {
+      updateMutation.mutate({
+        medico_coordenador_id: null,
+      });
+    }
   };
 
-  const salvarVigencia = () => {
-    updateMutation.mutate({
-      data_vigencia_inicio: dataInicio || null,
-      data_vigencia_fim: dataFim || null,
-    });
+  const preencherMedicoModelo = () => {
+    setModoManualMedico(true);
+    setMedicoNome("Roger Catunda Rocha");
+    setMedicoCrm("6353");
+    setMedicoUf("CE");
+    toast.success("Dados do Dr. Roger Catunda Rocha preenchidos!");
+  };
+
+  const cadastrarMedicoNaTabela = async () => {
+    if (!medicoNome || !medicoCrm) {
+      toast.error("Informe pelo menos Nome e CRM do médico.");
+      return;
+    }
+    try {
+      const { data, error } = await (supabase.from as any)("aso_medicos")
+        .insert({
+          empresa_id: alvoEmpresaId || null,
+          nome: medicoNome,
+          crm: medicoCrm,
+          uf_crm: medicoUf || "CE",
+          responsavel_pcmso: true,
+          ativo: true,
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+      toast.success("Médico salvo no banco com sucesso!");
+      refetchMedicos();
+      if (data) {
+        setMedicoId(data.id);
+        setModoManualMedico(false);
+      }
+    } catch (e: any) {
+      toast.error("Erro ao salvar médico: " + e.message);
+    }
   };
 
   const handleSalvar = () => {
     const obj: any = {};
     const pgrIdFinal = pgrBaseId === "none" ? null : (pgrBaseId || null);
-    const medIdFinal = medicoId === "none" ? null : (medicoId || null);
+    const medIdFinal = modoManualMedico ? null : (medicoId === "none" ? null : (medicoId || null));
 
-    if (pgrIdFinal !== (pcmso.pgr_base_id || null)) obj.pgr_base_id = pgrIdFinal;
-    if (medIdFinal !== (pcmso.medico_coordenador_id || null)) {
-      obj.medico_coordenador_id = medIdFinal;
-      const med = medicos.find(m => m.id === medIdFinal);
-      if (med) {
-        obj.medico_nome = med.nome;
-        obj.medico_crm = med.crm;
-        obj.medico_uf = med.uf || med.uf_crm || null;
-      } else {
-        obj.medico_nome = null;
-        obj.medico_crm = null;
-        obj.medico_uf = null;
-      }
-    }
-    if (dataInicio !== (pcmso.data_vigencia_inicio || "")) obj.data_vigencia_inicio = dataInicio || null;
-    if (dataFim !== (pcmso.data_vigencia_fim || "")) obj.data_vigencia_fim = dataFim || null;
-
-    if (Object.keys(obj).length === 0) {
-      toast.info("Nenhuma alteração para salvar.");
-      return;
-    }
+    obj.pgr_base_id = pgrIdFinal;
+    obj.medico_coordenador_id = medIdFinal;
+    obj.medico_nome = medicoNome || null;
+    obj.medico_crm = medicoCrm || null;
+    obj.medico_uf = medicoUf || null;
+    obj.data_vigencia_inicio = dataInicio || null;
+    obj.data_vigencia_fim = dataFim || null;
 
     updateMutation.mutate(obj);
   };
@@ -227,6 +255,32 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Dados Cadastrais da Empresa */}
+      {dadosEmpresa && (
+        <Card className="bg-slate-50/50 dark:bg-slate-900/30 border shadow-sm">
+          <CardHeader className="py-4">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-200">
+              <Building2 className="h-4 w-4 text-primary" /> Dados do Empregador (NR-07)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-2 text-xs grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-muted-foreground">
+            <div>
+              <span className="font-semibold text-foreground">Empresa:</span> {dadosEmpresa.nome}
+            </div>
+            <div>
+              <span className="font-semibold text-foreground">CNPJ:</span> {dadosEmpresa.cnpj || "—"}
+            </div>
+            <div>
+              <span className="font-semibold text-foreground">Grau de Risco:</span> {dadosEmpresa.grau_risco || "02"}
+            </div>
+            <div>
+              <span className="font-semibold text-foreground">CNAE:</span> {dadosEmpresa.cnae_principal || "—"}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Vínculo com PGR Base */}
       <Card className="border-t-4 border-t-emerald-600 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl">
@@ -248,79 +302,144 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
               )}
             </div>
             <Select 
-              value={pgrBaseId || (pgrs.length > 0 ? pgrs[0].id : "none")} 
+              value={pgrBaseId} 
               onValueChange={handlePgrChange} 
               disabled={formDisabled || loadPgrs}
             >
               <SelectTrigger>
-                <SelectValue placeholder={loadPgrs ? "Carregando..." : "Selecione o PGR da empresa"} />
+                <SelectValue placeholder={loadPgrs ? "Carregando..." : "Selecione o PGR Base"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none" className="text-muted-foreground italic">Nenhum (Não recomendado)</SelectItem>
+                <SelectItem value="none" className="text-muted-foreground italic">Nenhum vínculo (Não recomendado)</SelectItem>
                 {pgrs.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    PGR Versão {p.versao} — Status: {PGR_STATUS_LABEL[p.status as PgrStatus] || p.status} 
-                    {p.data_vigencia_inicio ? ` (De ${new Date(p.data_vigencia_inicio).toLocaleDateString()})` : ""}
+                    PGR Versão {p.versao} — Status: {PGR_STATUS_LABEL[p.status as PgrStatus]} 
+                    {p.data_vigencia_inicio ? ` (De ${new Date(p.data_vigencia_inicio).toLocaleDateString("pt-BR")})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {(!pgrBaseId || pgrBaseId === "none") && pcmso.status === "rascunho" && (
-              <p className="text-xs text-amber-600 font-medium">Atenção: A Matriz de Saúde não listará riscos enquanto o PGR não for vinculado.</p>
-            )}
           </div>
         </CardContent>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Médico Coordenador */}
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Stethoscope className="h-5 w-5 text-blue-600" /> Médico Coordenador
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Stethoscope className="h-5 w-5 text-blue-600" /> Médico Coordenador
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setModoManualMedico(!modoManualMedico)}
+                className="text-xs text-primary"
+              >
+                {modoManualMedico ? "Selecionar da Lista" : "Digitar Dados"}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Médico do Trabalho (Responsável Técnico)</Label>
-                <Select 
-                  value={medicoId} 
-                  onValueChange={handleMedicoChange} 
-                  disabled={formDisabled || loadMedicos}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={loadMedicos ? "Carregando..." : "Selecione o Médico"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none" className="text-muted-foreground italic">Selecione...</SelectItem>
-                    {medicos.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        Dr(a). {m.nome} (CRM: {m.crm}-{m.uf})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {medicos.length === 0 && !loadMedicos && (
-                  <div className="rounded-lg p-2.5 bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between gap-2">
-                    <span>Nenhum médico cadastrado ainda.</span>
-                    <a
-                      href="/aso/medicos"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline font-semibold text-primary hover:text-primary/80"
-                    >
-                      Cadastrar Médico
-                    </a>
+              {!modoManualMedico ? (
+                <div className="space-y-2">
+                  <Label>Médico do Trabalho (Responsável Técnico)</Label>
+                  <Select 
+                    value={medicoId} 
+                    onValueChange={handleMedicoChange} 
+                    disabled={formDisabled || loadMedicos}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadMedicos ? "Carregando..." : "Selecione o Médico"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="text-muted-foreground italic">Selecione...</SelectItem>
+                      {medicos.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          Dr(a). {m.nome} (CRM: {m.crm}-{m.uf})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {medicos.length === 0 && !loadMedicos && (
+                    <div className="rounded-lg p-3 bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 space-y-2">
+                      <p>Nenhum médico cadastrado na lista. Você pode digitar os dados diretamente:</p>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setModoManualMedico(true)}>
+                          Digitar Nome e CRM
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={preencherMedicoModelo}>
+                          <Sparkles className="h-3.5 w-3.5 mr-1" /> Usar Dr. Roger Catunda (Padrão)
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3 bg-muted/20 p-3 rounded-lg border">
+                  <div>
+                    <Label className="text-xs">Nome Completo do Médico</Label>
+                    <Input
+                      placeholder="Ex: Dr. Roger Catunda Rocha"
+                      value={medicoNome}
+                      onChange={(e) => setMedicoNome(e.target.value)}
+                      disabled={formDisabled}
+                    />
                   </div>
-                )}
-              </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">CRM</Label>
+                      <Input
+                        placeholder="Ex: 6353"
+                        value={medicoCrm}
+                        onChange={(e) => setMedicoCrm(e.target.value)}
+                        disabled={formDisabled}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">UF CRM</Label>
+                      <Input
+                        placeholder="Ex: CE"
+                        value={medicoUf}
+                        onChange={(e) => setMedicoUf(e.target.value.toUpperCase())}
+                        disabled={formDisabled}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={cadastrarMedicoNaTabela}
+                      className="text-xs flex-1"
+                    >
+                      <UserPlus className="h-3.5 w-3.5 mr-1" /> Salvar na Base de Médicos
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={preencherMedicoModelo}
+                      className="text-xs text-primary"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 mr-1" /> Padrão
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <p className="text-xs text-muted-foreground">
-                O médico selecionado será o assinante oficial do documento. Ele precisa estar cadastrado na tela de "Médicos".
+                O médico selecionado será o assinante oficial e responsável técnico pelo PCMSO perante a NR-07.
               </p>
             </div>
           </CardContent>
         </Card>
 
+        {/* Vigência e Validade */}
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -335,7 +454,6 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
                   type="date" 
                   value={dataInicio} 
                   onChange={(e) => setDataInicio(e.target.value)}
-                  onBlur={salvarVigencia}
                   disabled={formDisabled}
                 />
               </div>
@@ -345,11 +463,13 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
                   type="date" 
                   value={dataFim} 
                   onChange={(e) => setDataFim(e.target.value)}
-                  onBlur={salvarVigencia}
                   disabled={formDisabled}
                 />
               </div>
             </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              Geralmente a vigência do PCMSO é de 1 ano, acompanhando o ciclo de monitoramento da saúde e do PGR.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -360,7 +480,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
             size="lg" 
             onClick={handleSalvar} 
             disabled={updateMutation.isPending || formDisabled}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto bg-primary hover:bg-primary/90"
           >
             {updateMutation.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

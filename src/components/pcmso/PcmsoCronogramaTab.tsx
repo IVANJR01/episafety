@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, CalendarDays, Loader2 } from "lucide-react";
+import { Plus, Trash2, CalendarDays, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface PcmsoCronogramaTabProps {
@@ -24,6 +24,7 @@ export default function PcmsoCronogramaTab({ pcmso }: PcmsoCronogramaTabProps) {
   const [acaoDesc, setAcaoDesc] = useState("");
   const [dataPlan, setDataPlan] = useState("");
   const [responsavel, setResponsavel] = useState("");
+  const [gerandoPadrao, setGerandoPadrao] = useState(false);
 
   const { data: acoes = [], isLoading } = useQuery({
     queryKey: ["pcmso-cronograma", pcmso.id],
@@ -45,7 +46,7 @@ export default function PcmsoCronogramaTab({ pcmso }: PcmsoCronogramaTabProps) {
         .from("pcmso_cronograma_acoes")
         .insert({
           pcmso_id: pcmso.id,
-          empresa_id: empresaId,
+          empresa_id: pcmso.empresa_id || empresaId,
           acao: acaoDesc,
           data_planejada: dataPlan || null,
           responsavel: responsavel || null,
@@ -91,23 +92,97 @@ export default function PcmsoCronogramaTab({ pcmso }: PcmsoCronogramaTabProps) {
     insertMutation.mutate();
   };
 
+  const gerarAcoesPadraoNr07 = async () => {
+    try {
+      setGerandoPadrao(true);
+      const dataInicio = pcmso.data_vigencia_inicio || new Date().toISOString().split("T")[0];
+      const dataFim = pcmso.data_vigencia_fim || null;
+
+      const acoesPadrao = [
+        {
+          pcmso_id: pcmso.id,
+          empresa_id: pcmso.empresa_id || empresaId,
+          acao: "Aprovação do Programa",
+          responsavel: "Direção da empresa",
+          data_planejada: dataInicio,
+          status: "Concluído",
+          observacoes: "Verificar se há condições de exequibilidade do Programa.",
+        },
+        {
+          pcmso_id: pcmso.id,
+          empresa_id: pcmso.empresa_id || empresaId,
+          acao: "Contratar empresa para elaboração e gestão do Programa",
+          responsavel: "Direção da empresa",
+          data_planejada: dataInicio,
+          status: "Concluído",
+          observacoes: "Necessidade de atender a determinação da Norma Regulamentadora.",
+        },
+        {
+          pcmso_id: pcmso.id,
+          empresa_id: pcmso.empresa_id || empresaId,
+          acao: "Realizar o Atestado de Saúde Ocupacional (ASO) periódico",
+          responsavel: "Clínica de Medicina do Trabalho",
+          data_planejada: dataFim,
+          status: "Em Andamento",
+          observacoes: "Direcionar colaboradores ao atendimento do ASO em clínica contratada/credenciada.",
+        },
+        {
+          pcmso_id: pcmso.id,
+          empresa_id: pcmso.empresa_id || empresaId,
+          acao: "Levantar as informações para elaboração do Relatório Anual",
+          responsavel: "Médico Coordenador / Direção",
+          data_planejada: dataFim,
+          status: "Planejado",
+          observacoes: "Balanço estatístico das avaliações clínicas e exames complementares.",
+        },
+      ];
+
+      const { error } = await supabase
+        .from("pcmso_cronograma_acoes")
+        .insert(acoesPadrao);
+
+      if (error) throw error;
+      toast.success("Ações padrão regulamentares da NR-07 adicionadas com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["pcmso-cronograma", pcmso.id] });
+    } catch (err: any) {
+      toast.error("Erro ao gerar ações padrão: " + err.message);
+    } finally {
+      setGerandoPadrao(false);
+    }
+  };
+
   const formDisabled = !perms.canEdit || pcmso.status !== "rascunho";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <Card className="border-t-4 border-t-indigo-600 shadow-sm">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-indigo-600" /> Cronograma de Ações de Saúde
-          </CardTitle>
-          <CardDescription>
-            Defina as ações planejadas para o período de vigência (ex: SIPAT, Campanhas de Vacinação, 
-            Treinamentos de Primeiros Socorros, Campanhas Outubro Rosa/Novembro Azul).
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-indigo-600" /> Cronograma de Ações de Saúde (NR-07)
+              </CardTitle>
+              <CardDescription>
+                Defina o planejamento anual das ações de saúde ocupacional, campanhas e exames periódicos.
+              </CardDescription>
+            </div>
+            {!formDisabled && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={gerarAcoesPadraoNr07}
+                disabled={gerandoPadrao}
+                className="text-xs shrink-0 border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+              >
+                {gerandoPadrao ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+                Gerar Ações Padrão da NR-07
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {!formDisabled && (
-            <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-muted/30 p-4 rounded-lg border">
+            <div className="flex flex-col sm:flex-row gap-4 mb-6 bg-muted/30 p-4 rounded-lg border">
               <div className="flex-1 space-y-2">
                 <Label>Ação / Atividade</Label>
                 <Input placeholder="Ex: Palestra sobre Ergonomia" value={acaoDesc} onChange={e => setAcaoDesc(e.target.value)} />
@@ -144,13 +219,25 @@ export default function PcmsoCronogramaTab({ pcmso }: PcmsoCronogramaTabProps) {
                 {isLoading ? (
                   <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Carregando cronograma...</TableCell></TableRow>
                 ) : acoes.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nenhuma ação cadastrada para este PCMSO.</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                      <p className="mb-2">Nenhuma ação cadastrada para este PCMSO.</p>
+                      {!formDisabled && (
+                        <Button variant="outline" size="sm" onClick={gerarAcoesPadraoNr07} disabled={gerandoPadrao}>
+                          <Sparkles className="h-3.5 w-3.5 mr-1" /> Inserir 4 Ações Regulamentares da NR-07
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   acoes.map((a: any) => (
                     <TableRow key={a.id}>
-                      <TableCell className="font-medium">{a.acao}</TableCell>
-                      <TableCell>{a.responsavel || "-"}</TableCell>
-                      <TableCell>{a.data_planejada ? new Date(a.data_planejada).toLocaleDateString() : "Sem data"}</TableCell>
+                      <TableCell className="font-medium">
+                        {a.acao}
+                        {a.observacoes && <p className="text-xs text-muted-foreground mt-0.5">{a.observacoes}</p>}
+                      </TableCell>
+                      <TableCell>{a.responsavel || "Direção da empresa"}</TableCell>
+                      <TableCell>{a.data_planejada ? new Date(a.data_planejada).toLocaleDateString("pt-BR") : "Durante a vigência"}</TableCell>
                       <TableCell>
                         <Select 
                           value={a.status} 
