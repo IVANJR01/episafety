@@ -2041,16 +2041,16 @@ export default function Entregas() {
               <Label>Data</Label>
               <Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} />
             </div>
-            <div>
-              <Label>Observação</Label>
-              <Textarea
-                value={normalizeEntregaTipo(form.tipo) === "devolucao" ? devolucaoObs : form.observacao}
-                onChange={e => normalizeEntregaTipo(form.tipo) === "devolucao"
-                  ? setDevolucaoObs(e.target.value)
-                  : setForm({ ...form, observacao: e.target.value })}
-                placeholder="Observações opcionais"
-              />
-            </div>
+            {normalizeEntregaTipo(form.tipo) === "devolucao" && (
+              <div>
+                <Label>Observação</Label>
+                <Textarea
+                  value={devolucaoObs}
+                  onChange={e => setDevolucaoObs(e.target.value)}
+                  placeholder="Observações opcionais"
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             {/* Devolução reaproveita confirmDevolver: é ele que marca a entrega
