@@ -74,3 +74,37 @@ export function excluirExtintorLocal(empresaId: string, id: string): boolean {
     return false;
   }
 }
+
+export function salvarInspecaoLocal(empresaId: string, inspecao: any): any {
+  if (typeof window === "undefined" || !empresaId) return inspecao;
+  try {
+    const key = `episafety_ext_inspecoes_${empresaId}`;
+    const raw = localStorage.getItem(key);
+    const lista = raw ? JSON.parse(raw) : [];
+
+    const itemSalvo = {
+      ...inspecao,
+      id: inspecao.id || crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+    };
+    lista.unshift(itemSalvo);
+    localStorage.setItem(key, JSON.stringify(lista.slice(0, 500)));
+
+    // Atualiza a última inspeção no cadastro do extintor localmente
+    if (inspecao.extintor_id) {
+      const extList = carregarExtintoresLocal(empresaId);
+      const idx = extList.findIndex((e) => e.id === inspecao.extintor_id);
+      if (idx >= 0) {
+        extList[idx].data_ultima_inspecao = inspecao.data_inspecao;
+        extList[idx].ultima_inspecao_resultado = inspecao.resultado || (inspecao.isConforme ? "CONFORME" : "NAO_CONFORME");
+        localStorage.setItem(getStorageKey(empresaId), JSON.stringify(extList));
+      }
+    }
+
+    return itemSalvo;
+  } catch (err) {
+    console.warn("Falha ao salvar inspeção local:", err);
+    return inspecao;
+  }
+}
+
