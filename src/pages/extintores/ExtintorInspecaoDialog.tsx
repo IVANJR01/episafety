@@ -4,12 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { AlertTriangle, CheckCircle2, ShieldAlert, Camera, Paperclip, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ShieldAlert, Camera, Paperclip, X, Check, Image as ImageIcon } from "lucide-react";
 import {
   isTableMissingError,
   salvarInspecaoLocal,
@@ -96,7 +95,6 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
     return init;
   });
 
-  // Fotos específicas por item reprovado: { [itemId]: dataUrl }
   const [fotosPorItem, setFotosPorItem] = useState<Record<string, string>>({});
   const [itemIdParaFoto, setItemIdParaFoto] = useState<string | null>(null);
 
@@ -109,7 +107,6 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
 
   if (!extintor) return null;
 
-  // Verifica se há alguma reprovação
   const reprovados = Object.entries(respostas).filter(([_, v]) => v === "NAO");
   const isConforme = reprovados.length === 0;
 
@@ -162,7 +159,7 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
   };
 
   const handleSalvar = async () => {
-    // Verifica se algum item reprovado está sem foto e avisa
+    // Alerta se houver reprovação sem foto
     const itensSemFoto = reprovados.filter(([id]) => !fotosPorItem[id]);
     if (itensSemFoto.length > 0) {
       const nomes = itensSemFoto
@@ -177,11 +174,8 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
     setLoading(true);
     try {
       const resultadoInspecao = isConforme ? "CONFORME" : "NAO_CONFORME";
-
-      // Foto principal para a coluna foto_url (pega a primeira evidência ou concatena)
       const primeiraFoto = Object.values(fotosPorItem)[0] || null;
 
-      // 1. Converte respostas para booleans da tabela extintor_inspecoes
       const checklistPayload: any = {
         extintor_id: extintor.id,
         empresa_id: extintor.empresa_id,
@@ -203,7 +197,6 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
         observacoes: observacoes.trim() || null,
       };
 
-      // 2. Se houver reprovação e usuário optou por gerar Não Conformidade
       let conformidadeIdCriada: string | null = null;
       if (!isConforme && gerarNaoConformidade) {
         const itensNomes = reprovados
@@ -230,21 +223,20 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
             checklistPayload.conformidade_gerada_id = conformidadeIdCriada;
           }
         } catch {
-          // ignora falha em conformidades
+          // ignora
         }
       }
 
-      // 3. Tenta gravar a inspeção mensal no Supabase com fallback local
       const { error: insErr } = await (supabase.from as any)("extintor_inspecoes").insert(checklistPayload);
 
       if (insErr) {
         if (isTableMissingError(insErr)) {
           salvarInspecaoLocal(extintor.empresa_id, checklistPayload);
           toast({
-            title: isConforme ? "Inspeção Registrada: CONFORME" : "Inspeção Registrada: NÃO CONFORME",
+            title: isConforme ? "Inspeção: CONFORME" : "Inspeção: NÃO CONFORME",
             description: isConforme
               ? `Extintor ${extintor.numero} aprovado com sucesso.`
-              : `Apontamentos e fotos comprobatórias salvos com sucesso.`,
+              : `Apontamentos e fotos registrados com sucesso.`,
             variant: isConforme ? "default" : "destructive",
           });
           onSuccess();
@@ -254,7 +246,6 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
         throw insErr;
       }
 
-      // 4. Atualiza data_ultima_inspecao no extintor
       try {
         await (supabase.from as any)("extintores")
           .update({ data_ultima_inspecao: dataHora })
@@ -265,10 +256,10 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
 
       const totalFotos = Object.keys(fotosPorItem).length;
       toast({
-        title: isConforme ? "Inspeção Registrada: CONFORME" : "Inspeção Registrada: NÃO CONFORME",
+        title: isConforme ? "Inspeção: CONFORME" : "Inspeção: NÃO CONFORME",
         description: isConforme
-          ? `Extintor ${extintor.numero} inspecionado e aprovado com sucesso.`
-          : `Apontamentos registrados.${totalFotos > 0 ? ` ${totalFotos} foto(s) anexada(s).` : ""}${conformidadeIdCriada ? " Não Conformidade gerada no sistema." : ""}`,
+          ? `Extintor ${extintor.numero} aprovado com sucesso.`
+          : `Apontamentos salvos.${totalFotos > 0 ? ` ${totalFotos} foto(s) anexada(s).` : ""}`,
         variant: isConforme ? "default" : "destructive",
       });
 
@@ -286,7 +277,7 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
           observacoes: observacoes.trim() || null,
         });
         toast({
-          title: isConforme ? "Inspeção Registrada: CONFORME" : "Inspeção Registrada: NÃO CONFORME",
+          title: isConforme ? "Inspeção: CONFORME" : "Inspeção: NÃO CONFORME",
           description: "Inspeção registrada com sucesso.",
           variant: isConforme ? "default" : "destructive",
         });
@@ -295,7 +286,7 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
       } else {
         toast({
           title: "Erro ao registrar inspeção",
-          description: err.message || "Falha ao gravar inspeção no banco.",
+          description: err.message || "Falha ao gravar inspeção.",
           variant: "destructive",
         });
       }
@@ -307,41 +298,60 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] p-3.5 sm:p-6 overflow-y-auto rounded-xl sm:rounded-2xl">
+          <DialogHeader className="space-y-1 pb-2 border-b">
             <div className="flex items-center gap-2">
               {isConforme ? (
-                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
               ) : (
-                <AlertTriangle className="h-6 w-6 text-red-600" />
+                <AlertTriangle className="h-6 w-6 text-red-600 shrink-0" />
               )}
-              <DialogTitle>
-                Inspeção Mensal — Extintor {extintor.numero}
+              <DialogTitle className="text-lg sm:text-xl font-bold leading-tight">
+                Inspeção Mensal — TAG {extintor.numero}
               </DialogTitle>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {extintor.agente?.replace(/_/g, " ")} · {extintor.capacidade} {extintor.unidade_capacidade} · Setor: {extintor.local_setor || "Geral"}
+            <p className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
+              <span>{extintor.agente?.replace(/_/g, " ")} · {extintor.capacidade} {extintor.unidade_capacidade}</span>
+              <span>• Setor: {extintor.local_setor || "Geral"}</span>
             </p>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            {/* DADOS DA INSPEÇÃO */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-muted/40 p-3 rounded-lg text-sm">
+          <div className="space-y-3.5 py-2">
+            {/* DADOS DA INSPEÇÃO ADAPTADOS PARA MOBILE */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-slate-50 dark:bg-slate-900/60 p-2.5 sm:p-3 rounded-lg border text-sm">
               <div>
-                <Label className="text-xs">Data da Inspeção</Label>
-                <Input type="date" value={dataHora} onChange={(e) => setDataHora(e.target.value)} />
+                <Label className="text-[11px] font-semibold text-muted-foreground">Data da Inspeção</Label>
+                <Input
+                  type="date"
+                  value={dataHora}
+                  onChange={(e) => setDataHora(e.target.value)}
+                  className="h-10 text-sm mt-0.5"
+                />
               </div>
               <div>
-                <Label className="text-xs">Nome do Inspetor</Label>
-                <Input value={inspetorNome} onChange={(e) => setInspetorNome(e.target.value)} />
+                <Label className="text-[11px] font-semibold text-muted-foreground">Nome do Inspetor</Label>
+                <Input
+                  value={inspetorNome}
+                  onChange={(e) => setInspetorNome(e.target.value)}
+                  className="h-10 text-sm mt-0.5"
+                />
               </div>
             </div>
 
-            {/* CHECKLIST NORMATIVO */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Checklist de Itens Normativos (ABNT NBR 12962)
-              </h4>
+            {/* CHECKLIST COM BOTÕES TOUCH FORMATO PÍLULA */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Checklist Normativo (NBR 12962)
+                </h4>
+                <span className="text-[11px] text-muted-foreground">
+                  {reprovados.length > 0 ? (
+                    <span className="text-red-600 font-bold">{reprovados.length} reprovado(s)</span>
+                  ) : (
+                    <span className="text-emerald-600 font-semibold">Tudo conforme</span>
+                  )}
+                </span>
+              </div>
 
               {ITENS_CHECKLIST.map((item, idx) => {
                 const valor = respostas[item.id] || "SIM";
@@ -351,57 +361,71 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
                 return (
                   <div
                     key={item.id}
-                    className={`p-3 rounded-lg border text-sm transition-all ${
+                    className={`p-3 rounded-xl border text-sm transition-all ${
                       valor === "NAO"
-                        ? "border-red-300 bg-red-50/70 dark:bg-red-950/25 shadow-sm"
-                        : "border-border bg-card"
+                        ? "border-red-300 bg-red-50/75 dark:bg-red-950/30 shadow-sm"
+                        : "border-border bg-card hover:border-slate-300"
                     }`}
                   >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                      <div className="space-y-0.5">
-                        <span className="font-medium text-foreground">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="space-y-0.5 flex-1 min-w-0 pr-1">
+                        <span className="font-semibold text-foreground text-sm leading-snug">
                           {idx + 1}. {item.label}
                         </span>
-                        <p className="text-xs text-muted-foreground">{item.descricao}</p>
+                        <p className="text-xs text-muted-foreground leading-normal">{item.descricao}</p>
                       </div>
 
-                      <RadioGroup
-                        value={valor}
-                        onValueChange={(v) => handleMudarResposta(item.id, v as any)}
-                        className="flex items-center gap-3 shrink-0"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <RadioGroupItem value="SIM" id={`${item.id}-sim`} />
-                          <Label htmlFor={`${item.id}-sim`} className="text-xs cursor-pointer text-emerald-700 font-medium">
-                            Sim
-                          </Label>
-                        </div>
+                      {/* BOTÕES TOUCH GRANDES E CONFORTÁVEIS PARA O POLEGAR */}
+                      <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-lg shrink-0 self-start sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => handleMudarResposta(item.id, "SIM")}
+                          className={`h-9 px-3.5 sm:px-4 rounded-md text-xs font-bold transition-all flex items-center gap-1 active:scale-95 ${
+                            valor === "SIM"
+                              ? "bg-emerald-600 text-white shadow-sm"
+                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                          }`}
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          Sim
+                        </button>
 
-                        <div className="flex items-center gap-1.5">
-                          <RadioGroupItem value="NAO" id={`${item.id}-nao`} />
-                          <Label htmlFor={`${item.id}-nao`} className="text-xs cursor-pointer text-red-600 font-bold">
-                            Não
-                          </Label>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleMudarResposta(item.id, "NAO")}
+                          className={`h-9 px-3.5 sm:px-4 rounded-md text-xs font-bold transition-all flex items-center gap-1 active:scale-95 ${
+                            valor === "NAO"
+                              ? "bg-red-600 text-white shadow-sm"
+                              : "text-slate-600 dark:text-slate-400 hover:text-red-600"
+                          }`}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          Não
+                        </button>
 
                         {(item.permiteNa || isCo2) && (
-                          <div className="flex items-center gap-1.5">
-                            <RadioGroupItem value="NA" id={`${item.id}-na`} />
-                            <Label htmlFor={`${item.id}-na`} className="text-xs cursor-pointer text-muted-foreground">
-                              N/A
-                            </Label>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleMudarResposta(item.id, "NA")}
+                            className={`h-9 px-2.5 rounded-md text-xs font-medium transition-all active:scale-95 ${
+                              valor === "NA"
+                                ? "bg-slate-600 text-white shadow-sm"
+                                : "text-slate-500 dark:text-slate-400"
+                            }`}
+                          >
+                            N/A
+                          </button>
                         )}
-                      </RadioGroup>
+                      </div>
                     </div>
 
-                    {/* FOTO COMPROBATÓRIA DIRETAMENTE ABAIXO DO ITEM QUANDO MARCAR 'NÃO' */}
+                    {/* ÁREA DE FOTO COMPROBATÓRIA DIRETO NO ITEM COM BOTÕES TOUCH LARGOS */}
                     {valor === "NAO" && (
-                      <div className="mt-3 pt-3 border-t border-red-200/80 dark:border-red-900/40 space-y-2 animate-in fade-in duration-200">
+                      <div className="mt-3 pt-3 border-t border-red-200/80 dark:border-red-900/50 space-y-2.5 animate-in fade-in duration-200">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-red-700 dark:text-red-400">
-                            <Camera className="w-4 h-4 text-red-600" />
-                            <span>Comprovar irregularidade com foto:</span>
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-red-700 dark:text-red-400">
+                            <Camera className="w-4 h-4 text-red-600 shrink-0" />
+                            <span>Comprovação com Foto da Irregularidade:</span>
                           </div>
                           {fotoDesteItem && (
                             <span className="text-[11px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">
@@ -415,34 +439,34 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
                             <img
                               src={fotoDesteItem}
                               alt={`Evidência ${item.label}`}
-                              className="h-16 w-20 object-cover rounded border border-red-200 shrink-0"
+                              className="h-16 w-20 object-cover rounded-md border border-red-200 shrink-0"
                             />
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
-                                Foto registrada para este item
+                              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                Foto registrada
                               </p>
-                              <p className="text-[10px] text-muted-foreground">
-                                Evidência salva para o relatório e não conformidade.
+                              <p className="text-[11px] text-muted-foreground">
+                                Evidência vinculada à inspeção e NC.
                               </p>
-                              <div className="flex gap-2 mt-1.5">
+                              <div className="flex gap-2 mt-2">
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  className="h-6 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                                  className="h-7 px-2.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
                                   onClick={() => removerFotoDoItem(item.id)}
                                 >
-                                  <X className="w-3 h-3 mr-1" />
+                                  <X className="w-3.5 h-3.5 mr-1" />
                                   Remover
                                 </Button>
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="sm"
-                                  className="h-6 px-2 text-xs"
+                                  className="h-7 px-2.5 text-xs"
                                   onClick={() => dispararCamera(item.id)}
                                 >
-                                  <Camera className="w-3 h-3 mr-1" />
+                                  <Camera className="w-3.5 h-3.5 mr-1" />
                                   Trocar
                                 </Button>
                               </div>
@@ -453,23 +477,21 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
                             <Button
                               type="button"
                               variant="outline"
-                              size="sm"
-                              className="h-9 text-xs border-red-300 hover:bg-red-100/70 text-red-800 dark:text-red-300 font-semibold"
+                              className="h-11 text-xs border-red-300 hover:bg-red-100/70 text-red-800 dark:text-red-300 font-bold active:scale-95"
                               disabled={processandoFoto}
                               onClick={() => dispararCamera(item.id)}
                             >
-                              <Camera className="w-3.5 h-3.5 mr-1.5 text-red-600" />
+                              <Camera className="w-4 h-4 mr-1.5 text-red-600" />
                               Tirar Foto
                             </Button>
                             <Button
                               type="button"
                               variant="outline"
-                              size="sm"
-                              className="h-9 text-xs border-slate-300 hover:bg-slate-100 text-slate-700 dark:text-slate-300 font-semibold"
+                              className="h-11 text-xs border-slate-300 hover:bg-slate-100 text-slate-800 dark:text-slate-200 font-semibold active:scale-95"
                               disabled={processandoFoto}
                               onClick={() => dispararArquivo(item.id)}
                             >
-                              <Paperclip className="w-3.5 h-3.5 mr-1.5 text-slate-600" />
+                              <Paperclip className="w-4 h-4 mr-1.5 text-slate-600" />
                               Galeria
                             </Button>
                           </div>
@@ -481,12 +503,12 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
               })}
             </div>
 
-            {/* AVISO DE NÃO CONFORMIDADE QUANDO HOUVER ITENS REPROVADOS */}
+            {/* AVISO DE NÃO CONFORMIDADE */}
             {!isConforme && (
-              <div className="p-3 rounded-lg border border-red-200 bg-red-50/60 dark:bg-red-950/30 space-y-2">
-                <div className="flex items-center gap-2 text-red-800 dark:text-red-300 font-semibold text-xs">
-                  <ShieldAlert className="h-4 w-4 text-red-600" />
-                  <span>{reprovados.length} item(ns) reprovado(s) nesta inspeção</span>
+              <div className="p-3 rounded-xl border border-red-200 bg-red-50/70 dark:bg-red-950/30 space-y-2">
+                <div className="flex items-center gap-2 text-red-800 dark:text-red-300 font-bold text-xs">
+                  <ShieldAlert className="h-4 w-4 text-red-600 shrink-0" />
+                  <span>{reprovados.length} item(ns) reprovado(s)</span>
                 </div>
                 <div className="flex items-center space-x-2 pt-0.5">
                   <Checkbox
@@ -495,7 +517,7 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
                     onCheckedChange={(c) => setGerarNaoConformidade(Boolean(c))}
                   />
                   <Label htmlFor="chk-gerar-nc" className="text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300">
-                    Gerar ocorrência de Não Conformidade vinculando as fotos registradas
+                    Gerar ocorrência de Não Conformidade com as fotos anexadas
                   </Label>
                 </div>
               </div>
@@ -503,25 +525,32 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
 
             {/* OBSERVAÇÕES */}
             <div>
-              <Label htmlFor="insp-obs" className="text-xs">Observações do Inspetor</Label>
+              <Label htmlFor="insp-obs" className="text-xs font-semibold">Observações do Inspetor</Label>
               <Textarea
                 id="insp-obs"
-                placeholder="Descreva detalhes observados durante a vistoria..."
+                placeholder="Observações complementares..."
                 value={observacoes}
                 onChange={(e) => setObservacoes(e.target.value)}
                 rows={2}
+                className="mt-1"
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-3 border-t">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto h-11 sm:h-10 text-sm font-medium"
+            >
               Cancelar
             </Button>
             <Button
               onClick={handleSalvar}
               disabled={loading || processandoFoto}
-              className={isConforme ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-red-600 hover:bg-red-700 text-white"}
+              className={`w-full sm:w-auto h-12 sm:h-10 text-sm font-bold shadow-sm ${
+                isConforme ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-red-600 hover:bg-red-700 text-white"
+              }`}
             >
               {loading ? "Registrando..." : isConforme ? "Concluir Inspeção (Aprovado)" : "Registrar com Apontamentos"}
             </Button>
@@ -529,7 +558,7 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
         </DialogContent>
       </Dialog>
 
-      {/* Inputs ocultos compartilhados para captura de câmera e arquivo */}
+      {/* Inputs ocultos para captura de foto e galeria */}
       <input
         ref={cameraInputRef}
         type="file"

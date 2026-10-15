@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import {
   RefreshCw,
   Building2,
   MapPin,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { fmtDate } from "@/lib/pdfTimbrado";
@@ -45,6 +47,7 @@ import {
 } from "@/lib/extintoresStorageFallback";
 
 export default function ExtintoresDashboard() {
+  const navigate = useNavigate();
   const { empresaId, isSuperAdmin, isPrincipal } = useAuth();
   const [extintores, setExtintores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -248,164 +251,198 @@ export default function ExtintoresDashboard() {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-6">
+    <div className="container mx-auto px-2.5 py-3 sm:p-4 md:p-6 space-y-3.5 sm:space-y-6">
       {/* Cabeçalho */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Flame className="h-7 w-7 text-red-600" />
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Controle de Extintores de Incêndio
-            </h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-red-100 dark:bg-red-950/60 rounded-xl text-red-600 shrink-0 shadow-2xs">
+              <Flame className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
+                Extintores de Incêndio
+              </h1>
+              <p className="text-xs text-muted-foreground hidden sm:block">
+                Gestão de equipamentos, recargas e inspeções mensais (NR-23 · NBR 12962)
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Gestão preventiva de equipamentos, recargas e inspeções mensais (NR-23 · NBR 12962 · NBR 13434)
-          </p>
+          <Badge variant="outline" className="sm:hidden font-bold text-xs px-2 py-0.5">
+            {metricas.total} extintores
+          </Badge>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={carregarDados} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={handleImprimirEtiquetas}>
-            <QrCode className="h-4 w-4 mr-2 text-primary" />
-            Imprimir Etiquetas QR
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setModalApoioOpen(true)}
-            className="text-slate-700 dark:text-slate-200"
-          >
-            <Building2 className="h-4 w-4 mr-2 text-primary" />
-            Setores, Locais & Marcas
-          </Button>
-
+        {/* Botões de Ação no Mobile (Grid 2x2 touch) e Desktop (flex) */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
           <Button
             size="sm"
             onClick={() => {
               setExtintorSelecionado(null);
               setModalFormOpen(true);
             }}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="h-10 sm:h-9 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-sm order-1"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 mr-1.5" />
             Novo Extintor
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setModalApoioOpen(true)}
+            className="h-10 sm:h-9 text-slate-700 dark:text-slate-200 font-semibold order-2"
+          >
+            <Building2 className="h-4 w-4 mr-1.5 text-primary" />
+            <span className="truncate">Setores & Marcas</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleImprimirEtiquetas}
+            className="h-10 sm:h-9 text-slate-700 dark:text-slate-200 font-medium order-3"
+          >
+            <QrCode className="h-4 w-4 mr-1.5 text-primary" />
+            <span className="truncate">Etiquetas QR</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={carregarDados}
+            disabled={loading}
+            className="h-10 sm:h-9 font-medium order-4"
+          >
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+            Atualizar
           </Button>
         </div>
       </div>
 
-      {/* Cards de Métricas */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        <Card className="border-border">
-          <CardContent className="p-4 flex flex-col justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Total Ativos</span>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-2xl font-bold text-foreground">{metricas.total}</span>
-              <Flame className="h-5 w-5 text-muted-foreground/60" />
+      {/* Cards de Métricas (Grade compacta 3x2 no mobile, 6x1 no desktop) */}
+      <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
+        <Card className="border-border shadow-2xs">
+          <CardContent className="p-2 sm:p-3.5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-semibold text-muted-foreground truncate">Ativos</span>
+              <Flame className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-muted-foreground/60 shrink-0" />
+            </div>
+            <div className="mt-1 sm:mt-2">
+              <span className="text-base sm:text-2xl font-black text-foreground">{metricas.total}</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-red-200 dark:border-red-950 bg-red-50/40 dark:bg-red-950/20">
-          <CardContent className="p-4 flex flex-col justify-between">
-            <span className="text-xs font-semibold text-red-700 dark:text-red-400">Críticos</span>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-2xl font-bold text-red-700 dark:text-red-400">{metricas.criticos}</span>
-              <AlertTriangle className="h-5 w-5 text-red-600" />
+        <Card className="border-red-200 dark:border-red-950 bg-red-50/50 dark:bg-red-950/20 shadow-2xs">
+          <CardContent className="p-2 sm:p-3.5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-bold text-red-700 dark:text-red-400 truncate">Críticos</span>
+              <AlertTriangle className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-red-600 shrink-0" />
+            </div>
+            <div className="mt-1 sm:mt-2">
+              <span className="text-base sm:text-2xl font-black text-red-700 dark:text-red-400">{metricas.criticos}</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-amber-200 dark:border-amber-950 bg-amber-50/40 dark:bg-amber-950/20">
-          <CardContent className="p-4 flex flex-col justify-between">
-            <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Em Atenção</span>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-2xl font-bold text-amber-700 dark:text-amber-400">{metricas.atencao}</span>
-              <Clock className="h-5 w-5 text-amber-600" />
+        <Card className="border-amber-200 dark:border-amber-950 bg-amber-50/50 dark:bg-amber-950/20 shadow-2xs">
+          <CardContent className="p-2.5 sm:p-3.5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-bold text-amber-700 dark:text-amber-400 truncate">Atenção</span>
+              <Clock className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-amber-600 shrink-0" />
+            </div>
+            <div className="mt-1 sm:mt-2">
+              <span className="text-base sm:text-2xl font-black text-amber-700 dark:text-amber-400">{metricas.atencao}</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-emerald-200 dark:border-emerald-950 bg-emerald-50/40 dark:bg-emerald-950/20">
-          <CardContent className="p-4 flex flex-col justify-between">
-            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Em Dia (OK)</span>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">{metricas.ok}</span>
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+        <Card className="border-emerald-200 dark:border-emerald-950 bg-emerald-50/50 dark:bg-emerald-950/20 shadow-2xs">
+          <CardContent className="p-2 sm:p-3.5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-400 truncate">Em Dia</span>
+              <CheckCircle2 className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-emerald-600 shrink-0" />
+            </div>
+            <div className="mt-1 sm:mt-2">
+              <span className="text-base sm:text-2xl font-black text-emerald-700 dark:text-emerald-400">{metricas.ok}</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-border">
-          <CardContent className="p-4 flex flex-col justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Vencem em 30d</span>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-2xl font-bold text-foreground">{metricas.vencemEm30}</span>
-              <Clock className="h-5 w-5 text-muted-foreground/60" />
+        <Card className="border-border shadow-2xs">
+          <CardContent className="p-2 sm:p-3.5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-semibold text-muted-foreground truncate">Venc. 30d</span>
+              <Clock className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-muted-foreground/60 shrink-0" />
+            </div>
+            <div className="mt-1 sm:mt-2">
+              <span className="text-base sm:text-2xl font-black text-foreground">{metricas.vencemEm30}</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-border">
-          <CardContent className="p-4 flex flex-col justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Inspeção Atrasada</span>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-2xl font-bold text-foreground">{metricas.atrasadas}</span>
-              <ClipboardCheck className="h-5 w-5 text-muted-foreground/60" />
+        <Card className="border-border shadow-2xs">
+          <CardContent className="p-2 sm:p-3.5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-semibold text-muted-foreground truncate">Atrasadas</span>
+              <ClipboardCheck className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-muted-foreground/60 shrink-0" />
+            </div>
+            <div className="mt-1 sm:mt-2">
+              <span className="text-base sm:text-2xl font-black text-foreground">{metricas.atrasadas}</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Barra de Filtros */}
-      <div className="flex flex-col md:flex-row gap-3">
+      {/* Barra de Filtros Otimizada para Mobile */}
+      <div className="flex flex-col md:flex-row gap-2 sm:gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por TAG, setor, localização ou selo Inmetro..."
+            placeholder="Buscar TAG, setor, local ou Inmetro..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-10 text-sm"
           />
         </div>
 
-        <Select value={filtroSituacao} onValueChange={setFiltroSituacao}>
-          <SelectTrigger className="w-full md:w-[170px]">
-            <SelectValue placeholder="Situação" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="TODOS">Todas Situações</SelectItem>
-            <SelectItem value="CRITICO">🔴 Crítico</SelectItem>
-            <SelectItem value="ATENCAO">🟡 Atenção</SelectItem>
-            <SelectItem value="OK">🟢 Em Dia</SelectItem>
-            <SelectItem value="BAIXADO">⚫ Baixado</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="grid grid-cols-2 gap-2 md:flex md:w-auto">
+          <Select value={filtroSituacao} onValueChange={setFiltroSituacao}>
+            <SelectTrigger className="w-full md:w-[170px] h-10 text-xs sm:text-sm">
+              <SelectValue placeholder="Situação" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="TODOS">Todas Situações</SelectItem>
+              <SelectItem value="CRITICO">🔴 Crítico</SelectItem>
+              <SelectItem value="ATENCAO">🟡 Atenção</SelectItem>
+              <SelectItem value="OK">🟢 Em Dia</SelectItem>
+              <SelectItem value="BAIXADO">⚫ Baixado</SelectItem>
+            </SelectContent>
+          </Select>
 
-        <Select value={filtroAgente} onValueChange={setFiltroAgente}>
-          <SelectTrigger className="w-full md:w-[190px]">
-            <SelectValue placeholder="Tipo de Agente" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="TODOS">Todos Agentes</SelectItem>
-            <SelectItem value="PQS_ABC">PQS ABC</SelectItem>
-            <SelectItem value="PQS_BC">PQS BC</SelectItem>
-            <SelectItem value="CO2">CO2</SelectItem>
-            <SelectItem value="AGUA">Água Pressurizada</SelectItem>
-            <SelectItem value="ESPUMA">Espuma Mecânica</SelectItem>
-            <SelectItem value="CLASSE_K">Classe K</SelectItem>
-          </SelectContent>
-        </Select>
+          <Select value={filtroAgente} onValueChange={setFiltroAgente}>
+            <SelectTrigger className="w-full md:w-[185px] h-10 text-xs sm:text-sm">
+              <SelectValue placeholder="Tipo de Agente" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="TODOS">Todos Agentes</SelectItem>
+              <SelectItem value="PQS_ABC">PQS ABC</SelectItem>
+              <SelectItem value="PQS_BC">PQS BC</SelectItem>
+              <SelectItem value="CO2">CO2</SelectItem>
+              <SelectItem value="AGUA">Água Pressurizada</SelectItem>
+              <SelectItem value="ESPUMA">Espuma Mecânica</SelectItem>
+              <SelectItem value="CLASSE_K">Classe K</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Tabela de Extintores */}
+      {/* Tabela de Extintores (Desktop) e Cards (Mobile) */}
       <Card className="border-border">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* VISUALIZAÇÃO EM TABELA PARA TELAS MÉDIAS E GRANDES (DESKTOP) */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -548,6 +585,13 @@ export default function ExtintoresDashboard() {
                             </DropdownMenuItem>
 
                             <DropdownMenuItem
+                              onClick={() => navigate(`/extintores/qr/${ext.qr_token || ext.id}`)}
+                            >
+                              <QrCode className="h-4 w-4 mr-2 text-primary" />
+                              Ver Ficha QR / Etiqueta
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
                               onClick={() => {
                                 setExtintorSelecionado(ext);
                                 setModalFormOpen(true);
@@ -572,6 +616,169 @@ export default function ExtintoresDashboard() {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* VISUALIZAÇÃO EM CARDS PARA MODO MOBILE (TELAS PEQUENAS) */}
+          <div className="block md:hidden p-2.5 sm:p-3 space-y-3">
+            {loading ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                Carregando dados dos extintores...
+              </div>
+            ) : extintoresFiltrados.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 space-y-2">
+                <Flame className="h-8 w-8 text-muted-foreground/40" />
+                <p className="text-sm font-medium text-muted-foreground">Nenhum extintor encontrado</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setExtintorSelecionado(null);
+                    setModalFormOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Cadastrar primeiro extintor
+                </Button>
+              </div>
+            ) : (
+              extintoresFiltrados.map((ext) => (
+                <div
+                  key={ext.id}
+                  className="bg-card rounded-xl border border-border p-3.5 shadow-xs space-y-3 transition-colors"
+                >
+                  {/* Cabeçalho do Card Mobile */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-base font-black text-foreground tracking-tight">TAG {ext.numero}</span>
+                        {getBadgeSituacao(ext.situacaoCalculada)}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {ext.agente?.replace(/_/g, " ")} ({ext.classes || "—"}) · {ext.capacidade} {ext.unidade_capacidade}
+                        {ext.fabricante ? ` · ${ext.fabricante}` : ""}
+                      </p>
+                    </div>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 -mr-1.5 -mt-1 text-muted-foreground">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setExtintorSelecionado(ext);
+                            setModalInspecaoOpen(true);
+                          }}
+                        >
+                          <ClipboardCheck className="h-4 w-4 mr-2 text-emerald-600" /> Inspecionar Agora
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setExtintorSelecionado(ext);
+                            setModalManutencaoOpen(true);
+                          }}
+                        >
+                          <Wrench className="h-4 w-4 mr-2 text-primary" /> Lançar Manutenção
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => navigate(`/extintores/qr/${ext.qr_token || ext.id}`)}
+                        >
+                          <QrCode className="h-4 w-4 mr-2 text-primary" /> Ver Ficha QR
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setExtintorSelecionado(ext);
+                            setModalFormOpen(true);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4 mr-2" /> Editar Dados
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleExcluir(ext)}
+                          className="text-red-600 focus:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Informações Centrais em Grade */}
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Setor / Local</span>
+                      <p className="font-semibold text-foreground truncate mt-0.5">{ext.local_setor || "Geral"}</p>
+                      {ext.local_descricao && (
+                        <p className="text-[11px] text-muted-foreground truncate">{ext.local_descricao}</p>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Próx. Recarga</span>
+                      <p className="font-semibold text-foreground mt-0.5">{fmtDate(ext.data_proxima_recarga)}</p>
+                      {ext.diasParaRecarga !== null && (
+                        <p
+                          className={`text-[10px] font-bold ${
+                            ext.diasParaRecarga < 0
+                              ? "text-red-600"
+                              : ext.diasParaRecarga <= 30
+                              ? "text-amber-600"
+                              : "text-emerald-600"
+                          }`}
+                        >
+                          {ext.diasParaRecarga < 0
+                            ? `Vencido há ${Math.abs(ext.diasParaRecarga)}d`
+                            : `Em ${ext.diasParaRecarga} dias`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Rodapé informativo sutil (Última inspeção) */}
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground px-0.5">
+                    <span>
+                      Última Inspeção:{" "}
+                      <strong className={ext.data_ultima_inspecao ? "text-foreground" : "text-amber-600"}>
+                        {ext.data_ultima_inspecao ? fmtDate(ext.data_ultima_inspecao) : "Pendente"}
+                      </strong>
+                    </span>
+                    {ext.selo_inmetro && (
+                      <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">
+                        Selo: {ext.selo_inmetro}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* BOTÕES DE AÇÃO TOUCH RÁPIDOS NO MOBILE */}
+                  <div className="grid grid-cols-2 gap-2 pt-0.5">
+                    <Button
+                      size="sm"
+                      className="h-11 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
+                      onClick={() => {
+                        setExtintorSelecionado(ext);
+                        setModalInspecaoOpen(true);
+                      }}
+                    >
+                      <ClipboardCheck className="w-4 h-4" />
+                      Inspecionar
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-11 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 border-slate-300 dark:border-slate-700"
+                      onClick={() => {
+                        setExtintorSelecionado(ext);
+                        setModalManutencaoOpen(true);
+                      }}
+                    >
+                      <Wrench className="w-4 h-4 text-primary" />
+                      Manutenção
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

@@ -8,6 +8,8 @@ import { Flame, CheckCircle2, AlertTriangle, ArrowLeft, ClipboardCheck, Wrench, 
 import { fmtDate } from "@/lib/pdfTimbrado";
 import { ExtintorInspecaoDialog } from "./ExtintorInspecaoDialog";
 
+import { carregarExtintorPorTokenLocal } from "@/lib/extintoresStorageFallback";
+
 export default function ExtintorQrView() {
   const { qrToken } = useParams<{ qrToken: string }>();
   const navigate = useNavigate();
@@ -25,12 +27,15 @@ export default function ExtintorQrView() {
         .maybeSingle();
 
       if (error || !data) {
-        setExtintor(null);
+        // Tenta buscar no fallback local
+        const localExt = carregarExtintorPorTokenLocal(qrToken);
+        setExtintor(localExt);
       } else {
         setExtintor(data);
       }
     } catch (e) {
-      setExtintor(null);
+      const localExt = carregarExtintorPorTokenLocal(qrToken);
+      setExtintor(localExt);
     } finally {
       setLoading(false);
     }
