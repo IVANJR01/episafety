@@ -48,7 +48,7 @@ import {
 
 export default function ExtintoresDashboard() {
   const navigate = useNavigate();
-  const { empresaId, isSuperAdmin, isPrincipal } = useAuth();
+  const { empresaId, empresasIds, setActiveEmpresaId, isSuperAdmin, isPrincipal } = useAuth();
   const [extintores, setExtintores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
@@ -62,6 +62,13 @@ export default function ExtintoresDashboard() {
   const [modalManutencaoOpen, setModalManutencaoOpen] = useState(false);
   const [modalApoioOpen, setModalApoioOpen] = useState(false);
   const [extintorSelecionado, setExtintorSelecionado] = useState<any | null>(null);
+
+  // Garante empresa ativa em dispositivos móveis
+  useEffect(() => {
+    if (!empresaId && empresasIds && empresasIds.length > 0 && setActiveEmpresaId) {
+      setActiveEmpresaId(empresasIds[0]);
+    }
+  }, [empresaId, empresasIds, setActiveEmpresaId]);
 
   const carregarDados = async () => {
     if (!empresaId) return;
@@ -88,20 +95,65 @@ export default function ExtintoresDashboard() {
           .order("numero");
       }
 
-      let listaFinal = res.data || [];
+      let listaBanco: any[] = res.data || [];
 
-      // Se der erro ou a lista estiver vazia, combina com os extintores locais (fallback offline)
+      // Sincronização automática: se houver extintores salvos no localStorage (offline do PC), sobe para a nuvem
       const locais = carregarExtintoresLocal(empresaId);
       if (locais.length > 0) {
-        const idsExistentes = new Set(listaFinal.map((e: any) => e.id));
-        locais.forEach((loc) => {
-          if (!idsExistentes.has(loc.id)) {
-            listaFinal.push(loc);
+        const numerosNoBanco = new Set(listaBanco.map((e: any) => e.numero?.toUpperCase()));
+        let subiuAlgum = false;
+
+        for (const loc of locais) {
+          if (loc.numero && !numerosNoBanco.has(loc.numero.toUpperCase())) {
+            try {
+              const payloadSync = {
+                empresa_id: empresaId,
+                numero: loc.numero.trim().toUpperCase(),
+                agente: loc.agente,
+                capacidade: parseFloat(loc.capacidade) || 0,
+                unidade_capacidade: loc.unidade_capacidade || "kg",
+                fabricante: loc.fabricante || null,
+                numero_cilindro: loc.numero_cilindro || null,
+                ano_fabricacao: loc.ano_fabricacao ? parseInt(loc.ano_fabricacao, 10) : null,
+                selo_inmetro: loc.selo_inmetro || null,
+                local_setor: loc.local_setor || null,
+                local_descricao: loc.local_descricao || null,
+                status: loc.status || "ATIVO",
+                data_ultima_recarga: loc.data_ultima_recarga || null,
+                data_proxima_recarga: loc.data_proxima_recarga || null,
+                data_ultimo_teste_hidrostatico: loc.data_ultimo_teste_hidrostatico || null,
+                data_proximo_teste_hidrostatico: loc.data_proximo_teste_hidrostatico || null,
+                data_ultima_inspecao: loc.data_ultima_inspecao || null,
+                ultima_inspecao_resultado: loc.ultima_inspecao_resultado || null,
+                observacoes: loc.observacoes || null,
+                qr_token: loc.qr_token || crypto.randomUUID(),
+              };
+
+              const { data: salvo, error: insertErr } = await (supabase.from as any)("extintores")
+                .insert(payloadSync)
+                .select()
+                .maybeSingle();
+
+              if (!insertErr && salvo) {
+                listaBanco.push(salvo);
+                numerosNoBanco.add(salvo.numero.toUpperCase());
+                subiuAlgum = true;
+              }
+            } catch (syncErr) {
+              console.warn("Falha ao sincronizar extintor local para a nuvem:", syncErr);
+            }
           }
-        });
+        }
+
+        if (subiuAlgum) {
+          toast({
+            title: "Sincronização concluída",
+            description: "Os extintores cadastrados foram sincronizados com a nuvem e já estão disponíveis no celular!",
+          });
+        }
       }
 
-      setExtintores(listaFinal);
+      setExtintores(listaBanco);
     } catch (err: any) {
       console.warn("Erro ao carregar extintores da nuvem, buscando locais:", err);
       const locais = carregarExtintoresLocal(empresaId);
