@@ -38,6 +38,11 @@ import { ExtintorInspecaoDialog } from "./ExtintorInspecaoDialog";
 import { ExtintorManutencaoDialog } from "./ExtintorManutencaoDialog";
 import { ExtintorCadastrosApoioDialog } from "./ExtintorCadastrosApoioDialog";
 import { gerarEtiquetasExtintoresPdf } from "@/lib/extintoresEtiquetasPdf";
+import {
+  carregarExtintoresLocal,
+  excluirExtintorLocal,
+  isTableMissingError,
+} from "@/lib/extintoresStorageFallback";
 
 export default function ExtintoresDashboard() {
   const { empresaId, isSuperAdmin, isPrincipal } = useAuth();
@@ -80,9 +85,24 @@ export default function ExtintoresDashboard() {
           .order("numero");
       }
 
-      setExtintores(res.data || []);
+      let listaFinal = res.data || [];
+
+      // Se der erro ou a lista estiver vazia, combina com os extintores locais (fallback offline)
+      const locais = carregarExtintoresLocal(empresaId);
+      if (locais.length > 0) {
+        const idsExistentes = new Set(listaFinal.map((e: any) => e.id));
+        locais.forEach((loc) => {
+          if (!idsExistentes.has(loc.id)) {
+            listaFinal.push(loc);
+          }
+        });
+      }
+
+      setExtintores(listaFinal);
     } catch (err: any) {
-      console.warn("Erro ao carregar extintores:", err);
+      console.warn("Erro ao carregar extintores da nuvem, buscando locais:", err);
+      const locais = carregarExtintoresLocal(empresaId);
+      setExtintores(locais);
     } finally {
       setLoading(false);
     }
@@ -180,12 +200,19 @@ export default function ExtintoresDashboard() {
   const handleExcluir = async (ext: any) => {
     if (!window.confirm(`Tem certeza que deseja excluir o extintor ${ext.numero}?`)) return;
     try {
+      excluirExtintorLocal(empresaId, ext.id);
       const { error } = await (supabase.from as any)("extintores").delete().eq("id", ext.id);
-      if (error) throw error;
+      if (error && !isTableMissingError(error)) throw error;
       toast({ title: "Extintor removido", description: `TAG ${ext.numero} excluída com sucesso.` });
       carregarDados();
     } catch (err: any) {
-      toast({ title: "Erro ao excluir", description: err.message, variant: "destructive" });
+      if (isTableMissingError(err)) {
+        excluirExtintorLocal(empresaId, ext.id);
+        toast({ title: "Extintor removido", description: `TAG ${ext.numero} excluída com sucesso.` });
+        carregarDados();
+      } else {
+        toast({ title: "Erro ao excluir", description: err.message, variant: "destructive" });
+      }
     }
   };
 
