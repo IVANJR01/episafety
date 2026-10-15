@@ -397,6 +397,14 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
       };
 
       const riscosAcidentesRaw: any[] = [];
+      /*
+       * Texto de célula: sem quebra de linha e sem espaço sobrando. A quebra
+       * vinda do cadastro empurrava a linha da tabela para uma altura que o
+       * cálculo da página não previa.
+       */
+      const textoCurto = (v: unknown): string =>
+        v === null || v === undefined ? "" : String(v).replace(/\s+/g, " ").trim();
+
       const riscosErgonomicosRaw: any[] = [];
       const riscosQuimicosRaw: any[] = [];
       const riscosFisicosRaw: any[] = [];
@@ -406,10 +414,23 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
         const grupo = (r.grupo || "").toLowerCase();
         const obj = {
           agente: r.tipo_agente || r.perigo_descricao || "Agente identificado",
-          fonte: r.fonte_geradora || r.processo || "Processo de trabalho",
+          /*
+           * Fonte geradora é "máquina de costura", "produto de limpeza" — o que
+           * ORIGINA o risco. Faltando o campo, o código caía no texto do
+           * processo, e a coluna recebia o parágrafo inteiro da atividade: no
+           * PCMSO emitido em 10/2026 havia células de quinze linhas descrevendo
+           * a rotina de limpeza como "fonte geradora" do piso molhado.
+           *
+           * Sem o dado, a coluna diz que falta. Encher com o texto errado é
+           * pior: esconde a lacuna e ainda compromete a leitura do documento.
+           */
+          fonte: textoCurto(r.fonte_geradora) || "Não informado",
           metodologia: "Critério Qualitativo.",
-          medidas: r.controles_existentes || "Treinamento e medidas administrativas",
-          danos: r.lesoes || "Possíveis danos à saúde e integridade física",
+          /* Vem como lista no banco; juntar evita o "a,b,c" grudado. */
+          medidas: Array.isArray(r.controles_existentes)
+            ? r.controles_existentes.filter(Boolean).join("; ") || "Treinamento e medidas administrativas"
+            : (textoCurto(r.controles_existentes) || "Treinamento e medidas administrativas"),
+          danos: textoCurto(r.lesoes) || "Possíveis danos à saúde e integridade física",
         };
         if (grupo.includes("acid") || grupo.includes("mecan")) riscosAcidentesRaw.push(obj);
         else if (grupo.includes("ergo")) riscosErgonomicosRaw.push(obj);

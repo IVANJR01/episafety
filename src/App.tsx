@@ -74,6 +74,7 @@ import PcmsoDashboard from "@/pages/pcmso/PcmsoDashboard";
 import PcmsoElaboracao from "@/pages/pcmso/PcmsoElaboracao";
 import VistoriaDashboard from "@/pages/vistoria/VistoriaDashboard";
 import PgrValidar from "@/pages/pgr/PgrValidar";
+import PcmsoValidar from "@/pages/pcmso/PcmsoValidar";
 import PgrDashboard from "@/pages/pgr/PgrDashboard";
 import MatrizRiscoAdmin from "@/pages/cadastro/MatrizRiscoAdmin";
 import LtcatModule from "@/pages/ltcat/LtcatModule";
@@ -450,6 +451,8 @@ const App = () => (
                 login, o que tornava o QR impresso inútil. Mostra só a
                 identificação do documento; o conteúdo do PGR continua restrito. */}
             <Route path="/pgr/validar/:id" element={<PgrValidar />} />
+            {/* Mesma coisa para o PCMSO: o QR era impresso e a rota nem existia. */}
+            <Route path="/pcmso/validar/:id" element={<PcmsoValidar />} />
             <Route path="/verificar" element={<VerificarFicha />} />
             <Route path="/verificar/:codigo" element={<VerificarFicha />} />
             <Route path="/aprovacao-publica" element={<AprovacaoPublica />} />

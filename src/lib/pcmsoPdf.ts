@@ -284,12 +284,23 @@ function desenharTabelaRiscos5Colunas(
     },
   ];
 
+  /*
+   * Campo ausente vira célula vazia, nunca a palavra "undefined".
+   *
+   * O `splitTextToSize` recebe o valor como veio: faltando a chave, ele
+   * escrevia literalmente "undefined" na coluna — e um documento que vai à
+   * fiscalização não pode estampar termo de programador. Conferido com uma
+   * ficha sem `meioPropagacao`, que saía "undefined" em duas colunas.
+   */
+  const celula = (v: unknown): string =>
+    v === null || v === undefined ? "" : String(v).replace(/\s+/g, " ").trim();
+
   listaParaRender.forEach((r, idx) => {
-    const l1 = doc.splitTextToSize(r.agente, colW[0] - 4);
-    const l2 = doc.splitTextToSize(r.fonte, colW[1] - 4);
-    const l3 = doc.splitTextToSize(r.danos, colW[2] - 4);
-    const l4 = doc.splitTextToSize(r.meioPropagacao, colW[3] - 4);
-    const l5 = doc.splitTextToSize(r.formaExposicao, colW[4] - 4);
+    const l1 = doc.splitTextToSize(celula(r.agente), colW[0] - 4);
+    const l2 = doc.splitTextToSize(celula(r.fonte), colW[1] - 4);
+    const l3 = doc.splitTextToSize(celula(r.danos), colW[2] - 4);
+    const l4 = doc.splitTextToSize(celula((r as { meioPropagacao?: unknown }).meioPropagacao), colW[3] - 4);
+    const l5 = doc.splitTextToSize(celula((r as { formaExposicao?: unknown }).formaExposicao), colW[4] - 4);
 
     const maxLinhas = Math.max(l1.length, l2.length, l3.length, l4.length, l5.length);
     const alturaLinha = Math.max(6, maxLinhas * 3.4 + 2.5);
@@ -950,18 +961,44 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     doc.text(`${ficha.numero.toUpperCase()} — SETOR: ${ficha.setor.toUpperCase()}`, MARGEM + 3, b.y + 5);
     b.y += 7;
 
-    // Linha de Funções Vinculadas
+    /*
+     * Linha de funções vinculadas.
+     *
+     * A faixa tinha altura fixa de 7 mm e avançava 9 mm, qualquer que fosse o
+     * tamanho da lista. O setor ADMINISTRAÇÃO E GESTÃO tem 25 funções: o texto
+     * quebrava em três linhas e as duas últimas saíam POR CIMA do título
+     * "1. DESCRIÇÃO DOS RISCOS OCUPACIONAIS" logo abaixo — conferido no PCMSO
+     * emitido em 10/2026, páginas 9, 12 e 13.
+     *
+     * Agora a altura sai da medição do texto. `splitTextToSize` devolve as
+     * linhas que o jsPDF realmente vai desenhar, que é a única medida que não
+     * erra quando o cadastro cresce.
+     */
+    const LARG_ROTULO = 31;
+    const ALTURA_LINHA = 3.2;
+    const textoFuncoes = ficha.funcoes.join(", ") || "Funções do Setor";
+    const linhasFuncoes = doc.splitTextToSize(
+      textoFuncoes,
+      LARGURA_UTIL - LARG_ROTULO - 6,
+    ) as string[];
+    const alturaFaixa = Math.max(7, linhasFuncoes.length * ALTURA_LINHA + 3.4);
+
+    /* A faixa não pode começar no pé da página e terminar na seguinte. */
+    ensureSpace(b, alturaFaixa + 12);
+
     doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
     doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
-    doc.rect(MARGEM, b.y, LARGURA_UTIL, 7, "FD");
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaFaixa, "FD");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
     doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
     doc.text("Funções abrangidas:", MARGEM + 3, b.y + 4.8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    doc.text(ficha.funcoes.join(", ") || "Funções do Setor", MARGEM + 34, b.y + 4.8, { maxWidth: LARGURA_UTIL - 36 });
-    b.y += 9;
+    linhasFuncoes.forEach((linha, i) => {
+      doc.text(linha, MARGEM + LARG_ROTULO + 3, b.y + 4.8 + i * ALTURA_LINHA);
+    });
+    b.y += alturaFaixa + 2;
 
     // Subtítulo Riscos
     desenharSubtitulo(b, "1. DESCRIÇÃO DOS RISCOS OCUPACIONAIS");
