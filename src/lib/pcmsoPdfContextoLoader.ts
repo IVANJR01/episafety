@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { carregarLogoDataUrl } from "@/lib/logoParaPdf";
 import { carregarEmissor } from "@/lib/emissorDocumentos";
+/* Mesma régua do PGR e da tela: nível = P x S, e a faixa que ele cai. */
+import { classificarRisco, type PgrClasse } from "@/lib/pgrMatriz";
 
 export interface PcmsoCargoItem {
   id: string;
@@ -83,6 +85,18 @@ export interface PcmsoRiscoTabelaG91 {
   danos: string;
   meioPropagacao: string;
   formaExposicao: string;
+  /*
+   * Nível e classificação vêm do PGR — é o mesmo risco, avaliado uma vez só.
+   *
+   * O PCMSO promete, no próprio texto da seção 11, "a correlação entre os
+   * agentes agressivos inventariados no PGR e os exames exigidos pela NR-07".
+   * Sem o nível impresso, a correlação ficava só na frase: o médico via a
+   * lista de agentes sem saber quais eram moderados e quais intoleráveis.
+   *
+   * Vazio quando o item do inventário não foi avaliado. Não se inventa nível.
+   */
+  nivel?: number | null;
+  classificacao?: PgrClasse | null;
 }
 
 export interface PcmsoFichaExameG91 {
@@ -457,6 +471,14 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
             ? r.controles_existentes.filter(Boolean).join("; ") || "Treinamento e medidas administrativas"
             : (textoCurto(r.controles_existentes) || "Treinamento e medidas administrativas"),
           danos: textoCurto(r.lesoes) || "Possíveis danos à saúde e integridade física",
+          /*
+           * A classificação sai da MESMA regra do PGR e da tela — nunca de uma
+           * conta repetida aqui. Item sem avaliação fica sem nível.
+           */
+          nivel: r.probabilidade != null && r.severidade != null
+            ? Number(r.probabilidade) * Number(r.severidade)
+            : null,
+          classificacao: classificarRisco(r.severidade, r.probabilidade),
         };
         if (grupo.includes("acid") || grupo.includes("mecan")) riscosAcidentesRaw.push(obj);
         else if (grupo.includes("ergo")) riscosErgonomicosRaw.push(obj);
@@ -805,6 +827,11 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
             agente: r.agente,
             fonte: r.fonte,
             danos: r.danos,
+            /* Os riscos vêm de origens com formatos diferentes (inventário do
+               PGR e a lista de reserva); nível e classificação só existem na
+               primeira, e a ausência é informação, não erro. */
+            nivel: (r as { nivel?: number | null }).nivel ?? null,
+            classificacao: (r as { classificacao?: PgrClasse | null }).classificacao ?? null,
             meioPropagacao: tipo === "riscosQuimicos" || tipo === "riscosBiologicos" ? "Ar / Contato dérmico" : "Não se aplica",
             formaExposicao: "Habitual / Intermitente",
           });

@@ -10,9 +10,25 @@ import QRCode from "qrcode";
 export const MARGEM = 18;
 export const LARGURA = 210;
 
-export const fmtDate = (s?: string | null) =>
-  s ? new Date(s.length <= 10 ? s + "T00:00:00" : s).toLocaleDateString("pt-BR") : "—";
-export const fmtDT = (s?: string | null) => s ? new Date(s).toLocaleString("pt-BR") : "—";
+/*
+ * Data inválida vira travessão, nunca "Invalid Date".
+ *
+ * `toLocaleDateString` devolve a STRING "Invalid Date" quando a data não se
+ * entende — e string é valor verdadeiro, então quem escrevia
+ * `fmtDate(x) || "Durante a vigência"` nunca via o texto de reserva. O PCMSO
+ * saiu com "Previsão / Prazo: Invalid Date" no cronograma.
+ *
+ * Um documento que vai à fiscalização não pode estampar mensagem de
+ * programador, e "—" é o que o leitor precisa ver: não há data.
+ */
+const dataValida = (s: string, comHora: boolean): string => {
+  const d = new Date(!comHora && s.length <= 10 ? `${s}T00:00:00` : s);
+  if (Number.isNaN(d.getTime())) return "—";
+  return comHora ? d.toLocaleString("pt-BR") : d.toLocaleDateString("pt-BR");
+};
+
+export const fmtDate = (s?: string | null) => (s ? dataValida(s, false) : "—");
+export const fmtDT = (s?: string | null) => (s ? dataValida(s, true) : "—");
 
 export interface ItemSumario { titulo: string; pagina: number; nivel?: number; }
 /** O bloco em construção: documento, altura corrente e o que já virou seção. */

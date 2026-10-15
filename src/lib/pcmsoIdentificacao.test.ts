@@ -149,7 +149,9 @@ describe("a capa do PCMSO", () => {
 describe("o asterisco da coluna MDF", () => {
   it("é explicado na legenda", async () => {
     const texto = textoDo(await renderPcmsoPdf(contexto(COMPLETA))).join(" | ");
+    /* A legenda quebra em mais de uma linha, então se procura pelos pedaços. */
     expect(texto, "o (*) aparece na tabela sem nada dizendo o que é")
-      .toContain("(*) exigido quando a mudança");
+      .toContain("(*) exigido");
+    expect(texto).toContain("risco diferente do atual");
   }, 60_000);
 });

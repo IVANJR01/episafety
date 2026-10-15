@@ -3,6 +3,12 @@ import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 import { capaTimbrada, rodapePaginas, fmtDate } from "@/lib/pdfTimbrado";
+/*
+ * As cores e os rótulos da classificação saem da fonte única — a mesma que o
+ * PGR, a planilha e a tela usam. Aproximar "quase igual" aqui faria o mesmo
+ * risco sair de uma cor no PGR e de outra no PCMSO da mesma empresa.
+ */
+import { CLASSE_HEX, CLASSE_TEXTO_HEX, CLASSE_LABEL as CLASSIF_LABEL, type PgrClasse } from "@/lib/pgrMatriz";
 import type {
   PcmsoPdfContext,
   PcmsoFichaExameG91,
@@ -235,7 +241,16 @@ function desenharTabelaRiscos5Colunas(
   riscos: PcmsoRiscoTabelaG91[]
 ) {
   const doc = b.doc;
-  const colW = [35, 40, 40, 32, 33]; // Total = 180mm
+  /*
+   * Sete colunas, 180 mm. As duas últimas são o nível e a classificação do
+   * risco, trazidos do PGR: é a "correlação entre os agentes inventariados no
+   * PGR e os exames" que a seção 11 promete no próprio texto. Sem elas o
+   * médico via a lista de agentes sem saber quais eram moderados e quais
+   * intoleráveis.
+   */
+  const colW = [30, 34, 34, 22, 22, 12, 26]; // Total = 180mm
+  /* A classificação precisa caber inteira: "INTOLERÁVEL" quebrado em
+     "INTOLERÁVE / L" é pior do que não escrever nada. */
 
   ensureSpace(b, 14);
 
@@ -248,30 +263,45 @@ function desenharTabelaRiscos5Colunas(
   doc.text(tituloGrupo.toUpperCase(), MARGEM + 3, b.y + 4);
   b.y += 5.5;
 
-  // Cabeçalho da Tabela
-  doc.setFillColor(COR_CINZA_TABELA[0], COR_CINZA_TABELA[1], COR_CINZA_TABELA[2]);
-  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "F");
-  doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "S");
+  /*
+   * Cabeçalho da tabela.
+   *
+   * Os rótulos QUEBRAM em quantas linhas precisarem, e a altura do cabeçalho
+   * sai daí. Eram desenhados numa linha fixa de 6 mm: ao estreitar as colunas
+   * para abrir espaço ao nível e à classificação, "MEIOS DE PROPAGAÇÃO" e
+   * "FORMA DE EXPOSIÇÃO" passaram por cima das colunas vizinhas.
+   */
+  const ROTULOS = [
+    "AGENTE / PERIGO", "FONTE GERADORA", "POSSÍVEIS DANOS À SAÚDE",
+    "MEIOS DE PROPAGAÇÃO", "FORMA DE EXPOSIÇÃO", "NÍVEL", "CLASSIFIC.",
+  ];
+  const ALTURA_ROTULO = 2.6;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(6.5);
+  doc.setFontSize(6);
+  const rotulosQuebrados = ROTULOS.map((r, i) =>
+    doc.splitTextToSize(r, colW[i] - 3) as string[]);
+  const alturaCabecalho = Math.max(
+    6, Math.max(...rotulosQuebrados.map((l) => l.length)) * ALTURA_ROTULO + 2.6,
+  );
+
+  ensureSpace(b, alturaCabecalho + 8);
+
+  doc.setFillColor(COR_CINZA_TABELA[0], COR_CINZA_TABELA[1], COR_CINZA_TABELA[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaCabecalho, "F");
+  doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaCabecalho, "S");
   doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
 
   let cx = MARGEM;
-  doc.text("AGENTE / PERIGO", cx + 2, b.y + 4.2);
-  cx += colW[0];
-  doc.line(cx, b.y, cx, b.y + 6);
-  doc.text("FONTE GERADORA", cx + 2, b.y + 4.2);
-  cx += colW[1];
-  doc.line(cx, b.y, cx, b.y + 6);
-  doc.text("POSSÍVEIS DANOS À SAÚDE", cx + 2, b.y + 4.2);
-  cx += colW[2];
-  doc.line(cx, b.y, cx, b.y + 6);
-  doc.text("MEIOS DE PROPAGAÇÃO", cx + 2, b.y + 4.2);
-  cx += colW[3];
-  doc.line(cx, b.y, cx, b.y + 6);
-  doc.text("FORMA DE EXPOSIÇÃO", cx + 2, b.y + 4.2);
-  b.y += 6;
+  rotulosQuebrados.forEach((linhas, i) => {
+    if (i > 0) doc.line(cx, b.y, cx, b.y + alturaCabecalho);
+    linhas.forEach((linha, j) => {
+      doc.text(linha, cx + 2, b.y + 3.6 + j * ALTURA_ROTULO);
+    });
+    cx += colW[i];
+  });
+  doc.setFontSize(6.5);
+  b.y += alturaCabecalho;
 
   // Linhas de Dados
   const listaParaRender = riscos.length > 0 ? riscos : [
@@ -302,7 +332,16 @@ function desenharTabelaRiscos5Colunas(
     const l4 = doc.splitTextToSize(celula((r as { meioPropagacao?: unknown }).meioPropagacao), colW[3] - 4);
     const l5 = doc.splitTextToSize(celula((r as { formaExposicao?: unknown }).formaExposicao), colW[4] - 4);
 
-    const maxLinhas = Math.max(l1.length, l2.length, l3.length, l4.length, l5.length);
+    /* Nível e classificação do PGR. Sem avaliação, as duas células ficam
+       vazias — o documento não afirma risco que ninguém avaliou. */
+    const classe = (r as { classificacao?: PgrClasse | null }).classificacao ?? null;
+    const nivelRisco = (r as { nivel?: number | null }).nivel ?? null;
+    const l6 = doc.splitTextToSize(nivelRisco != null ? String(nivelRisco) : "", colW[5] - 3);
+    const l7 = doc.splitTextToSize(
+      classe ? CLASSIF_LABEL[classe].toUpperCase() : "", colW[6] - 3,
+    );
+
+    const maxLinhas = Math.max(l1.length, l2.length, l3.length, l4.length, l5.length, l7.length);
     const alturaLinha = Math.max(6, maxLinhas * 3.4 + 2.5);
 
     ensureSpace(b, alturaLinha);
@@ -333,6 +372,31 @@ function desenharTabelaRiscos5Colunas(
     doc.text(l4, xCol + 2, b.y + 3.8);
     xCol += colW[3];
     doc.text(l5, xCol + 2, b.y + 3.8);
+    xCol += colW[4];
+
+    /* Nível, centralizado e em negrito — é o número que se procura. */
+    doc.setFont("helvetica", "bold");
+    doc.text(l6, xCol + colW[5] / 2, b.y + 3.8, { align: "center" });
+    xCol += colW[5];
+
+    /*
+     * Classificação na cor oficial da faixa — as mesmas do PGR, da planilha e
+     * da tela, de `pgrMatriz`. Mesmo risco, mesma cor, em qualquer documento.
+     */
+    if (classe) {
+      const [cr, cg, cb] = CLASSE_HEX[classe];
+      const [tr, tg, tb] = CLASSE_TEXTO_HEX[classe];
+      doc.setFillColor(cr, cg, cb);
+      doc.rect(xCol, b.y, colW[6], alturaLinha, "F");
+      doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+      doc.rect(xCol, b.y, colW[6], alturaLinha, "S");
+      doc.setTextColor(tr, tg, tb);
+      doc.setFontSize(5.6);
+      doc.text(l7, xCol + colW[6] / 2, b.y + 3.8, { align: "center" });
+      doc.setFontSize(6.5);
+      doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+    }
+    doc.setFont("helvetica", "normal");
 
     b.y += alturaLinha;
   });
@@ -446,17 +510,23 @@ function desenharMatrizExames(b: BuilderState, exames: PcmsoFichaExameG91["exame
   });
 
   // Legenda explicativa normativa logo abaixo da tabela
-  ensureSpace(b, 6);
+  /*
+   * Legenda da tabela de exames.
+   *
+   * QUEBRA em quantas linhas precisar. Era uma linha só, desenhada direto:
+   * ao ganhar a explicação do "(*)" ela passou da margem direita e o fim do
+   * texto saiu cortado na borda do papel.
+   */
   doc.setFont("helvetica", "italic");
   doc.setFontSize(6.5);
   doc.setTextColor(100, 116, 139);
-  doc.text(
-    /* O "*" aparecia na coluna MDF sem nada explicando o que era. */
+  const legenda = doc.splitTextToSize(
     "Legenda: ADM = Admissional | Periódico = Anual (conforme NR-07) | RT = Retorno ao Trabalho | MDF = Mudança de Riscos Ocupacionais | DEM = Demissional | (*) exigido quando a mudança implicar exposição a risco diferente do atual",
-    MARGEM + 2,
-    b.y + 4
-  );
-  b.y += 6;
+    LARGURA_UTIL - 4,
+  ) as string[];
+  ensureSpace(b, legenda.length * 3 + 4);
+  legenda.forEach((linha, i) => doc.text(linha, MARGEM + 2, b.y + 4 + i * 3));
+  b.y += legenda.length * 3 + 3;
 }
 
 // ---------------------------------------------------------------------------
@@ -1198,7 +1268,9 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     doc.setFont("helvetica", "normal");
     doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
     doc.text(acao.responsavel || "Direção da Empresa", MARGEM + 24, b.y + 4.8);
-    doc.text(fmtDate(acao.data_planejada) || "Durante a vigência", MARGEM + 120, b.y + 4.8);
+    /* Sem data cadastrada, o cronograma diz o prazo em palavras. */
+    const prazo = fmtDate(acao.data_planejada);
+    doc.text(prazo === "—" ? "Durante a vigência" : prazo, MARGEM + 120, b.y + 4.8);
     doc.text(acao.observacoes || "Execução integral conforme cronograma pactuado.", MARGEM + 32, b.y + 10.5, { maxWidth: LARGURA_UTIL - 36 });
 
     b.y += 18;
