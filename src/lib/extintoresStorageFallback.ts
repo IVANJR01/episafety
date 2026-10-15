@@ -108,3 +108,54 @@ export function salvarInspecaoLocal(empresaId: string, inspecao: any): any {
   }
 }
 
+export function salvarManutencaoLocal(empresaId: string, manutencao: any, atualizacaoExtintor?: any): any {
+  if (typeof window === "undefined" || !empresaId) return manutencao;
+  try {
+    const key = `episafety_ext_manutencoes_${empresaId}`;
+    const raw = localStorage.getItem(key);
+    const lista = raw ? JSON.parse(raw) : [];
+
+    const itemSalvo = {
+      ...manutencao,
+      id: manutencao.id || crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+    };
+    lista.unshift(itemSalvo);
+    localStorage.setItem(key, JSON.stringify(lista.slice(0, 500)));
+
+    if (manutencao.extintor_id && atualizacaoExtintor) {
+      const extList = carregarExtintoresLocal(empresaId);
+      const idx = extList.findIndex((e) => e.id === manutencao.extintor_id);
+      if (idx >= 0) {
+        extList[idx] = { ...extList[idx], ...atualizacaoExtintor };
+        localStorage.setItem(getStorageKey(empresaId), JSON.stringify(extList));
+      }
+    }
+
+    return itemSalvo;
+  } catch (err) {
+    console.warn("Falha ao salvar manutenção local:", err);
+    return manutencao;
+  }
+}
+
+export function carregarExtintorPorTokenLocal(qrToken: string): any | null {
+  if (typeof window === "undefined" || !qrToken) return null;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("episafety_extintores_")) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const list: any[] = JSON.parse(raw);
+          const found = list.find((e) => e.qr_token === qrToken || e.id === qrToken || e.numero === qrToken);
+          if (found) return found;
+        }
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+

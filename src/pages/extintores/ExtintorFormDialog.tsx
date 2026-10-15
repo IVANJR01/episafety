@@ -239,18 +239,21 @@ export function ExtintorFormDialog({ open, onOpenChange, empresaId, extintor, on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{extintor ? `Editar Extintor ${extintor.numero}` : "Novo Extintor (NR-23)"}</DialogTitle>
+      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[94vh] sm:max-h-[90vh] p-3.5 sm:p-6 overflow-y-auto rounded-xl sm:rounded-2xl">
+        <DialogHeader className="pb-1 border-b">
+          <DialogTitle className="text-lg sm:text-xl font-bold">
+            {extintor ? `Editar Extintor ${extintor.numero}` : "Novo Extintor (NR-23)"}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 py-2">
           {/* TAG / PATRIMÔNIO */}
           <div>
-            <Label htmlFor="ext-numero">TAG / Patrimônio *</Label>
+            <Label htmlFor="ext-numero" className="text-xs font-semibold">TAG / Patrimônio *</Label>
             <Input
               id="ext-numero"
               placeholder="Ex: EXT-01, PQS-05"
+              className="h-11 sm:h-10 text-sm"
               value={numero}
               onChange={(e) => setNumero(e.target.value)}
             />
@@ -258,9 +261,9 @@ export function ExtintorFormDialog({ open, onOpenChange, empresaId, extintor, on
 
           {/* STATUS OPERACIONAL */}
           <div>
-            <Label htmlFor="ext-status">Status Operacional</Label>
+            <Label htmlFor="ext-status" className="text-xs font-semibold">Status Operacional</Label>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger id="ext-status">
+              <SelectTrigger id="ext-status" className="h-11 sm:h-10 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -274,9 +277,9 @@ export function ExtintorFormDialog({ open, onOpenChange, empresaId, extintor, on
 
           {/* AGENTE EXTINTOR */}
           <div>
-            <Label htmlFor="ext-agente">Agente Extintor *</Label>
+            <Label htmlFor="ext-agente" className="text-xs font-semibold">Agente Extintor *</Label>
             <Select value={agente} onValueChange={handleAgenteChange}>
-              <SelectTrigger id="ext-agente">
+              <SelectTrigger id="ext-agente" className="h-11 sm:h-10 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -292,19 +295,20 @@ export function ExtintorFormDialog({ open, onOpenChange, empresaId, extintor, on
           {/* CAPACIDADE E UNIDADE */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label htmlFor="ext-capacidade">Capacidade</Label>
+              <Label htmlFor="ext-capacidade" className="text-xs font-semibold">Capacidade</Label>
               <Input
                 id="ext-capacidade"
                 type="number"
                 step="0.5"
+                className="h-11 sm:h-10 text-sm"
                 value={capacidade}
                 onChange={(e) => setCapacidade(e.target.value)}
               />
             </div>
             <div>
-              <Label htmlFor="ext-unidade">Unidade</Label>
+              <Label htmlFor="ext-unidade" className="text-xs font-semibold">Unidade</Label>
               <Select value={unidadeCapacidade} onValueChange={setUnidadeCapacidade}>
-                <SelectTrigger id="ext-unidade">
+                <SelectTrigger id="ext-unidade" className="h-11 sm:h-10 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -317,11 +321,12 @@ export function ExtintorFormDialog({ open, onOpenChange, empresaId, extintor, on
 
           {/* SETOR / ÁREA (CAMPO ÚNICO COM AUTOCOMPLETE) */}
           <div>
-            <Label htmlFor="ext-setor">Setor / Área</Label>
+            <Label htmlFor="ext-setor" className="text-xs font-semibold">Setor / Área</Label>
             <Input
               id="ext-setor"
               list="ext-setores-datalist"
               placeholder="Selecione ou digite o setor (ex: Costura)"
+              className="h-11 sm:h-10 text-sm"
               value={localSetor}
               onChange={(e) => setLocalSetor(e.target.value)}
             />
@@ -334,11 +339,12 @@ export function ExtintorFormDialog({ open, onOpenChange, empresaId, extintor, on
 
           {/* LOCALIZAÇÃO ESPECÍFICA (CAMPO ÚNICO COM AUTOCOMPLETE) */}
           <div>
-            <Label htmlFor="ext-local-desc">Localização Específica</Label>
+            <Label htmlFor="ext-local-desc" className="text-xs font-semibold">Localização Específica</Label>
             <Input
               id="ext-local-desc"
               list="ext-locais-datalist"
               placeholder="Selecione ou digite o local (ex: Coluna B)"
+              className="h-11 sm:h-10 text-sm"
               value={localDescricao}
               onChange={(e) => setLocalDescricao(e.target.value)}
             />
@@ -351,10 +357,11 @@ export function ExtintorFormDialog({ open, onOpenChange, empresaId, extintor, on
 
           {/* PRÓXIMA RECARGA */}
           <div>
-            <Label htmlFor="ext-recarga">Próxima Recarga (Anual)</Label>
+            <Label htmlFor="ext-recarga" className="text-xs font-semibold">Próxima Recarga (Anual)</Label>
             <Input
               id="ext-recarga"
               type="date"
+              className="h-11 sm:h-10 text-sm"
               value={dataProximaRecarga}
               onChange={(e) => setDataProximaRecarga(e.target.value)}
             />
@@ -362,10 +369,11 @@ export function ExtintorFormDialog({ open, onOpenChange, empresaId, extintor, on
 
           {/* PRÓXIMO TESTE HIDROSTÁTICO */}
           <div>
-            <Label htmlFor="ext-th">Próximo Teste Hidrostático (5 anos)</Label>
+            <Label htmlFor="ext-th" className="text-xs font-semibold">Próximo Teste Hidrostático (5 anos)</Label>
             <Input
               id="ext-th"
               type="date"
+              className="h-11 sm:h-10 text-sm"
               value={dataProximoTh}
               onChange={(e) => setDataProximoTh(e.target.value)}
             />
@@ -373,11 +381,12 @@ export function ExtintorFormDialog({ open, onOpenChange, empresaId, extintor, on
 
           {/* FABRICANTE / MARCA (CAMPO ÚNICO COM AUTOCOMPLETE) */}
           <div>
-            <Label htmlFor="ext-fabricante">Fabricante / Marca</Label>
+            <Label htmlFor="ext-fabricante" className="text-xs font-semibold">Fabricante / Marca</Label>
             <Input
               id="ext-fabricante"
               list="ext-fabricantes-datalist"
               placeholder="Selecione ou digite a marca (ex: Kidde, Flamac)"
+              className="h-11 sm:h-10 text-sm"
               value={fabricante}
               onChange={(e) => setFabricante(e.target.value)}
             />
@@ -390,18 +399,19 @@ export function ExtintorFormDialog({ open, onOpenChange, empresaId, extintor, on
 
           {/* SELO INMETRO */}
           <div>
-            <Label htmlFor="ext-inmetro">Selo Inmetro</Label>
+            <Label htmlFor="ext-inmetro" className="text-xs font-semibold">Selo Inmetro</Label>
             <Input
               id="ext-inmetro"
               placeholder="Ex: 001234/2024"
+              className="h-11 sm:h-10 text-sm"
               value={seloInmetro}
               onChange={(e) => setSeloInmetro(e.target.value)}
             />
           </div>
 
           {/* OBSERVAÇÕES */}
-          <div className="md:col-span-2">
-            <Label htmlFor="ext-obs">Observações / Histórico</Label>
+          <div className="sm:col-span-2">
+            <Label htmlFor="ext-obs" className="text-xs font-semibold">Observações / Histórico</Label>
             <Textarea
               id="ext-obs"
               placeholder="Informações adicionais sobre o equipamento..."
@@ -412,11 +422,19 @@ export function ExtintorFormDialog({ open, onOpenChange, empresaId, extintor, on
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex-col-reverse sm:flex-row gap-2 pt-2 border-t">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto h-11 sm:h-10 text-sm"
+          >
             Cancelar
           </Button>
-          <Button onClick={handleSalvar} disabled={loading} className="bg-primary text-primary-foreground">
+          <Button
+            onClick={handleSalvar}
+            disabled={loading}
+            className="w-full sm:w-auto h-11 sm:h-10 text-sm font-bold bg-primary text-primary-foreground shadow-sm"
+          >
             {loading ? "Salvando..." : extintor ? "Salvar Alterações" : "Cadastrar Extintor"}
           </Button>
         </DialogFooter>
