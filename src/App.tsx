@@ -323,7 +323,6 @@ function ProtectedRoute() {
         <Route path="/inspecoes-se/dashboard" element={<InspecoesDashboard />} />
         <Route path="/inspecoes-se/obras" element={<Obras />} />
         <Route path="/extintores" element={<ExtintoresDashboard />} />
-        <Route path="/extintores/qr/:qrToken" element={<ExtintorQrView />} />
         <Route path="/treinamentos" element={<Navigate to="/arquivo-digital" replace />} />
         <Route path="/exames" element={<Navigate to="/aso" replace />} />
         <Route path="/aso" element={<AsoModule />} />
@@ -455,6 +454,10 @@ const App = () => (
             <Route path="/pcmso/validar/:id" element={<PcmsoValidar />} />
             <Route path="/verificar" element={<VerificarFicha />} />
             <Route path="/verificar/:codigo" element={<VerificarFicha />} />
+            {/* Selo Digital e Ficha de Inspeção do Extintor (NR-23 / NBR 12962):
+                Pública para fiscalização do Corpo de Bombeiros / MTE / Brigada
+                ler o histórico de inspeções pelo QR Code sem necessidade de login. */}
+            <Route path="/extintores/qr/:qrToken" element={<ExtintorQrView />} />
             <Route path="/aprovacao-publica" element={<AprovacaoPublica />} />
             <Route path="/assinar/:id" element={<AssinaturaRemota />} />
             <Route path="/setup-mfa" element={<SetupMfaGuarded />} />
