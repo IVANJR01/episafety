@@ -29,12 +29,14 @@ import {
   Trash2,
   RefreshCw,
   Building2,
+  MapPin,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { fmtDate } from "@/lib/pdfTimbrado";
 import { ExtintorFormDialog } from "./ExtintorFormDialog";
 import { ExtintorInspecaoDialog } from "./ExtintorInspecaoDialog";
 import { ExtintorManutencaoDialog } from "./ExtintorManutencaoDialog";
+import { ExtintorCadastrosApoioDialog } from "./ExtintorCadastrosApoioDialog";
 import { gerarEtiquetasExtintoresPdf } from "@/lib/extintoresEtiquetasPdf";
 
 export default function ExtintoresDashboard() {
@@ -50,6 +52,7 @@ export default function ExtintoresDashboard() {
   const [modalFormOpen, setModalFormOpen] = useState(false);
   const [modalInspecaoOpen, setModalInspecaoOpen] = useState(false);
   const [modalManutencaoOpen, setModalManutencaoOpen] = useState(false);
+  const [modalApoioOpen, setModalApoioOpen] = useState(false);
   const [extintorSelecionado, setExtintorSelecionado] = useState<any | null>(null);
 
   const carregarDados = async () => {
@@ -242,6 +245,16 @@ export default function ExtintoresDashboard() {
           <Button variant="outline" size="sm" onClick={handleImprimirEtiquetas}>
             <QrCode className="h-4 w-4 mr-2 text-primary" />
             Imprimir Etiquetas QR
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setModalApoioOpen(true)}
+            className="text-slate-700 dark:text-slate-200"
+          >
+            <Building2 className="h-4 w-4 mr-2 text-primary" />
+            Setores, Locais & Marcas
           </Button>
 
           <Button
@@ -562,6 +575,14 @@ export default function ExtintoresDashboard() {
           />
         </>
       )}
+
+      {/* Gerenciador de Cadastros de Apoio (Setores, Locais e Fabricantes) */}
+      <ExtintorCadastrosApoioDialog
+        open={modalApoioOpen}
+        onOpenChange={setModalApoioOpen}
+        empresaId={empresaId}
+        onUpdated={carregarDados}
+      />
     </div>
   );
 }
