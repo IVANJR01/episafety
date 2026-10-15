@@ -125,7 +125,9 @@ export interface PcmsoPdfContext {
     nome_fantasia?: string | null;
     cnpj?: string | null;
     cnae_principal?: string | null;
+    /** Os CNAE secundários, já em texto. O nome é herdado; o conteúdo é este. */
     cnae_descricao?: string | null;
+    cnae_secundario?: string | null;
     grau_risco?: number | string | null;
     telefone?: string | null;
     email?: string | null;
@@ -203,7 +205,15 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
     nome_fantasia: empData.nome_fantasia,
     cnpj: empData.cnpj,
     cnae_principal: empData.cnae_principal,
-    cnae_descricao: empData.cnae_secundario || empData.cnae_principal,
+    /*
+     * Secundários separados do principal. Juntos no mesmo campo, o documento
+     * saía "14.12-6-01 - 14.12-6-03;47.55-5-01;47.55-5-02" — e quem lê não tem
+     * como saber onde termina um e começa o outro.
+     */
+    cnae_descricao: empData.cnae_secundario || null,
+    cnae_secundario: Array.isArray(empData.cnae_secundario)
+      ? empData.cnae_secundario.filter(Boolean).join("; ")
+      : (empData.cnae_secundario || null),
     grau_risco: empData.grau_risco || 2,
     telefone: empData.telefone,
     email: empData.email,
@@ -674,7 +684,28 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
   ]);
 
   // 10. Geração das Fichas de Exame no padrão da G91
+  /*
+   * Em que ficha cada cargo entra.
+   *
+   * REGRA: manda o SETOR CADASTRADO. Antes mandava uma lista de palavras-chave
+   * e tudo que não casasse caía em "ADMINISTRAÇÃO E GESTÃO" — o PCMSO saía com
+   * 6 setores inventados pelo código enquanto o PGR da mesma empresa tinha 13
+   * GES cadastrados. Dois documentos contando histórias diferentes da mesma
+   * empresa é o que uma fiscalização encontra primeiro.
+   *
+   * O estrago era concreto: CORTADOR não ia para CORTE porque a palavra
+   * procurada era "corte" e o cargo é "cortador" — ia para a Administração,
+   * levando junto o risco "Cortes / Perfurações — Máquinas de costura". O
+   * setor administrativo aparecia com máquina de costura e amputação.
+   *
+   * As palavras-chave ficam só para o cargo SEM setor cadastrado: aí não há de
+   * onde tirar a resposta, e um palpite declarado é melhor que jogar tudo no
+   * administrativo.
+   */
   const mapearSetorCanonico = (nome: string, setorOriginal?: string | null): string => {
+    const cadastrado = (setorOriginal || "").trim();
+    if (cadastrado) return cadastrado.toUpperCase();
+
     const s = ((setorOriginal || "") + " " + nome).toLowerCase();
     if (s.includes("cozinh") || s.includes("alimento") || s.includes("refei")) return "COZINHA";
     if (s.includes("limpeza") || s.includes("serviços gerais") || s.includes("faxin") || s.includes("higien")) return "LIMPEZA E HIGIENIZAÇÃO";
@@ -693,6 +724,12 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
     gruposFichas.set(setorCan, arr);
   });
 
+  /*
+   * Ordem das fichas. Os setores que o sistema já conhecia vêm primeiro, na
+   * ordem de sempre; os que vêm do cadastro da empresa seguem em ordem
+   * alfabética. Assim o documento não reordena sozinho de uma emissão para
+   * outra, e nenhum setor cadastrado fica de fora por não estar nesta lista.
+   */
   const ordemSetores = [
     "ADMINISTRAÇÃO E GESTÃO",
     "COMERCIAL E ATENDIMENTO",

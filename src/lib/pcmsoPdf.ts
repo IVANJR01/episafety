@@ -451,7 +451,8 @@ function desenharMatrizExames(b: BuilderState, exames: PcmsoFichaExameG91["exame
   doc.setFontSize(6.5);
   doc.setTextColor(100, 116, 139);
   doc.text(
-    "Legenda: ADM = Admissional | Periódico = Anual (conforme NR-07) | RT = Retorno ao Trabalho | MDF = Mudança de Riscos Ocupacionais | DEM = Demissional",
+    /* O "*" aparecia na coluna MDF sem nada explicando o que era. */
+    "Legenda: ADM = Admissional | Periódico = Anual (conforme NR-07) | RT = Retorno ao Trabalho | MDF = Mudança de Riscos Ocupacionais | DEM = Demissional | (*) exigido quando a mudança implicar exposição a risco diferente do atual",
     MARGEM + 2,
     b.y + 4
   );
@@ -462,6 +463,24 @@ function desenharMatrizExames(b: BuilderState, exames: PcmsoFichaExameG91["exame
 // GERADOR PRINCIPAL DO PCMSO COMPLETO
 // ---------------------------------------------------------------------------
 
+/**
+ * Grau de risco como a NR-04 escreve: "01 (Um)".
+ *
+ * O PCMSO imprimia o número cru com um zero colado na frente, e caía em "02"
+ * quando o cadastro estava vazio — afirmar grau 2 sem saber muda o
+ * enquadramento da empresa e o prazo do exame demissional. Sem o dado, vazio.
+ *
+ * Mesma regra já aplicada no PGR, para que os dois documentos da mesma
+ * empresa não digam a mesma coisa de dois jeitos.
+ */
+const GRAU_EXTENSO = ["", "Um", "Dois", "Três", "Quatro"];
+export function grauDeRiscoExtenso(v?: number | string | null): string {
+  if (v === null || v === undefined || v === "") return "—";
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 1 || n > 4) return "—";
+  return `${String(n).padStart(2, "0")} (${GRAU_EXTENSO[n]})`;
+}
+
 export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: string }): Promise<jsPDF> {
   const doc = new jsPDF({
     orientation: "portrait",
@@ -469,7 +488,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     format: "a4",
   });
 
-  const { empresa, medicoCoordenador, pcmso } = ctx;
+  const { empresa, medicoCoordenador, pcmso, emissor } = ctx;
   const anoCapa = (pcmso.data_emissao || pcmso.data_vigencia_inicio || new Date().toISOString()).slice(0, 4);
   const vigenciaInicio = fmtDate(pcmso.data_vigencia_inicio);
   const vigenciaFim = fmtDate(pcmso.data_vigencia_fim);
@@ -480,8 +499,15 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   // =========================================================================
   capaTimbrada(doc, {
     logoDataUrl: logo,
-    revisao: `REV. ${String(Math.max(0, (pcmso.versao || 1) - 1)).padStart(2, "0")}`,
-    meta: `PCMSO v${pcmso.versao || 1}`,
+    /*
+     * A capa não repete a identificação da empresa nem o bloco de versões.
+     *
+     * Trazia "REV. 00 / PCMSO v1" no alto e uma tabela com Empresa, CNPJ,
+     * CNAE, Grau de Risco e Médico Coordenador. Tudo isso já está completo na
+     * página 2, e na capa só deixava a folha poluída — a mesma limpeza já
+     * feita na capa do PGR. A capa diz o que o documento é: sigla, título,
+     * norma e vigência.
+     */
     sigla: "PCMSO",
     titulo: "Programa de Controle Médico de Saúde Ocupacional",
     subtitulo: "NR-07 — Portaria SEPRT n.º 6.734/2020",
@@ -491,15 +517,14 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     empresaNome: empresa.nome || "Empresa",
     identificacao: [],
     campos: [],
-    linhasTabela: [
-      ["Empresa", empresa.nome],
-      ["CNPJ", empresa.cnpj || "—"],
-      ["CNAE", `${empresa.cnae_principal || "—"}`],
-      ["Grau de Risco", `0${empresa.grau_risco || 2}`],
-      ["Médico Coord.", `${medicoCoordenador.nome} — CRM/${medicoCoordenador.uf} ${medicoCoordenador.crm}`],
-    ],
-    rodapeLocal: [empresa.cidade || "Alto Santo", empresa.uf || "CE"].filter(Boolean).join(" / ")
-      ? `${[empresa.cidade || "Alto Santo", empresa.uf || "CE"].filter(Boolean).join(" / ")} – ${anoCapa}`
+    linhasTabela: [],
+    /*
+     * Cidade e UF da EMPRESA. Caíam em "Alto Santo / CE" quando o cadastro
+     * estava vazio — a cidade da consultoria no lugar da cidade do cliente.
+     * Sem o dado, fica só o ano.
+     */
+    rodapeLocal: [empresa.cidade, empresa.uf].filter(Boolean).join(" / ")
+      ? `${[empresa.cidade, empresa.uf].filter(Boolean).join(" / ")} – ${anoCapa}`
       : anoCapa,
   });
 
@@ -536,14 +561,29 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   doc.text("DADOS DA EMPRESA / UNIDADE OPERACIONAL", MARGEM + 3, b.y + 4.2);
   b.y += 6;
 
+  /*
+   * Identificação da empresa CLIENTE.
+   *
+   * Três campos vinham com valor inventado quando o cadastro estava vazio, e
+   * documento legal não preenche lacuna com chute:
+   *   - grau de risco caía em "02" — afirmar grau 2 sem saber muda o
+   *     enquadramento da empresa e o prazo do exame demissional;
+   *   - cidade/UF caíam em "Alto Santo / CE";
+   *   - o TELEFONE caía no telefone da consultoria, e o documento dizia que
+   *     aquele era o contato do cliente.
+   * Sem o dado, agora sai travessão — que é o que o leitor precisa ver.
+   */
+  const secundarios = (empresa as { cnae_secundario?: string | null }).cnae_secundario
+    || empresa.cnae_descricao || "";
   const dadosEmpresaTabela: [string, string][] = [
     ["Razão Social:", empresa.nome || "—"],
     ["Nome Fantasia:", empresa.nome_fantasia || empresa.nome || "—"],
-    ["CNPJ:", `${empresa.cnpj || "—"}          Grau de Risco: 0${empresa.grau_risco || 2}`],
+    ["CNPJ:", `${empresa.cnpj || "—"}          Grau de Risco: ${grauDeRiscoExtenso(empresa.grau_risco)}`],
     ["Endereço:", `${empresa.endereco_completo || [empresa.logradouro, empresa.numero, empresa.bairro].filter(Boolean).join(", ") || "—"}`],
-    ["Cidade / UF / CEP:", `${empresa.cidade || "Alto Santo"} / ${empresa.uf || "CE"} — CEP: ${empresa.cep || "—"}`],
-    ["CNAE Principal:", `${empresa.cnae_principal || "—"} - ${empresa.cnae_descricao || "Atividade Principal"}`],
-    ["Telefone / Contato:", `${empresa.telefone || "(88) 99653-6252"}          E-mail: ${empresa.email || "—"}`],
+    ["Cidade / UF / CEP:", `${[empresa.cidade, empresa.uf].filter(Boolean).join(" / ") || "—"} — CEP: ${empresa.cep || "—"}`],
+    ["CNAE Principal:", empresa.cnae_principal || "—"],
+    ["CNAE Secundário:", secundarios || "—"],
+    ["Telefone / Contato:", `${empresa.telefone || "—"}          E-mail: ${empresa.email || "—"}`],
   ];
 
   doc.setFillColor(255, 255, 255);
@@ -571,10 +611,28 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   doc.text("EMPRESA ASSESSORA / RESPONSÁVEL TÉCNICA PELA ELABORAÇÃO", MARGEM + 3, b.y + 4.2);
   b.y += 6;
 
+  /*
+   * Quem elaborou o documento sai do cadastro do EMISSOR, não do código.
+   *
+   * Razão social, CNPJ, telefone e endereço da SafetySoluções estavam escritos
+   * à mão aqui. Qualquer outra consultoria que usasse o sistema emitiria um
+   * PCMSO declarando o CNPJ da SafetySoluções como responsável técnica — o que
+   * é falso sobre quem responde pelo documento.
+   *
+   * Sem cadastro de emissor, cai no texto de antes, para não regredir para
+   * quem já usa o sistema hoje.
+   */
+  const assessoriaNome = (emissor?.nome || "").trim()
+    || "SAFETY SOLUÇÕES EM ENGENHARIA DE SEGURANÇA E MEDICINA DO TRABALHO LTDA";
+  const assessoriaCnpj = (emissor?.cnpj || "").trim() || "33.725.753/0001-90";
+  const assessoriaContato = (emissor?.contato || "").trim() || "(88) 99653-6252";
+  const assessoriaEndereco = (emissor?.endereco || "").trim()
+    || "Rua Cel. Vicente Saraiva, 1147 - Sala 04 - Centro - Alto Santo / CE";
+
   const dadosAssessoria: [string, string][] = [
-    ["Razão Social:", "SAFETY SOLUÇÕES EM ENGENHARIA DE SEGURANÇA E MEDICINA DO TRABALHO LTDA"],
-    ["CNPJ:", "33.725.753/0001-90          Telefone: (88) 99653-6252"],
-    ["Endereço:", "Rua Cel. Vicente Saraiva, 1147 - Sala 04 - Centro - Alto Santo / CE"],
+    ["Razão Social:", assessoriaNome],
+    ["CNPJ:", `${assessoriaCnpj}          Telefone: ${assessoriaContato}`],
+    ["Endereço:", assessoriaEndereco],
     ["Médico Coordenador:", `${medicoCoordenador.nome} — CRM/${medicoCoordenador.uf} ${medicoCoordenador.crm}`],
   ];
 
@@ -909,7 +967,10 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     ["Defesa Civil", "199", "Prevenção de sinistros e calamidades"],
     ["Disque Intoxicação (ANVISA / CEATOX)", "0800 722 6001", "Orientações médicas sobre intoxicações"],
     [
-      `Hospital / Pronto Atendimento Municipal (${empresa.cidade || "Alto Santo"} / ${empresa.uf || "CE"})`,
+      /* Sem a cidade cadastrada, não se nomeia um município qualquer. */
+      [empresa.cidade, empresa.uf].filter(Boolean).length
+        ? `Hospital / Pronto Atendimento Municipal (${[empresa.cidade, empresa.uf].filter(Boolean).join(" / ")})`
+        : "Hospital / Pronto Atendimento Municipal",
       empresa.telefone || "Central Local",
       "Unidade de referência médica para pronto atendimento",
     ],
