@@ -276,19 +276,38 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
   let cargos: PcmsoCargoItem[] = [];
 
   if (funcoesList.length > 0) {
-    cargos = funcoesList.map((fn: any) => {
-      const nomeCargo = fn.nome;
+    // Agrupa funções repetidas no cadastro para consolidar em uma ficha única por cargo
+    const mapaCargos = new Map<string, any[]>();
+    for (const fn of funcoesList) {
+      const nomeNorm = (fn.nome || "").trim().toUpperCase().replace(/\s+/g, " ");
+      if (!nomeNorm) continue;
+      const arr = mapaCargos.get(nomeNorm) || [];
+      arr.push(fn);
+      mapaCargos.set(nomeNorm, arr);
+    }
+
+    cargos = Array.from(mapaCargos.entries()).map(([nomeCargo, funcoesDoGrupo]) => {
       const nomeNorm = nomeCargo.toLowerCase();
 
-      // Identifica ambientes associados
-      const ambMatch = ambientes.filter((a) =>
-        nomeNorm.includes(a.nome.toLowerCase()) ||
-        (fn.descricao_atividades || "").toLowerCase().includes(a.nome.toLowerCase())
-      );
-      const ambNomes = ambMatch.length > 0 ? ambMatch.map((a) => a.nome) : [ambientes[0]?.nome || "GERAL"];
+      // Ambientes consolidados de todas as variações do cargo
+      const ambSet = new Set<string>();
+      funcoesDoGrupo.forEach((fn) => {
+        const matches = ambientes.filter((a) =>
+          nomeNorm.includes(a.nome.toLowerCase()) ||
+          (fn.descricao_atividades || "").toLowerCase().includes(a.nome.toLowerCase())
+        );
+        matches.forEach((m) => ambSet.add(m.nome));
+      });
+      const ambNomes = ambSet.size > 0 ? Array.from(ambSet) : [ambientes[0]?.nome || "GERAL"];
 
-      // Atividades
-      let atividades = fn.descricao_atividades || "";
+      // Atividades consolidadas (escolhe a mais detalhada cadastrada)
+      let atividades = "";
+      for (const fn of funcoesDoGrupo) {
+        if (fn.descricao_atividades && fn.descricao_atividades.length > atividades.length) {
+          atividades = fn.descricao_atividades.trim();
+        }
+      }
+
       if (!atividades) {
         if (nomeNorm.includes("costur")) atividades = "Operar máquinas de costura, acabamento de peças, movimentação manual de tecidos.";
         else if (nomeNorm.includes("cozinh")) atividades = "Realizar o corte, cozimento, fritura e preparo dos alimentos; higienizar utensílios e bancadas; operar fogões e fornos.";
@@ -323,14 +342,23 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
         return funcsSnapshot.includes(nomeNorm) || setorItem.includes(nomeNorm);
       });
 
-      // Separação por grupo com fallback fidedigno do modelo da NR-07
-      const riscosAcidentes: PcmsoCargoItem["riscosAcidentes"] = [];
-      const riscosErgonomicos: PcmsoCargoItem["riscosErgonomicos"] = [];
-      const riscosQuimicos: PcmsoCargoItem["riscosQuimicos"] = [];
-      const riscosFisicos: PcmsoCargoItem["riscosFisicos"] = [];
-      const riscosBiologicos: PcmsoCargoItem["riscosBiologicos"] = [];
+      // Deduplicação de riscos por agente
+      const deduplicarRiscos = (itens: any[]) => {
+        const vistos = new Set<string>();
+        return itens.filter((i) => {
+          const k = i.agente.toLowerCase().trim();
+          if (vistos.has(k)) return false;
+          vistos.add(k);
+          return true;
+        });
+      };
 
-      // Popula a partir do inventário real do PGR
+      const riscosAcidentesRaw: any[] = [];
+      const riscosErgonomicosRaw: any[] = [];
+      const riscosQuimicosRaw: any[] = [];
+      const riscosFisicosRaw: any[] = [];
+      const riscosBiologicosRaw: any[] = [];
+
       riscosDoCargo.forEach((r: any) => {
         const grupo = (r.grupo || "").toLowerCase();
         const obj = {
@@ -340,17 +368,17 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
           medidas: r.controles_existentes || "Treinamento e medidas administrativas",
           danos: r.lesoes || "Possíveis danos à saúde e integridade física",
         };
-        if (grupo.includes("acid") || grupo.includes("mecan")) riscosAcidentes.push(obj);
-        else if (grupo.includes("ergo")) riscosErgonomicos.push(obj);
-        else if (grupo.includes("quim")) riscosQuimicos.push(obj);
-        else if (grupo.includes("fisi")) riscosFisicos.push(obj);
-        else if (grupo.includes("biol")) riscosBiologicos.push(obj);
+        if (grupo.includes("acid") || grupo.includes("mecan")) riscosAcidentesRaw.push(obj);
+        else if (grupo.includes("ergo")) riscosErgonomicosRaw.push(obj);
+        else if (grupo.includes("quim")) riscosQuimicosRaw.push(obj);
+        else if (grupo.includes("fisi")) riscosFisicosRaw.push(obj);
+        else if (grupo.includes("biol")) riscosBiologicosRaw.push(obj);
       });
 
       // Se não havia no inventário, injeta padrões preventivos conforme o perfil da ocupação
-      if (riscosAcidentes.length === 0) {
+      if (riscosAcidentesRaw.length === 0) {
         if (nomeNorm.includes("costur") || nomeNorm.includes("ajudante")) {
-          riscosAcidentes.push({
+          riscosAcidentesRaw.push({
             agente: "Cortes / Perfurações / Partes móveis",
             fonte: "Máquinas de costura",
             metodologia: "Critério Qualitativo.",
@@ -358,7 +386,7 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
             danos: "Perfurações, cortes, prensagem",
           });
         } else if (nomeNorm.includes("cozinh")) {
-          riscosAcidentes.push({
+          riscosAcidentesRaw.push({
             agente: "Cortes e perfurações",
             fonte: "Manipulação de alimentos e utensílios",
             metodologia: "Critério Qualitativo.",
@@ -366,7 +394,7 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
             danos: "Queimaduras, ferimentos",
           });
         } else if (nomeNorm.includes("limpeza") || nomeNorm.includes("faxin")) {
-          riscosAcidentes.push({
+          riscosAcidentesRaw.push({
             agente: "Piso molhado / escorregadio",
             fonte: "Água e resíduos durante a limpeza",
             metodologia: "Critério Qualitativo.",
@@ -376,9 +404,9 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
         }
       }
 
-      if (riscosErgonomicos.length === 0) {
+      if (riscosErgonomicosRaw.length === 0) {
         if (nomeNorm.includes("escrit") || nomeNorm.includes("admin") || nomeNorm.includes("comercial") || nomeNorm.includes("gerente") || nomeNorm.includes("pcp")) {
-          riscosErgonomicos.push(
+          riscosErgonomicosRaw.push(
             {
               agente: "Sobrecarga / Pressão por prazos",
               fonte: "Pressão por metas, prazos curtos, trabalho mental contínuo",
@@ -395,7 +423,7 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
             }
           );
         } else {
-          riscosErgonomicos.push(
+          riscosErgonomicosRaw.push(
             {
               agente: "Postura inadequada / Movimentos repetitivos",
               fonte: "Posto de trabalho operacional",
@@ -407,8 +435,8 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
         }
       }
 
-      if (riscosQuimicos.length === 0 && (nomeNorm.includes("limpeza") || nomeNorm.includes("faxin") || nomeNorm.includes("serviços gerais"))) {
-        riscosQuimicos.push({
+      if (riscosQuimicosRaw.length === 0 && (nomeNorm.includes("limpeza") || nomeNorm.includes("faxin") || nomeNorm.includes("serviços gerais"))) {
+        riscosQuimicosRaw.push({
           agente: "Produtos de limpeza",
           fonte: "Manipulação, diluição e uso de produtos saneantes e detergentes",
           metodologia: "Critério Qualitativo.",
@@ -418,18 +446,18 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
       }
 
       return {
-        id: fn.id,
+        id: funcoesDoGrupo[0].id,
         nome: nomeCargo,
-        setor: fn.setor_id || "Operacional",
+        setor: funcoesDoGrupo[0].setor_id || "Operacional",
         ambientes: ambNomes,
         atividades,
         exameClinicoPeriodicidade: "O periódico será feito a cada 12 meses.",
         examesComplementares: examesComp,
-        riscosAcidentes,
-        riscosErgonomicos,
-        riscosQuimicos,
-        riscosFisicos,
-        riscosBiologicos,
+        riscosAcidentes: deduplicarRiscos(riscosAcidentesRaw),
+        riscosErgonomicos: deduplicarRiscos(riscosErgonomicosRaw),
+        riscosQuimicos: deduplicarRiscos(riscosQuimicosRaw),
+        riscosFisicos: deduplicarRiscos(riscosFisicosRaw),
+        riscosBiologicos: deduplicarRiscos(riscosBiologicosRaw),
       };
     });
   } else {

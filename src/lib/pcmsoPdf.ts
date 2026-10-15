@@ -473,7 +473,11 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
 
   // Detalhamento Cargo a Cargo
   ctx.cargos.forEach((cargo) => {
-    ensureSpace(b, 55);
+    const ativLines = doc.splitTextToSize(cargo.atividades, LARGURA_UTIL - 28);
+    const hAtiv = Math.max(7, ativLines.length * 3.8 + 3);
+
+    // Garante que o bloco de identificação do cargo e o controle médico fiquem juntos
+    ensureSpace(b, hAtiv + 48);
 
     // Faixa do Cargo
     doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
@@ -484,14 +488,9 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     doc.text(`CARGO: ${cargo.nome.toUpperCase()}`, MARGEM + 3, b.y + 5);
     b.y += 7;
 
-    // Tabela de Ambientes e Atividades do Cargo
+    // Linha Ambientes
     doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
     doc.setFillColor(255, 255, 255);
-
-    const ativLines = doc.splitTextToSize(cargo.atividades, LARGURA_UTIL - 28);
-    const hAtiv = Math.max(7, ativLines.length * 3.8 + 3);
-
-    // Linha Ambientes
     doc.rect(MARGEM, b.y, 25, 7, "FD");
     doc.rect(MARGEM + 25, b.y, LARGURA_UTIL - 25, 7, "FD");
     doc.setFont("helvetica", "bold");
@@ -503,17 +502,37 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     doc.text(cargo.ambientes.join(", ") || "Todos os ambientes", MARGEM + 27, b.y + 4.8, { maxWidth: LARGURA_UTIL - 30 });
     b.y += 7;
 
-    // Linha Atividades
+    // Linha Atividades (com fill explicitamente resetado para branco)
+    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+    doc.setFillColor(255, 255, 255);
     doc.rect(MARGEM, b.y, 25, hAtiv, "FD");
     doc.rect(MARGEM + 25, b.y, LARGURA_UTIL - 25, hAtiv, "FD");
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
     doc.text("Atividades:", MARGEM + 2, b.y + 4.8);
     doc.setFont("helvetica", "normal");
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
     doc.text(ativLines, MARGEM + 27, b.y + 4.5);
     b.y += hAtiv + 2;
 
+    // Helper para desenhar item de exame com caixinha vetorial [X] sem depender de fontes Unicode
+    const desenharItemExame = (label: string, x: number, yLinha: number) => {
+      doc.setDrawColor(22, 101, 52);
+      doc.setFillColor(240, 253, 244);
+      doc.rect(x, yLinha - 2.8, 3.2, 3.2, "FD");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.5);
+      doc.setTextColor(22, 101, 52);
+      doc.text("X", x + 0.8, yLinha - 0.4);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+      doc.text(label, x + 5, yLinha);
+    };
+
     // Quadro CONTROLE MÉDICO
-    ensureSpace(b, 35);
+    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
     doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
     doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.5, "FD");
     doc.setFont("helvetica", "bold");
@@ -523,6 +542,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     b.y += 5.5;
 
     // Avaliação Clínica Ocupacional (Código eSocial: 0295)
+    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
     doc.setFillColor(255, 255, 255);
     doc.rect(MARGEM, b.y, 55, 20, "FD");
     doc.rect(MARGEM + 55, b.y, 65, 20, "FD");
@@ -536,22 +556,23 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     doc.setTextColor(100, 116, 139);
     doc.text("Código eSocial: 0295", MARGEM + 2, b.y + 9);
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    doc.text("✔  Fazer no Admissional", MARGEM + 58, b.y + 4.5);
-    doc.text("✔  Fazer no Demissional", MARGEM + 58, b.y + 8);
-    doc.text("✔  Fazer no Retorno ao Trabalho", MARGEM + 58, b.y + 11.5);
-    doc.text("✔  Fazer na Mudança de Riscos*", MARGEM + 58, b.y + 15);
-    doc.text("✔  Fazer no Periódico", MARGEM + 58, b.y + 18.5);
+    desenharItemExame("Fazer no Admissional", MARGEM + 58, b.y + 4.5);
+    desenharItemExame("Fazer no Demissional", MARGEM + 58, b.y + 8);
+    desenharItemExame("Fazer no Retorno ao Trabalho", MARGEM + 58, b.y + 11.5);
+    desenharItemExame("Fazer na Mudança de Riscos*", MARGEM + 58, b.y + 15);
+    desenharItemExame("Fazer no Periódico", MARGEM + 58, b.y + 18.5);
 
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
     doc.text(cargo.exameClinicoPeriodicidade || "O periódico será feito a cada 12 meses.", MARGEM + 123, b.y + 10, { maxWidth: 55 });
     b.y += 20;
 
     // Exames complementares do cargo (se houver)
     cargo.examesComplementares.forEach((ec) => {
       ensureSpace(b, 14);
+      doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+      doc.setFillColor(255, 255, 255);
       doc.rect(MARGEM, b.y, 55, 12, "FD");
       doc.rect(MARGEM + 55, b.y, 65, 12, "FD");
       doc.rect(MARGEM + 120, b.y, LARGURA_UTIL - 120, 12, "FD");
@@ -564,13 +585,12 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
       doc.setTextColor(100, 116, 139);
       doc.text(`Código eSocial: ${ec.codigoEsocial}`, MARGEM + 2, b.y + 9);
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7);
-      doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-      doc.text("✔  Fazer no Admissional", MARGEM + 58, b.y + 5);
-      doc.text("✔  Fazer no Periódico", MARGEM + 58, b.y + 9);
+      desenharItemExame("Fazer no Admissional", MARGEM + 58, b.y + 5);
+      desenharItemExame("Fazer no Periódico", MARGEM + 58, b.y + 9);
 
       doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
       doc.text(ec.periodicidade, MARGEM + 123, b.y + 7, { maxWidth: 55 });
       b.y += 12;
     });
@@ -591,9 +611,9 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
       b.y += 5;
 
       listaRiscos.forEach((r) => {
-        const pLines = doc.splitTextToSize(`Perigos, fontes e circunstâncias: ${r.fonte}`, LARGURA_UTIL - 4);
-        const mLines = doc.splitTextToSize(`Medidas administrativas ou de organização do trabalho: ${r.medidas}`, LARGURA_UTIL - 4);
-        const dLines = doc.splitTextToSize(`Possíveis danos à saúde: ${r.danos}`, LARGURA_UTIL - 4);
+        const pLines = doc.splitTextToSize(`Perigos, fontes e circunstâncias: ${r.fonte}`, LARGURA_UTIL - 6);
+        const mLines = doc.splitTextToSize(`Medidas administrativas ou de organização do trabalho: ${r.medidas}`, LARGURA_UTIL - 6);
+        const dLines = doc.splitTextToSize(`Possíveis danos à saúde: ${r.danos}`, LARGURA_UTIL - 6);
         const totH = (pLines.length + mLines.length + dLines.length) * 3.6 + 14;
 
         ensureSpace(b, totH);
@@ -601,26 +621,30 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
         doc.setFillColor(255, 255, 255);
         doc.rect(MARGEM, b.y, LARGURA_UTIL, totH, "FD");
 
+        // Bullet quadrado vetorial colorido
+        doc.setFillColor(bgCor[0], bgCor[1], bgCor[2]);
+        doc.rect(MARGEM + 3, b.y + 2.4, 2.2, 2.2, "F");
+
         doc.setFont("helvetica", "bold");
         doc.setFontSize(7.5);
         doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-        doc.text(`■  ${r.agente}`, MARGEM + 2, b.y + 4.5);
+        doc.text(r.agente, MARGEM + 7, b.y + 4.5);
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(7);
         doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
         let ry = b.y + 8;
-        doc.text(pLines, MARGEM + 2, ry);
+        doc.text(pLines, MARGEM + 3, ry);
         ry += pLines.length * 3.6;
 
-        doc.text(`Metodologia: ${r.metodologia || "Critério Qualitativo."}`, MARGEM + 2, ry);
+        doc.text(`Metodologia: ${r.metodologia || "Critério Qualitativo."}`, MARGEM + 3, ry);
         ry += 3.6;
 
-        doc.text(mLines, MARGEM + 2, ry);
+        doc.text(mLines, MARGEM + 3, ry);
         ry += mLines.length * 3.6;
 
         doc.setFont("helvetica", "bold");
-        doc.text(dLines, MARGEM + 2, ry);
+        doc.text(dLines, MARGEM + 3, ry);
 
         b.y += totH;
       });
@@ -762,6 +786,13 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
 
     b.y += 20;
   });
+
+  // Reserva espaço para o bloco de autenticidade e QR Code no final do documento
+  if (b.y > ALTURA - 48) {
+    b.doc.addPage();
+    b.paginaAtual++;
+    b.y = 25;
+  }
 
   // =========================================================================
   // CABEÇALHO E RODAPÉ OFICIAL TIMBRADO (IDÊNTICO AO PGR DO SAFETY SOLUÇÕES)
