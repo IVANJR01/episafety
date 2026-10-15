@@ -74,6 +74,18 @@ describe("o setor da ficha vem do cadastro", () => {
     expect(mapear("CARGO SEM PALAVRA CONHECIDA", null)).toBe("ADMINISTRAÇÃO E GESTÃO");
   });
 
+  it("id nunca vira nome de setor", () => {
+    /*
+     * O PCMSO v1_4 saiu com "01 — SETOR: 04F209F2-F0FF-4264-AC84-4E80AA1C57A2"
+     * nas onze fichas: o campo trazia o `setor_id` e ele foi impresso como se
+     * fosse o nome. Documento não estampa identificador interno.
+     */
+    const id = "04f209f2-f0ff-4264-ac84-4e80aa1c57a2";
+    expect(mapear("COSTUREIRA", id)).toBe("COSTURA");
+    expect(mapear("CARGO QUALQUER", id.toUpperCase())).toBe("ADMINISTRAÇÃO E GESTÃO");
+    expect(mapear("CARGO QUALQUER", id)).not.toContain("-");
+  });
+
   it("o setor cadastrado sai em caixa alta, sem espaço sobrando", () => {
     /* "costura " e "COSTURA" não podem virar duas fichas diferentes. */
     expect(mapear("COSTUREIRA", " costura ")).toBe("COSTURA");

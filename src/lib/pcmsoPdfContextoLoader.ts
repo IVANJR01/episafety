@@ -304,7 +304,7 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
 
   // 6. Cargos, Atividades e Riscos (Integrado com PGR Base)
   const pgrBaseId = pcmso.pgr_base_id;
-  const [funcoesRaw, ghesData, gheFuncoesData, inventarioRaw] = await Promise.all([
+  const [funcoesRaw, ghesData, gheFuncoesData, inventarioRaw, setoresRaw] = await Promise.all([
     (supabase.from as any)("sst_funcoes")
       .select("id, nome, setor_id, cbo, descricao_atividades")
       .eq("empresa_id", empresaId)
@@ -320,7 +320,23 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
           .select("*")
           .eq("pgr_id", pgrBaseId)
       : Promise.resolve({ data: [] }),
+    /*
+     * Os setores, para traduzir o `setor_id` da função em NOME.
+     *
+     * A função guarda o id; sem esta consulta, o documento imprimia o id como
+     * se fosse o nome do setor — saiu assim de verdade: "01 — SETOR:
+     * 04F209F2-F0FF-4264-AC84-4E80AA1C57A2".
+     */
+    (supabase.from as any)("sst_setores")
+      .select("id, nome")
+      .eq("empresa_id", empresaId),
   ]);
+
+  /** setor_id -> nome do setor. */
+  const nomeDoSetor = new Map<string, string>();
+  for (const st of (setoresRaw?.data || []) as any[]) {
+    if (st?.id && (st.nome || "").trim()) nomeDoSetor.set(st.id, String(st.nome).trim());
+  }
 
   const funcoesList = (funcoesRaw.data || []) as any[];
   const invItens = (inventarioRaw.data || []) as any[];
@@ -522,7 +538,13 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
       return {
         id: funcoesDoGrupo[0].id,
         nome: nomeCargo,
-        setor: funcoesDoGrupo[0].setor_id || "Operacional",
+        /*
+         * NOME do setor, nunca o id. A função guarda `setor_id`; passar o id
+         * adiante fazia o PCMSO imprimir um UUID no cabeçalho da ficha.
+         * Sem setor cadastrado fica vazio, e as palavras-chave de
+         * `mapearSetorCanonico` decidem — que é o caso em que elas servem.
+         */
+        setor: nomeDoSetor.get(funcoesDoGrupo[0].setor_id) || "",
         ambientes: ambNomes,
         atividades,
         exameClinicoPeriodicidade: "O periódico será feito a cada 12 meses.",
@@ -704,7 +726,16 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
    */
   const mapearSetorCanonico = (nome: string, setorOriginal?: string | null): string => {
     const cadastrado = (setorOriginal || "").trim();
-    if (cadastrado) return cadastrado.toUpperCase();
+    /*
+     * Id nunca é nome.
+     *
+     * O PCMSO v1_4 saiu com "01 — SETOR: 04F209F2-F0FF-4264-AC84-..." porque o
+     * campo trazia o `setor_id` e esta função o aceitou como nome. A tradução
+     * para nome foi corrigida na origem; esta trava fica porque o documento
+     * NÃO PODE imprimir um identificador interno, venha ele de onde vier.
+     */
+    const PARECE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (cadastrado && !PARECE_ID.test(cadastrado)) return cadastrado.toUpperCase();
 
     const s = ((setorOriginal || "") + " " + nome).toLowerCase();
     if (s.includes("cozinh") || s.includes("alimento") || s.includes("refei")) return "COZINHA";
