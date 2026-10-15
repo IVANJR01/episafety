@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { AlertTriangle, CheckCircle2, ShieldAlert, Camera, Paperclip, X, Image as ImageIcon } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ShieldAlert, Camera, Paperclip, X } from "lucide-react";
 import {
   isTableMissingError,
   salvarInspecaoLocal,
@@ -96,9 +96,12 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
     return init;
   });
 
+  // Fotos específicas por item reprovado: { [itemId]: dataUrl }
+  const [fotosPorItem, setFotosPorItem] = useState<Record<string, string>>({});
+  const [itemIdParaFoto, setItemIdParaFoto] = useState<string | null>(null);
+
   const [gerarNaoConformidade, setGerarNaoConformidade] = useState(true);
   const [observacoes, setObservacoes] = useState("");
-  const [fotoEvidencia, setFotoEvidencia] = useState<string | null>(null);
   const [processandoFoto, setProcessandoFoto] = useState(false);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -114,17 +117,28 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
     setRespostas((prev) => ({ ...prev, [id]: valor }));
   };
 
+  const dispararCamera = (itemId: string) => {
+    setItemIdParaFoto(itemId);
+    cameraInputRef.current?.click();
+  };
+
+  const dispararArquivo = (itemId: string) => {
+    setItemIdParaFoto(itemId);
+    arquivoInputRef.current?.click();
+  };
+
   const handleFotoSelecionada = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !itemIdParaFoto) return;
 
     setProcessandoFoto(true);
     try {
       const dataUrl = await comprimirImagemParaDataUrl(file);
-      setFotoEvidencia(dataUrl);
+      setFotosPorItem((prev) => ({ ...prev, [itemIdParaFoto]: dataUrl }));
+      const labelItem = ITENS_CHECKLIST.find((i) => i.id === itemIdParaFoto)?.label || "Item";
       toast({
-        title: "Foto comprobatória anexada!",
-        description: "A evidência fotográfica da irregularidade foi registrada.",
+        title: "Foto anexada!",
+        description: `Evidência registrada para: ${labelItem}.`,
       });
     } catch (err) {
       toast({
@@ -134,22 +148,38 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
       });
     } finally {
       setProcessandoFoto(false);
+      setItemIdParaFoto(null);
       e.target.value = "";
     }
   };
 
+  const removerFotoDoItem = (itemId: string) => {
+    setFotosPorItem((prev) => {
+      const copia = { ...prev };
+      delete copia[itemId];
+      return copia;
+    });
+  };
+
   const handleSalvar = async () => {
-    // Alerta caso haja reprovação sem foto
-    if (!isConforme && !fotoEvidencia) {
-      const confirmarSemFoto = window.confirm(
-        "Atenção: Você marcou 'NÃO' em itens da inspeção, mas ainda não anexou uma foto comprobatória da irregularidade.\n\nDeseja registrar mesmo assim?"
+    // Verifica se algum item reprovado está sem foto e avisa
+    const itensSemFoto = reprovados.filter(([id]) => !fotosPorItem[id]);
+    if (itensSemFoto.length > 0) {
+      const nomes = itensSemFoto
+        .map(([id]) => ITENS_CHECKLIST.find((i) => i.id === id)?.label || id)
+        .join(", ");
+      const prosseguir = window.confirm(
+        `Atenção: Você marcou 'Não' em: ${nomes}, mas ainda não anexou a foto comprobatória da irregularidade.\n\nDeseja registrar a inspeção mesmo sem a foto?`
       );
-      if (!confirmarSemFoto) return;
+      if (!prosseguir) return;
     }
 
     setLoading(true);
     try {
       const resultadoInspecao = isConforme ? "CONFORME" : "NAO_CONFORME";
+
+      // Foto principal para a coluna foto_url (pega a primeira evidência ou concatena)
+      const primeiraFoto = Object.values(fotosPorItem)[0] || null;
 
       // 1. Converte respostas para booleans da tabela extintor_inspecoes
       const checklistPayload: any = {
@@ -169,7 +199,7 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
         corpo_sem_danos: respostas.corpo_sem_danos === "NA" ? null : respostas.corpo_sem_danos === "SIM",
         rotulo_legivel: respostas.rotulo_legivel === "NA" ? null : respostas.rotulo_legivel === "SIM",
         selo_inmetro_presente: respostas.selo_inmetro_presente === "NA" ? null : respostas.selo_inmetro_presente === "SIM",
-        foto_url: fotoEvidencia || null,
+        foto_url: primeiraFoto,
         observacoes: observacoes.trim() || null,
       };
 
@@ -214,7 +244,7 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
             title: isConforme ? "Inspeção Registrada: CONFORME" : "Inspeção Registrada: NÃO CONFORME",
             description: isConforme
               ? `Extintor ${extintor.numero} aprovado com sucesso.`
-              : `Apontamentos e foto comprobatória salvos com sucesso.`,
+              : `Apontamentos e fotos comprobatórias salvos com sucesso.`,
             variant: isConforme ? "default" : "destructive",
           });
           onSuccess();
@@ -233,11 +263,12 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
         // ignora
       }
 
+      const totalFotos = Object.keys(fotosPorItem).length;
       toast({
         title: isConforme ? "Inspeção Registrada: CONFORME" : "Inspeção Registrada: NÃO CONFORME",
         description: isConforme
           ? `Extintor ${extintor.numero} inspecionado e aprovado com sucesso.`
-          : `Apontamentos registrados.${fotoEvidencia ? " Foto comprobatória anexada." : ""}${conformidadeIdCriada ? " Não Conformidade gerada no sistema." : ""}`,
+          : `Apontamentos registrados.${totalFotos > 0 ? ` ${totalFotos} foto(s) anexada(s).` : ""}${conformidadeIdCriada ? " Não Conformidade gerada no sistema." : ""}`,
         variant: isConforme ? "default" : "destructive",
       });
 
@@ -251,7 +282,7 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
           data_inspecao: dataHora,
           inspetor_nome: inspetorNome,
           resultado: isConforme ? "CONFORME" : "NAO_CONFORME",
-          foto_url: fotoEvidencia || null,
+          foto_url: Object.values(fotosPorItem)[0] || null,
           observacoes: observacoes.trim() || null,
         });
         toast({
@@ -273,244 +304,247 @@ export function ExtintorInspecaoDialog({ open, onOpenChange, extintor, onSuccess
     }
   };
 
-  const nomesItensReprovados = reprovados
-    .map(([id]) => ITENS_CHECKLIST.find((i) => i.id === id)?.label || id)
-    .join(", ");
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            {isConforme ? (
-              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-            ) : (
-              <AlertTriangle className="h-6 w-6 text-red-600" />
-            )}
-            <DialogTitle>
-              Inspeção Mensal — Extintor {extintor.numero}
-            </DialogTitle>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {extintor.agente?.replace(/_/g, " ")} · {extintor.capacidade} {extintor.unidade_capacidade} · Setor: {extintor.local_setor || "Geral"}
-          </p>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          {/* DADOS DA INSPEÇÃO */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-muted/40 p-3 rounded-lg text-sm">
-            <div>
-              <Label className="text-xs">Data da Inspeção</Label>
-              <Input type="date" value={dataHora} onChange={(e) => setDataHora(e.target.value)} />
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              {isConforme ? (
+                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+              ) : (
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              )}
+              <DialogTitle>
+                Inspeção Mensal — Extintor {extintor.numero}
+              </DialogTitle>
             </div>
-            <div>
-              <Label className="text-xs">Nome do Inspetor</Label>
-              <Input value={inspetorNome} onChange={(e) => setInspetorNome(e.target.value)} />
+            <p className="text-xs text-muted-foreground">
+              {extintor.agente?.replace(/_/g, " ")} · {extintor.capacidade} {extintor.unidade_capacidade} · Setor: {extintor.local_setor || "Geral"}
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* DADOS DA INSPEÇÃO */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-muted/40 p-3 rounded-lg text-sm">
+              <div>
+                <Label className="text-xs">Data da Inspeção</Label>
+                <Input type="date" value={dataHora} onChange={(e) => setDataHora(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Nome do Inspetor</Label>
+                <Input value={inspetorNome} onChange={(e) => setInspetorNome(e.target.value)} />
+              </div>
             </div>
-          </div>
 
-          {/* CHECKLIST NORMATIVO */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Checklist de Itens Normativos (ABNT NBR 12962)
-            </h4>
+            {/* CHECKLIST NORMATIVO */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Checklist de Itens Normativos (ABNT NBR 12962)
+              </h4>
 
-            {ITENS_CHECKLIST.map((item, idx) => {
-              const valor = respostas[item.id] || "SIM";
-              const isCo2 = extintor.agente === "CO2" && item.id === "manometro_faixa_verde";
+              {ITENS_CHECKLIST.map((item, idx) => {
+                const valor = respostas[item.id] || "SIM";
+                const isCo2 = extintor.agente === "CO2" && item.id === "manometro_faixa_verde";
+                const fotoDesteItem = fotosPorItem[item.id];
 
-              return (
-                <div
-                  key={item.id}
-                  className={`p-3 rounded-lg border text-sm transition-colors ${
-                    valor === "NAO"
-                      ? "border-red-300 bg-red-50/70 dark:bg-red-950/25"
-                      : "border-border bg-card"
-                  }`}
-                >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                    <div className="space-y-0.5">
-                      <span className="font-medium text-foreground">
-                        {idx + 1}. {item.label}
-                      </span>
-                      <p className="text-xs text-muted-foreground">{item.descricao}</p>
-                    </div>
-
-                    <RadioGroup
-                      value={valor}
-                      onValueChange={(v) => handleMudarResposta(item.id, v as any)}
-                      className="flex items-center gap-3 shrink-0"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <RadioGroupItem value="SIM" id={`${item.id}-sim`} />
-                        <Label htmlFor={`${item.id}-sim`} className="text-xs cursor-pointer text-emerald-700 font-medium">
-                          Sim
-                        </Label>
+                return (
+                  <div
+                    key={item.id}
+                    className={`p-3 rounded-lg border text-sm transition-all ${
+                      valor === "NAO"
+                        ? "border-red-300 bg-red-50/70 dark:bg-red-950/25 shadow-sm"
+                        : "border-border bg-card"
+                    }`}
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <span className="font-medium text-foreground">
+                          {idx + 1}. {item.label}
+                        </span>
+                        <p className="text-xs text-muted-foreground">{item.descricao}</p>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
-                        <RadioGroupItem value="NAO" id={`${item.id}-nao`} />
-                        <Label htmlFor={`${item.id}-nao`} className="text-xs cursor-pointer text-red-600 font-bold">
-                          Não
-                        </Label>
-                      </div>
-
-                      {(item.permiteNa || isCo2) && (
+                      <RadioGroup
+                        value={valor}
+                        onValueChange={(v) => handleMudarResposta(item.id, v as any)}
+                        className="flex items-center gap-3 shrink-0"
+                      >
                         <div className="flex items-center gap-1.5">
-                          <RadioGroupItem value="NA" id={`${item.id}-na`} />
-                          <Label htmlFor={`${item.id}-na`} className="text-xs cursor-pointer text-muted-foreground">
-                            N/A
+                          <RadioGroupItem value="SIM" id={`${item.id}-sim`} />
+                          <Label htmlFor={`${item.id}-sim`} className="text-xs cursor-pointer text-emerald-700 font-medium">
+                            Sim
                           </Label>
                         </div>
-                      )}
-                    </RadioGroup>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
 
-          {/* ÁREA DE COMPROVAÇÃO COM FOTO QUANDO MARCAR 'NÃO' */}
-          {!isConforme && (
-            <div className="p-4 rounded-xl border-2 border-red-300 bg-red-50/80 dark:bg-red-950/30 space-y-3 animate-in fade-in duration-300">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold text-sm">
-                  <Camera className="h-5 w-5 text-red-600" />
-                  <span>Foto Comprobatória da Irregularidade</span>
-                </div>
-                {fotoEvidencia && (
-                  <span className="text-[11px] bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200 px-2 py-0.5 rounded-full font-medium">
-                    Foto anexada ✓
-                  </span>
-                )}
-              </div>
+                        <div className="flex items-center gap-1.5">
+                          <RadioGroupItem value="NAO" id={`${item.id}-nao`} />
+                          <Label htmlFor={`${item.id}-nao`} className="text-xs cursor-pointer text-red-600 font-bold">
+                            Não
+                          </Label>
+                        </div>
 
-              <p className="text-xs text-red-800 dark:text-red-300">
-                O extintor foi reprovado em: <strong>{nomesItensReprovados}</strong>. Tire uma foto ou anexe uma imagem para comprovar a não conformidade para a segurança e auditoria.
-              </p>
-
-              {fotoEvidencia ? (
-                <div className="flex items-center gap-3 bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-red-200">
-                  <div className="relative shrink-0">
-                    <img
-                      src={fotoEvidencia}
-                      alt="Evidência da Irregularidade"
-                      className="h-20 w-24 object-cover rounded border border-red-200"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                      Evidência registrada
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      Imagem pronta para compor o relatório de inspeção.
-                    </p>
-                    <div className="flex gap-2 mt-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs text-red-700 border-red-200 hover:bg-red-50"
-                        onClick={() => setFotoEvidencia(null)}
-                      >
-                        <X className="w-3.5 h-3.5 mr-1" />
-                        Remover Foto
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => cameraInputRef.current?.click()}
-                      >
-                        <Camera className="w-3.5 h-3.5 mr-1" />
-                        Trocar Foto
-                      </Button>
+                        {(item.permiteNa || isCo2) && (
+                          <div className="flex items-center gap-1.5">
+                            <RadioGroupItem value="NA" id={`${item.id}-na`} />
+                            <Label htmlFor={`${item.id}-na`} className="text-xs cursor-pointer text-muted-foreground">
+                              N/A
+                            </Label>
+                          </div>
+                        )}
+                      </RadioGroup>
                     </div>
+
+                    {/* FOTO COMPROBATÓRIA DIRETAMENTE ABAIXO DO ITEM QUANDO MARCAR 'NÃO' */}
+                    {valor === "NAO" && (
+                      <div className="mt-3 pt-3 border-t border-red-200/80 dark:border-red-900/40 space-y-2 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-red-700 dark:text-red-400">
+                            <Camera className="w-4 h-4 text-red-600" />
+                            <span>Comprovar irregularidade com foto:</span>
+                          </div>
+                          {fotoDesteItem && (
+                            <span className="text-[11px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">
+                              Foto comprovada ✓
+                            </span>
+                          )}
+                        </div>
+
+                        {fotoDesteItem ? (
+                          <div className="flex items-center gap-3 bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-red-200 shadow-sm">
+                            <img
+                              src={fotoDesteItem}
+                              alt={`Evidência ${item.label}`}
+                              className="h-16 w-20 object-cover rounded border border-red-200 shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
+                                Foto registrada para este item
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                Evidência salva para o relatório e não conformidade.
+                              </p>
+                              <div className="flex gap-2 mt-1.5">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                                  onClick={() => removerFotoDoItem(item.id)}
+                                >
+                                  <X className="w-3 h-3 mr-1" />
+                                  Remover
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => dispararCamera(item.id)}
+                                >
+                                  <Camera className="w-3 h-3 mr-1" />
+                                  Trocar
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-9 text-xs border-red-300 hover:bg-red-100/70 text-red-800 dark:text-red-300 font-semibold"
+                              disabled={processandoFoto}
+                              onClick={() => dispararCamera(item.id)}
+                            >
+                              <Camera className="w-3.5 h-3.5 mr-1.5 text-red-600" />
+                              Tirar Foto
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-9 text-xs border-slate-300 hover:bg-slate-100 text-slate-700 dark:text-slate-300 font-semibold"
+                              disabled={processandoFoto}
+                              onClick={() => dispararArquivo(item.id)}
+                            >
+                              <Paperclip className="w-3.5 h-3.5 mr-1.5 text-slate-600" />
+                              Galeria
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                  <input
-                    ref={cameraInputRef}
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={handleFotoSelecionada}
-                  />
-                  <input
-                    ref={arquivoInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFotoSelecionada}
-                  />
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-14 flex items-center justify-center gap-2 border-red-300 hover:bg-red-100 text-red-900 dark:text-red-200 font-semibold"
-                    disabled={processandoFoto}
-                    onClick={() => cameraInputRef.current?.click()}
-                  >
-                    <Camera className="h-5 w-5 text-red-600" />
-                    <span>{processandoFoto ? "Processando..." : "Tirar Foto com a Câmera"}</span>
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-14 flex items-center justify-center gap-2 border-slate-300 hover:bg-slate-100 text-slate-800 dark:text-slate-200 font-semibold"
-                    disabled={processandoFoto}
-                    onClick={() => arquivoInputRef.current?.click()}
-                  >
-                    <Paperclip className="h-5 w-5 text-slate-600" />
-                    <span>Anexar da Galeria</span>
-                  </Button>
-                </div>
-              )}
-
-              {/* OPÇÃO DE NÃO CONFORMIDADE AUTOMÁTICA */}
-              <div className="flex items-center space-x-2 pt-1">
-                <Checkbox
-                  id="chk-gerar-nc"
-                  checked={gerarNaoConformidade}
-                  onCheckedChange={(c) => setGerarNaoConformidade(Boolean(c))}
-                />
-                <Label htmlFor="chk-gerar-nc" className="text-xs font-medium cursor-pointer text-red-900 dark:text-red-200">
-                  Gerar ocorrência de Não Conformidade no painel de Riscos com esta foto
-                </Label>
-              </div>
+                );
+              })}
             </div>
-          )}
 
-          {/* OBSERVAÇÕES */}
-          <div>
-            <Label htmlFor="insp-obs" className="text-xs">Observações do Inspetor</Label>
-            <Textarea
-              id="insp-obs"
-              placeholder="Descreva detalhes observados durante a vistoria..."
-              value={observacoes}
-              onChange={(e) => setObservacoes(e.target.value)}
-              rows={2}
-            />
+            {/* AVISO DE NÃO CONFORMIDADE QUANDO HOUVER ITENS REPROVADOS */}
+            {!isConforme && (
+              <div className="p-3 rounded-lg border border-red-200 bg-red-50/60 dark:bg-red-950/30 space-y-2">
+                <div className="flex items-center gap-2 text-red-800 dark:text-red-300 font-semibold text-xs">
+                  <ShieldAlert className="h-4 w-4 text-red-600" />
+                  <span>{reprovados.length} item(ns) reprovado(s) nesta inspeção</span>
+                </div>
+                <div className="flex items-center space-x-2 pt-0.5">
+                  <Checkbox
+                    id="chk-gerar-nc"
+                    checked={gerarNaoConformidade}
+                    onCheckedChange={(c) => setGerarNaoConformidade(Boolean(c))}
+                  />
+                  <Label htmlFor="chk-gerar-nc" className="text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300">
+                    Gerar ocorrência de Não Conformidade vinculando as fotos registradas
+                  </Label>
+                </div>
+              </div>
+            )}
+
+            {/* OBSERVAÇÕES */}
+            <div>
+              <Label htmlFor="insp-obs" className="text-xs">Observações do Inspetor</Label>
+              <Textarea
+                id="insp-obs"
+                placeholder="Descreva detalhes observados durante a vistoria..."
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                rows={2}
+              />
+            </div>
           </div>
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSalvar}
-            disabled={loading || processandoFoto}
-            className={isConforme ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-red-600 hover:bg-red-700 text-white"}
-          >
-            {loading ? "Registrando..." : isConforme ? "Concluir Inspeção (Aprovado)" : "Registrar com Apontamentos"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSalvar}
+              disabled={loading || processandoFoto}
+              className={isConforme ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-red-600 hover:bg-red-700 text-white"}
+            >
+              {loading ? "Registrando..." : isConforme ? "Concluir Inspeção (Aprovado)" : "Registrar com Apontamentos"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Inputs ocultos compartilhados para captura de câmera e arquivo */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleFotoSelecionada}
+      />
+      <input
+        ref={arquivoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFotoSelecionada}
+      />
+    </>
   );
 }
