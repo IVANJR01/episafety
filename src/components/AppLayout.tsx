@@ -85,6 +85,7 @@ const inspecoesItems: NavItem[] = [
   { path: "/inspecoes-se/dashboard", label: "Dashboard", icon: LayoutDashboard, moduleKey: "inspecoes_se" },
   { path: "/inspecoes-se", label: "Listagem", icon: ClipboardList, moduleKey: "inspecoes_se" },
   { path: "/inspecoes-se/obras", label: "Cadastro de Local", icon: HardHat, moduleKey: "inspecoes_se" },
+  { path: "/extintores", label: "Extintores (NR-23)", icon: Flame, moduleKey: "extintores" },
 ];
 
 const cadastroItems: NavItem[] = [
@@ -178,6 +179,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         || canAccessModule(modulosPermitidos, "rh")
         || canAccessModule(modulosPermitidos, "aso");
     }
+    // Extintores: aceita permissão direta ou herda de inspeções
+    if (moduleKey === "extintores") {
+      return canAccessModule(modulosPermitidos, "extintores")
+        || canAccessModule(modulosPermitidos, "inspecoes_se");
+    }
     return canAccessModule(modulosPermitidos, moduleKey);
   };
 
@@ -202,7 +208,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path) || location.pathname.startsWith("/arquivo-digital") || location.pathname.startsWith("/documentacao-sst") || location.pathname.startsWith("/programas") || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat") || location.pathname.startsWith("/aso") || location.pathname.startsWith("/ppp") || location.pathname.startsWith("/central-ppp");
   const isTreinamentosActive = visibleTreinamentosItems.some((i) => location.pathname === i.path);
   const isEsocialActive = visibleEsocialItems.some((i) => location.pathname.startsWith(i.path));
-  const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path);
+  const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path) || location.pathname.startsWith("/extintores");
   const isDigitalActive = location.pathname.startsWith("/arquivo-digital");
   const isDocumentacaoActive = location.pathname.startsWith("/documentacao-sst") || location.pathname.startsWith("/programas") || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat") || location.pathname.startsWith("/aso") || location.pathname.startsWith("/ppp") || location.pathname.startsWith("/central-ppp");
   const isComercialActive = location.pathname.startsWith("/comercial");

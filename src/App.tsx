@@ -99,6 +99,8 @@ import LaudoPericulosidade from "@/pages/programas/LaudoPericulosidade";
 import DocumentacaoSst from "@/pages/DocumentacaoSst";
 import ArquivoDigitalModule from "@/pages/arquivo-digital/ArquivoDigitalModule";
 import SstExpressDashboard from "@/pages/sst-express/SstExpressDashboard";
+import ExtintoresDashboard from "@/pages/extintores/ExtintoresDashboard";
+import ExtintorQrView from "@/pages/extintores/ExtintorQrView";
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
 import AdminLayout from "@/components/AdminLayout";
@@ -319,6 +321,8 @@ function ProtectedRoute() {
         <Route path="/inspecoes-se" element={<InspecoesSE />} />
         <Route path="/inspecoes-se/dashboard" element={<InspecoesDashboard />} />
         <Route path="/inspecoes-se/obras" element={<Obras />} />
+        <Route path="/extintores" element={<ExtintoresDashboard />} />
+        <Route path="/extintores/qr/:qrToken" element={<ExtintorQrView />} />
         <Route path="/treinamentos" element={<Navigate to="/arquivo-digital" replace />} />
         <Route path="/exames" element={<Navigate to="/aso" replace />} />
         <Route path="/aso" element={<AsoModule />} />
