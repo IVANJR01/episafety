@@ -108,6 +108,17 @@ export function salvarInspecaoLocal(empresaId: string, inspecao: any): any {
   }
 }
 
+export function carregarInspecoesLocais(empresaId: string): any[] {
+  if (typeof window === "undefined" || !empresaId) return [];
+  try {
+    const key = `episafety_ext_inspecoes_${empresaId}`;
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function salvarManutencaoLocal(empresaId: string, manutencao: any, atualizacaoExtintor?: any): any {
   if (typeof window === "undefined" || !empresaId) return manutencao;
   try {
