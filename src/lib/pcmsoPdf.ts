@@ -3,31 +3,46 @@ import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 import { capaTimbrada, rodapePaginas, fmtDate } from "@/lib/pdfTimbrado";
-import type { PcmsoPdfContext } from "./pcmsoPdfContextoLoader";
+import type {
+  PcmsoPdfContext,
+  PcmsoFichaExameG91,
+  PcmsoRiscoTabelaG91,
+  PcmsoQuadroLaboralItem,
+  PcmsoAtividadeItem,
+} from "./pcmsoPdfContextoLoader";
 
 const LARGURA = 210;
 const ALTURA = 297;
 const MARGEM = 15;
 const DIREITA = LARGURA - MARGEM;
-const LARGURA_UTIL = DIREITA - MARGEM;
+const LARGURA_UTIL = DIREITA - MARGEM; // 180mm
 
-const COR_PRIMARIA: [number, number, number] = [15, 42, 68]; // Azul Marinho Oficial
+const COR_PRIMARIA: [number, number, number] = [15, 42, 68]; // Azul Marinho Oficial Safety
 const COR_SECUNDARIA: [number, number, number] = [242, 169, 0]; // Laranja Safety
 const COR_TEXTO: [number, number, number] = [30, 41, 59];
 const COR_CINZA_CLARO: [number, number, number] = [248, 250, 252];
+const COR_CINZA_TABELA: [number, number, number] = [241, 245, 249];
 const COR_BORDA: [number, number, number] = [203, 213, 225];
+const COR_VERDE: [number, number, number] = [22, 101, 52];
+
+interface SumarioItem {
+  num: string;
+  titulo: string;
+  pagina: number;
+}
 
 interface BuilderState {
   doc: jsPDF;
   y: number;
   paginaAtual: number;
+  sumario: SumarioItem[];
 }
 
 function ensureSpace(b: BuilderState, needed: number) {
-  if (b.y + needed > ALTURA - 22) {
+  if (b.y + needed > ALTURA - 20) {
     b.doc.addPage();
     b.paginaAtual++;
-    b.y = 25; // Deixa espaço para o cabeçalho timbrado oficial
+    b.y = 22;
   }
 }
 
@@ -39,6 +54,14 @@ function desenharTituloSecao(b: BuilderState, num: string, titulo: string) {
   doc.setFontSize(11);
   doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
   doc.text(`${num} – ${titulo.toUpperCase()}`, MARGEM, b.y);
+
+  // Registra no sumário dinâmico
+  b.sumario.push({
+    num,
+    titulo,
+    pagina: b.paginaAtual,
+  });
+
   b.y += 3;
   doc.setDrawColor(COR_SECUNDARIA[0], COR_SECUNDARIA[1], COR_SECUNDARIA[2]);
   doc.setLineWidth(0.8);
@@ -49,7 +72,17 @@ function desenharTituloSecao(b: BuilderState, num: string, titulo: string) {
   b.y += 6;
 }
 
-function desenharParagrafo(b: BuilderState, texto: string, fontSize = 8.5, espacoAbaixo = 4) {
+function desenharSubtitulo(b: BuilderState, texto: string) {
+  ensureSpace(b, 10);
+  const doc = b.doc;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.text(texto, MARGEM, b.y);
+  b.y += 4.5;
+}
+
+function desenharParagrafo(b: BuilderState, texto: string, fontSize = 8, espacoAbaixo = 3.5) {
   const doc = b.doc;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(fontSize);
@@ -60,6 +93,363 @@ function desenharParagrafo(b: BuilderState, texto: string, fontSize = 8.5, espac
   doc.text(linhas, MARGEM, b.y);
   b.y += altura + espacoAbaixo;
 }
+
+// ---------------------------------------------------------------------------
+// DESENHO DAS TABELAS TÉCNICAS NO PADRÃO G91
+// ---------------------------------------------------------------------------
+
+/**
+ * Desenha a Tabela de Quadro Laboral (Seção 04)
+ * Colunas: FICHA DE EXAME | SETOR | FUNÇÃO / CARGO
+ */
+function desenharQuadroLaboral(b: BuilderState, lista: PcmsoQuadroLaboralItem[]) {
+  const doc = b.doc;
+  const colW = [35, 45, 100]; // Total = 180mm
+
+  const desenharCabecalho = () => {
+    ensureSpace(b, 8);
+    doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 7, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text("FICHA DE EXAME", MARGEM + 3, b.y + 4.8);
+    doc.text("SETOR", MARGEM + colW[0] + 3, b.y + 4.8);
+    doc.text("FUNÇÃO / CARGOS", MARGEM + colW[0] + colW[1] + 3, b.y + 4.8);
+    b.y += 7;
+  };
+
+  desenharCabecalho();
+
+  lista.forEach((item, idx) => {
+    const funcoesStr = item.funcoes.join(", ");
+    const funcoesLinhas = doc.splitTextToSize(funcoesStr, colW[2] - 6);
+    const alturaLinha = Math.max(6.5, funcoesLinhas.length * 3.8 + 2.5);
+
+    if (b.y + alturaLinha > ALTURA - 20) {
+      b.doc.addPage();
+      b.paginaAtual++;
+      b.y = 22;
+      desenharCabecalho();
+    }
+
+    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+    doc.setFillColor(idx % 2 === 0 ? 255 : COR_CINZA_TABELA[0], idx % 2 === 0 ? 255 : COR_CINZA_TABELA[1], idx % 2 === 0 ? 255 : COR_CINZA_TABELA[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaLinha, "FD");
+
+    // Divisórias verticais
+    doc.line(MARGEM + colW[0], b.y, MARGEM + colW[0], b.y + alturaLinha);
+    doc.line(MARGEM + colW[0] + colW[1], b.y, MARGEM + colW[0] + colW[1], b.y + alturaLinha);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+    doc.text(item.fichaNumero, MARGEM + 3, b.y + 4.5);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+    doc.text(doc.splitTextToSize(item.setor, colW[1] - 6), MARGEM + colW[0] + 3, b.y + 4.5);
+
+    doc.setFont("helvetica", "normal");
+    doc.text(funcoesLinhas, MARGEM + colW[0] + colW[1] + 3, b.y + 4.5);
+
+    b.y += alturaLinha;
+  });
+
+  b.y += 5;
+}
+
+/**
+ * Desenha a Tabela de Descrição das Atividades (Seção 07)
+ * Colunas: SETOR | FUNÇÃO | DESCRIÇÃO DAS ATIVIDADES
+ */
+function desenharTabelaAtividades(b: BuilderState, lista: PcmsoAtividadeItem[]) {
+  const doc = b.doc;
+  const colW = [35, 45, 100]; // Total = 180mm
+
+  const desenharCabecalho = () => {
+    ensureSpace(b, 8);
+    doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 7, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text("SETOR", MARGEM + 3, b.y + 4.8);
+    doc.text("FUNÇÃO", MARGEM + colW[0] + 3, b.y + 4.8);
+    doc.text("DESCRIÇÃO DAS ATIVIDADES", MARGEM + colW[0] + colW[1] + 3, b.y + 4.8);
+    b.y += 7;
+  };
+
+  desenharCabecalho();
+
+  lista.forEach((item, idx) => {
+    const setorLinhas = doc.splitTextToSize(item.setor, colW[0] - 6);
+    const funcaoLinhas = doc.splitTextToSize(item.funcao, colW[1] - 6);
+    const descLinhas = doc.splitTextToSize(item.descricao || "Executar as tarefas inerentes à função conforme diretrizes operacionais.", colW[2] - 6);
+
+    const maxLinhas = Math.max(setorLinhas.length, funcaoLinhas.length, descLinhas.length);
+    const alturaLinha = Math.max(7, maxLinhas * 3.8 + 3);
+
+    if (b.y + alturaLinha > ALTURA - 20) {
+      b.doc.addPage();
+      b.paginaAtual++;
+      b.y = 22;
+      desenharCabecalho();
+    }
+
+    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+    doc.setFillColor(idx % 2 === 0 ? 255 : COR_CINZA_TABELA[0], idx % 2 === 0 ? 255 : COR_CINZA_TABELA[1], idx % 2 === 0 ? 255 : COR_CINZA_TABELA[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaLinha, "FD");
+
+    // Divisórias verticais
+    doc.line(MARGEM + colW[0], b.y, MARGEM + colW[0], b.y + alturaLinha);
+    doc.line(MARGEM + colW[0] + colW[1], b.y, MARGEM + colW[0] + colW[1], b.y + alturaLinha);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+    doc.text(setorLinhas, MARGEM + 3, b.y + 4.5);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+    doc.text(funcaoLinhas, MARGEM + colW[0] + 3, b.y + 4.5);
+
+    doc.setFont("helvetica", "normal");
+    doc.text(descLinhas, MARGEM + colW[0] + colW[1] + 3, b.y + 4.5);
+
+    b.y += alturaLinha;
+  });
+
+  b.y += 5;
+}
+
+/**
+ * Desenha a Tabela de Riscos em 5 Colunas Técnicas (Padrão G91)
+ * Agente / Perigo | Fonte Geradora | Danos à saúde | Meios de Propagação | Formas de Exposição
+ */
+function desenharTabelaRiscos5Colunas(
+  b: BuilderState,
+  tituloGrupo: string,
+  corGrupo: [number, number, number],
+  riscos: PcmsoRiscoTabelaG91[]
+) {
+  const doc = b.doc;
+  const colW = [35, 40, 40, 32, 33]; // Total = 180mm
+
+  ensureSpace(b, 14);
+
+  // Faixa do Grupo de Risco
+  doc.setFillColor(corGrupo[0], corGrupo[1], corGrupo[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.5, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text(tituloGrupo.toUpperCase(), MARGEM + 3, b.y + 4);
+  b.y += 5.5;
+
+  // Cabeçalho da Tabela
+  doc.setFillColor(COR_CINZA_TABELA[0], COR_CINZA_TABELA[1], COR_CINZA_TABELA[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "F");
+  doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "S");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.5);
+  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+
+  let cx = MARGEM;
+  doc.text("AGENTE / PERIGO", cx + 2, b.y + 4.2);
+  cx += colW[0];
+  doc.line(cx, b.y, cx, b.y + 6);
+  doc.text("FONTE GERADORA", cx + 2, b.y + 4.2);
+  cx += colW[1];
+  doc.line(cx, b.y, cx, b.y + 6);
+  doc.text("POSSÍVEIS DANOS À SAÚDE", cx + 2, b.y + 4.2);
+  cx += colW[2];
+  doc.line(cx, b.y, cx, b.y + 6);
+  doc.text("MEIOS DE PROPAGAÇÃO", cx + 2, b.y + 4.2);
+  cx += colW[3];
+  doc.line(cx, b.y, cx, b.y + 6);
+  doc.text("FORMA DE EXPOSIÇÃO", cx + 2, b.y + 4.2);
+  b.y += 6;
+
+  // Linhas de Dados
+  const listaParaRender = riscos.length > 0 ? riscos : [
+    {
+      agente: "Ausência de Fator de Risco",
+      fonte: "Não se aplica",
+      danos: "Não se aplica",
+      meioPropagacao: "Não se aplica",
+      formaExposicao: "Não se aplica",
+    },
+  ];
+
+  listaParaRender.forEach((r, idx) => {
+    const l1 = doc.splitTextToSize(r.agente, colW[0] - 4);
+    const l2 = doc.splitTextToSize(r.fonte, colW[1] - 4);
+    const l3 = doc.splitTextToSize(r.danos, colW[2] - 4);
+    const l4 = doc.splitTextToSize(r.meioPropagacao, colW[3] - 4);
+    const l5 = doc.splitTextToSize(r.formaExposicao, colW[4] - 4);
+
+    const maxLinhas = Math.max(l1.length, l2.length, l3.length, l4.length, l5.length);
+    const alturaLinha = Math.max(6, maxLinhas * 3.4 + 2.5);
+
+    ensureSpace(b, alturaLinha);
+
+    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+    doc.setFillColor(idx % 2 === 0 ? 255 : COR_CINZA_CLARO[0], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[1], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaLinha, "FD");
+
+    // Divisórias verticais
+    let xSep = MARGEM;
+    for (let c = 0; c < colW.length - 1; c++) {
+      xSep += colW[c];
+      doc.line(xSep, b.y, xSep, b.y + alturaLinha);
+    }
+
+    doc.setFont("helvetica", r.agente === "Ausência de Fator de Risco" ? "italic" : "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+
+    let xCol = MARGEM;
+    doc.text(l1, xCol + 2, b.y + 3.8);
+    xCol += colW[0];
+    doc.setFont("helvetica", "normal");
+    doc.text(l2, xCol + 2, b.y + 3.8);
+    xCol += colW[1];
+    doc.text(l3, xCol + 2, b.y + 3.8);
+    xCol += colW[2];
+    doc.text(l4, xCol + 2, b.y + 3.8);
+    xCol += colW[3];
+    doc.text(l5, xCol + 2, b.y + 3.8);
+
+    b.y += alturaLinha;
+  });
+
+  b.y += 2.5;
+}
+
+/**
+ * Desenha a Matriz de Exames Médicos Ocupacionais no Padrão G91
+ * Código | Exame Ocupacional | ADM | Periódico | RT | MDF | DEM
+ */
+function desenharMatrizExames(b: BuilderState, exames: PcmsoFichaExameG91["exames"]) {
+  const doc = b.doc;
+  const colW = [18, 72, 18, 18, 18, 18, 18]; // Total = 180mm
+
+  ensureSpace(b, 14);
+
+  // Faixa Superior
+  doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.5, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("EXAMES MÉDICOS OCUPACIONAIS E COMPLEMENTARES OBRIGATÓRIOS", MARGEM + 3, b.y + 4);
+  b.y += 5.5;
+
+  // Cabeçalho da Matriz
+  doc.setFillColor(COR_CINZA_TABELA[0], COR_CINZA_TABELA[1], COR_CINZA_TABELA[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "F");
+  doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "S");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.5);
+  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+
+  let cx = MARGEM;
+  doc.text("CÓDIGO", cx + colW[0] / 2, b.y + 4.2, { align: "center" });
+  cx += colW[0];
+  doc.line(cx, b.y, cx, b.y + 6);
+  doc.text("EXAME OCUPACIONAL", cx + 3, b.y + 4.2);
+  cx += colW[1];
+  doc.line(cx, b.y, cx, b.y + 6);
+  doc.text("ADM", cx + colW[2] / 2, b.y + 4.2, { align: "center" });
+  cx += colW[2];
+  doc.line(cx, b.y, cx, b.y + 6);
+  doc.text("PERIÓDICO", cx + colW[3] / 2, b.y + 4.2, { align: "center" });
+  cx += colW[3];
+  doc.line(cx, b.y, cx, b.y + 6);
+  doc.text("RT", cx + colW[4] / 2, b.y + 4.2, { align: "center" });
+  cx += colW[4];
+  doc.line(cx, b.y, cx, b.y + 6);
+  doc.text("MDF", cx + colW[5] / 2, b.y + 4.2, { align: "center" });
+  cx += colW[5];
+  doc.line(cx, b.y, cx, b.y + 6);
+  doc.text("DEM", cx + colW[6] / 2, b.y + 4.2, { align: "center" });
+  b.y += 6;
+
+  // Linhas de Exames
+  exames.forEach((ex, idx) => {
+    const nomeLinhas = doc.splitTextToSize(ex.nome, colW[1] - 6);
+    const alturaLinha = Math.max(6, nomeLinhas.length * 3.5 + 2.5);
+
+    ensureSpace(b, alturaLinha);
+
+    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+    doc.setFillColor(idx % 2 === 0 ? 255 : COR_CINZA_CLARO[0], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[1], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaLinha, "FD");
+
+    // Divisórias verticais
+    let xSep = MARGEM;
+    for (let c = 0; c < colW.length - 1; c++) {
+      xSep += colW[c];
+      doc.line(xSep, b.y, xSep, b.y + alturaLinha);
+    }
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+
+    let xCol = MARGEM;
+    // Código
+    doc.setFont("helvetica", "bold");
+    doc.text(ex.codigo || "0295", xCol + colW[0] / 2, b.y + 4, { align: "center" });
+    xCol += colW[0];
+
+    // Nome
+    doc.setFont("helvetica", "bold");
+    doc.text(nomeLinhas, xCol + 3, b.y + 4);
+    xCol += colW[1];
+
+    // Colunas de Periodicidade com realce
+    const pintarCelula = (val: string, largura: number) => {
+      if (val === "SIM" || val === "Anual" || val.includes("meses")) {
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(COR_VERDE[0], COR_VERDE[1], COR_VERDE[2]);
+      } else {
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(148, 163, 184); // cinza suave para traço "—"
+      }
+      doc.text(val, xCol + largura / 2, b.y + 4, { align: "center" });
+      xCol += largura;
+    };
+
+    pintarCelula(ex.adm, colW[2]);
+    pintarCelula(ex.periodico, colW[3]);
+    pintarCelula(ex.rt, colW[4]);
+    pintarCelula(ex.mdf, colW[5]);
+    pintarCelula(ex.dem, colW[6]);
+
+    b.y += alturaLinha;
+  });
+
+  // Legenda explicativa normativa logo abaixo da tabela
+  ensureSpace(b, 6);
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(6.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(
+    "Legenda: ADM = Admissional | Periódico = Anual (conforme NR-07) | RT = Retorno ao Trabalho | MDF = Mudança de Riscos Ocupacionais | DEM = Demissional",
+    MARGEM + 2,
+    b.y + 4
+  );
+  b.y += 6;
+}
+
+// ---------------------------------------------------------------------------
+// GERADOR PRINCIPAL DO PCMSO COMPLETO
+// ---------------------------------------------------------------------------
 
 export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: string }): Promise<jsPDF> {
   const doc = new jsPDF({
@@ -83,7 +473,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     meta: `PCMSO v${pcmso.versao || 1}`,
     sigla: "PCMSO",
     titulo: "Programa de Controle Médico de Saúde Ocupacional",
-    subtitulo: "NR-07",
+    subtitulo: "NR-07 — Portaria SEPRT n.º 6.734/2020",
     nota: pcmso.data_vigencia_inicio && pcmso.data_vigencia_fim
       ? `Vigência: ${vigenciaInicio} a ${vigenciaFim}`
       : null,
@@ -103,95 +493,136 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   });
 
   // =========================================================================
-  // PÁGINA 2: FOLHA DE ROSTO E SUMÁRIO COMPLETO
+  // PÁGINA 2: CONTROLE DE REVISÕES E DADOS CADASTRAIS (PADRÃO G91)
   // =========================================================================
   doc.addPage();
   const b: BuilderState = {
     doc,
-    y: 25,
+    y: 22,
     paginaAtual: 2,
+    sumario: [],
   };
 
-  // Tabela superior de vigência
+  // Faixa de Vigência no Topo
   doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
   doc.setLineWidth(0.3);
   doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
-  doc.rect(MARGEM, b.y, LARGURA_UTIL, 10, "FD");
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-  doc.text(`INÍCIO DA VALIDADE: ${vigenciaInicio}`, MARGEM + 5, b.y + 6.5);
-  doc.text(`REVISAR ATÉ: ${vigenciaFim}`, MARGEM + 105, b.y + 6.5);
-  b.y += 12;
-
-  // Bloco de Identificação Detalhado
-  const dadosId: [string, string][] = [
-    ["Empregador:", `${empresa.nome} (Grau de Risco: ${empresa.grau_risco || "2"})`],
-    ["Endereço:", empresa.endereco_completo || "—"],
-    ["CNPJ:", `${empresa.cnpj || "—"}          Telefone: ${empresa.telefone || "—"}`],
-    ["CNAE:", `(${empresa.cnae_principal || "—"}) ${empresa.cnae_descricao || "Atividade Econômica"}`],
-    ["Autor / Médico Resp.:", `${medicoCoordenador.nome}          CRM: ${medicoCoordenador.crm} / ${medicoCoordenador.uf}`],
-  ];
-
-  doc.setFillColor(255, 255, 255);
-  doc.rect(MARGEM, b.y, LARGURA_UTIL, dadosId.length * 7.5, "FD");
-  let iy = b.y;
-  dadosId.forEach(([rotulo, val]) => {
-    doc.line(MARGEM, iy + 7.5, DIREITA, iy + 7.5);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text(rotulo, MARGEM + 3, iy + 5);
-
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    doc.text(val, MARGEM + 40, iy + 5, { maxWidth: 135 });
-    iy += 7.5;
-  });
-  b.y = iy + 8;
-
-  // Sumário das 15 Seções do PCMSO Oficial
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-  doc.text("SUMÁRIO", MARGEM, b.y);
-  b.y += 3;
-  doc.setDrawColor(COR_SECUNDARIA[0], COR_SECUNDARIA[1], COR_SECUNDARIA[2]);
-  doc.setLineWidth(0.6);
-  doc.line(MARGEM, b.y, MARGEM + 30, b.y);
-  b.y += 5;
-
-  const sumarioItens = [
-    "01 – APRESENTAÇÃO",
-    "02 – LEGISLAÇÕES APLICADAS",
-    "03 – CONSIDERAÇÕES GERAIS SOBRE O PCMSO",
-    "04 – RESPONSABILIDADES DA EMPRESA",
-    "05 – EXAMES E PLANEJAMENTO CONFORME NR-7",
-    "06 – DEFINIÇÕES SOBRE O ASO - ATESTADO DE SAÚDE OCUPACIONAL",
-    "07 – MÉDICO RESPONSÁVEL E RELATÓRIO ANALÍTICO MEDIANTE NR-7",
-    "08 – TELEFONES ÚTEIS EM CASO DE EMERGÊNCIA",
-    "09 – CAIXA DE PRIMEIROS SOCORROS",
-    "10 – AMBIENTES, CARGOS, RISCOS OCUPACIONAIS E EXAMES CLÍNICOS",
-    "11 – MÉDICOS EXAMINADORES",
-    "12 – CONSIDERAÇÕES FINAIS",
-    "13 – TERMO DE COMPROMISSO",
-    "14 – REFERÊNCIA BIBLIOGRÁFICA",
-    "15 – CRONOGRAMA DE AÇÕES",
-  ];
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 9, "FD");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-  sumarioItens.forEach((item) => {
-    doc.text(item, MARGEM + 2, b.y);
-    b.y += 5;
-  });
+  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.text(`INÍCIO DA VALIDADE: ${vigenciaInicio}`, MARGEM + 5, b.y + 6);
+  doc.text(`REVISAR ATÉ: ${vigenciaFim}`, MARGEM + 105, b.y + 6);
+  b.y += 12;
 
-  // Quebra para iniciar a Seção 01 na página seguinte com layout limpo
+  // Bloco 1: Dados da Empresa Contratante
+  doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text("DADOS DA EMPRESA / UNIDADE OPERACIONAL", MARGEM + 3, b.y + 4.2);
+  b.y += 6;
+
+  const dadosEmpresaTabela: [string, string][] = [
+    ["Razão Social:", empresa.nome || "—"],
+    ["Nome Fantasia:", empresa.nome_fantasia || empresa.nome || "—"],
+    ["CNPJ:", `${empresa.cnpj || "—"}          Grau de Risco: 0${empresa.grau_risco || 2}`],
+    ["Endereço:", `${empresa.endereco_completo || [empresa.logradouro, empresa.numero, empresa.bairro].filter(Boolean).join(", ") || "—"}`],
+    ["Cidade / UF / CEP:", `${empresa.cidade || "Alto Santo"} / ${empresa.uf || "CE"} — CEP: ${empresa.cep || "—"}`],
+    ["CNAE Principal:", `${empresa.cnae_principal || "—"} - ${empresa.cnae_descricao || "Atividade Principal"}`],
+    ["Telefone / Contato:", `${empresa.telefone || "(88) 99653-6252"}          E-mail: ${empresa.email || "—"}`],
+  ];
+
+  doc.setFillColor(255, 255, 255);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, dadosEmpresaTabela.length * 6.5, "FD");
+  dadosEmpresaTabela.forEach(([rot, val]) => {
+    doc.line(MARGEM, b.y + 6.5, DIREITA, b.y + 6.5);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+    doc.text(rot, MARGEM + 3, b.y + 4.5);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+    doc.text(val, MARGEM + 42, b.y + 4.5, { maxWidth: 135 });
+    b.y += 6.5;
+  });
+  b.y += 4;
+
+  // Bloco 2: Dados da Empresa Elaboradora
+  doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text("EMPRESA ASSESSORA / RESPONSÁVEL TÉCNICA PELA ELABORAÇÃO", MARGEM + 3, b.y + 4.2);
+  b.y += 6;
+
+  const dadosAssessoria: [string, string][] = [
+    ["Razão Social:", "SAFETY SOLUÇÕES EM ENGENHARIA DE SEGURANÇA E MEDICINA DO TRABALHO LTDA"],
+    ["CNPJ:", "33.725.753/0001-90          Telefone: (88) 99653-6252"],
+    ["Endereço:", "Rua Cel. Vicente Saraiva, 1147 - Sala 04 - Centro - Alto Santo / CE"],
+    ["Médico Coordenador:", `${medicoCoordenador.nome} — CRM/${medicoCoordenador.uf} ${medicoCoordenador.crm}`],
+  ];
+
+  doc.setFillColor(255, 255, 255);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, dadosAssessoria.length * 6.5, "FD");
+  dadosAssessoria.forEach(([rot, val]) => {
+    doc.line(MARGEM, b.y + 6.5, DIREITA, b.y + 6.5);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+    doc.text(rot, MARGEM + 3, b.y + 4.5);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+    doc.text(val, MARGEM + 42, b.y + 4.5, { maxWidth: 135 });
+    b.y += 6.5;
+  });
+  b.y += 4;
+
+  // Bloco 3: Histórico de Revisões
+  doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text("CONTROLE DE REVISÕES DO DOCUMENTO", MARGEM + 3, b.y + 4.2);
+  b.y += 6;
+
+  doc.setFillColor(COR_CINZA_TABELA[0], COR_CINZA_TABELA[1], COR_CINZA_TABELA[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "FD");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.text("REVISÃO", MARGEM + 3, b.y + 4.2);
+  doc.text("DATA", MARGEM + 25, b.y + 4.2);
+  doc.text("DESCRIÇÃO DA REVISÃO / ALTERAÇÕES", MARGEM + 55, b.y + 4.2);
+  b.y += 6;
+
+  doc.setFillColor(255, 255, 255);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 7, "FD");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+  doc.text(`REV. ${String(Math.max(0, (pcmso.versao || 1) - 1)).padStart(2, "0")}`, MARGEM + 3, b.y + 4.8);
+  doc.text(vigenciaInicio, MARGEM + 25, b.y + 4.8);
+  doc.text("Emissão do Programa de Controle Médico de Saúde Ocupacional.", MARGEM + 55, b.y + 4.8);
+  b.y += 12;
+
+  // =========================================================================
+  // PÁGINA 3: SUMÁRIO OFICIAL (RESERVADA PARA DESENHO DINÂMICO NO FINAL)
+  // =========================================================================
   doc.addPage();
-  b.paginaAtual++;
-  b.y = 25;
+  b.paginaAtual = 3;
+  const paginaDoSumario = 3;
+
+  // Quebra para iniciar o conteúdo na Página 4
+  doc.addPage();
+  b.paginaAtual = 4;
+  b.y = 22;
 
   // =========================================================================
   // SEÇÃO 01: APRESENTAÇÃO
@@ -199,11 +630,11 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   desenharTituloSecao(b, "01", "Apresentação");
   desenharParagrafo(
     b,
-    "O Programa de Controle Médico de Saúde Ocupacional – PCMSO é um programa médico de atenção à saúde do trabalhador, implementado pela Organização, visando a prevenção e/ou o diagnóstico precoce de danos causados à saúde por agentes agressivos presentes no ambiente de trabalho. O programa deve considerar todos os aspectos e questões que incidem na saúde dos trabalhadores, tanto no plano individual quanto coletivo."
+    "O Programa de Controle Médico de Saúde Ocupacional – PCMSO é um programa médico de atenção à saúde do trabalhador, implementado pela Organização, visando a prevenção, o rastreamento e o diagnóstico precoce dos agravos à saúde relacionados ao trabalho, inclusive de natureza subclínica, além da constatação da existência de casos de doenças profissionais ou danos irreversíveis à saúde dos empregados."
   );
   desenharParagrafo(
     b,
-    "A Norma Regulamentadora 07 estabelece diretrizes e requisitos para o desenvolvimento do Programa de Controle Médico de Saúde Ocupacional - PCMSO nas organizações, com o objetivo de proteger e preservar a saúde de seus empregados em relação aos riscos ocupacionais, conforme avaliação de riscos do Programa de Gerenciamento de Risco - PGR da organização."
+    "A Norma Regulamentadora 07 (NR-07) do Ministério do Trabalho e Previdência estabelece as diretrizes e requisitos para o desenvolvimento do PCMSO nas organizações, com o objetivo precípuo de proteger e preservar a saúde de seus trabalhadores em relação aos riscos ocupacionais identificados e classificados no Programa de Gerenciamento de Riscos - PGR da organização."
   );
   desenharParagrafo(
     b,
@@ -216,583 +647,580 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   desenharTituloSecao(b, "02", "Legislações Aplicadas");
   desenharParagrafo(
     b,
-    "O Programa de Controle Médico de Saúde Ocupacional – PCMSO tem sua origem e vigência baseado nas seguintes legislações:"
+    "O Programa de Controle Médico de Saúde Ocupacional – PCMSO tem sua origem e vigência alicerçados no ordenamento jurídico brasileiro de Segurança e Medicina do Trabalho:"
   );
   desenharParagrafo(
     b,
-    "• A Lei N. 6.514, de 22 de dezembro de 1977 – Alteração do Capítulo V do Título II da Consolidação das Leis do Trabalho, aprovado pelo Decreto-Lei N. 5.452 de 1 de Maio de 1943: Incumbe ao Ministério do Trabalho estabelecer normas, coordenar, orientar e supervisionar a fiscalização em todo o Território Nacional na matéria de Segurança e Medicina do Trabalho."
+    "• Lei Federal N.º 6.514, de 22 de dezembro de 1977 – Altera o Capítulo V do Título II da Consolidação das Leis do Trabalho (CLT), incumbindo ao Ministério do Trabalho estabelecer preceitos e normas relativas à segurança e medicina do trabalho em todo o território nacional."
   );
   desenharParagrafo(
     b,
-    "• Portaria N. 3.214, de 08 de junho de 1978 – Aprova as Normas Regulamentadoras – NRs – relativas à Segurança e Medicina do Trabalho."
+    "• Portaria N.º 3.214, de 08 de junho de 1978 – Aprova as Normas Regulamentadoras (NRs) de Segurança e Saúde no Trabalho."
   );
   desenharParagrafo(
     b,
-    "• A Portaria SEPRT n.º 6.734, de 10 de março de 2020, estabelece a nova NR 7 - PROGRAMA DE CONTROLE MÉDICO DE SAÚDE OCUPACIONAL, regulamentando todo o processo de desenvolvimento e execução do PCMSO."
+    "• Portaria SEPRT N.º 6.734, de 09 de março de 2020 – Estabelece o novo texto da Norma Regulamentadora N.º 07 (PCMSO), em vigor a partir de 03 de janeiro de 2022, promovendo a integração direta ao PGR da NR-01."
   );
   desenharParagrafo(
     b,
-    "Este documento está atualizado de acordo com a versão mais recente da NR-7 (Portaria SEPRT n.º 6.734/2020, que passou a vigorar em 03 de janeiro de 2022). Os parâmetros e diretrizes deste PCMSO estão plenamente harmonizados com o Inventário de Riscos do PGR (NR-01) da organização."
+    "• Portaria SEPRT N.º 6.730, de 09 de março de 2020 – Aprova a nova redação da Norma Regulamentadora N.º 01 (Disposições Gerais e Gerenciamento de Riscos Ocupacionais - PGR/GRO)."
   );
 
   // =========================================================================
-  // SEÇÃO 03: CONSIDERAÇÕES GERAIS SOBRE O PCMSO
+  // SEÇÃO 03: MÉDICO COORDENADOR
   // =========================================================================
-  desenharTituloSecao(b, "03", "Considerações Gerais sobre o PCMSO");
+  desenharTituloSecao(b, "03", "Médico Coordenador do PCMSO");
   desenharParagrafo(
     b,
-    "O PCMSO é parte integrante do conjunto mais amplo de iniciativas da organização no campo da saúde de seus empregados, devendo estar harmonizado com o disposto nas demais Normas Regulamentadoras. São diretrizes do PCMSO:"
+    "Em atendimento ao subitem 7.5.11 da NR-07, a organização designou o seguinte Médico do Trabalho para a coordenação, planejamento e execução do PCMSO:"
+  );
+
+  ensureSpace(b, 30);
+  doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+  doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 24, "FD");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.text("MÉDICO DO TRABALHO COORDENADOR:", MARGEM + 4, b.y + 6);
+  doc.text("REGISTRO NO CONSELHO REGIONAL:", MARGEM + 4, b.y + 12);
+  doc.text("EMPRESA ASSESSORA / CONVÊNIO:", MARGEM + 4, b.y + 18);
+
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+  doc.text(`${medicoCoordenador.nome}`, MARGEM + 65, b.y + 6);
+  doc.text(`CRM/${medicoCoordenador.uf} ${medicoCoordenador.crm} - Especialista em Medicina do Trabalho`, MARGEM + 65, b.y + 12);
+  doc.text("SAFETY SOLUÇÕES EM ENGENHARIA DE SEGURANÇA E MEDICINA DO TRABALHO", MARGEM + 65, b.y + 18, { maxWidth: 110 });
+  b.y += 28;
+
+  // =========================================================================
+  // SEÇÃO 04: QUADRO LABORAL (ESTRUTURA G91)
+  // =========================================================================
+  desenharTituloSecao(b, "04", "Quadro Laboral da Empresa");
+  desenharParagrafo(
+    b,
+    "O quadro laboral a seguir consolida os setores operacionais e administrativos da empresa, vinculando cada função/cargo à sua respectiva Ficha de Exame e procedimentos de monitoramento ocupacional:"
+  );
+
+  desenharQuadroLaboral(b, ctx.quadroLaboral);
+
+  // =========================================================================
+  // SEÇÃO 05: CONSIDERAÇÕES GERAIS SOBRE O PCMSO
+  // =========================================================================
+  desenharTituloSecao(b, "05", "Considerações Gerais sobre o PCMSO");
+  desenharParagrafo(
+    b,
+    "O PCMSO é parte integrante do conjunto mais amplo de iniciativas da organização no campo da saúde de seus empregados, devendo estar harmonizado com o disposto nas demais Normas Regulamentadoras. São diretrizes fundamentais do PCMSO:"
   );
 
   const diretrizes = [
-    "a) rastrear e detectar precocemente os agravos à saúde relacionados ao trabalho;",
-    "b) detectar possíveis exposições excessivas a agentes nocivos ocupacionais;",
-    "c) definir a aptidão de cada empregado para exercer suas funções ou tarefas determinadas;",
-    "d) subsidiar a implantação e o monitoramento da eficácia das medidas de prevenção adotadas na organização;",
-    "e) subsidiar análises epidemiológicas e estatísticas sobre os agravos à saúde e sua relação com os riscos ocupacionais;",
-    "f) subsidiar decisões sobre o afastamento de empregados de situações de trabalho que possam comprometer sua saúde;",
-    "g) subsidiar a emissão de notificações de agravos relacionados ao trabalho, de acordo com a regulamentação pertinente;",
-    "h) subsidiar o encaminhamento de empregados à Previdência Social;",
-    "i) acompanhar de forma diferenciada o empregado cujo estado de saúde possa ser especialmente afetado pelos riscos ocupacionais;",
-    "j) subsidiar a Previdência Social nas ações de reabilitação profissional;",
-    "k) subsidiar ações de readaptação profissional;",
-    "l) controlar a imunização ativa dos empregados, relacionada a riscos ocupacionais, sempre que houver recomendação do Ministério da Saúde.",
+    "a) Rastrear e detectar precocemente os agravos à saúde relacionados ao trabalho;",
+    "b) Detectar possíveis exposições excessivas a agentes nocivos ocupacionais;",
+    "c) Definir a aptidão de cada empregado para exercer suas funções ou tarefas determinadas;",
+    "d) Subsidiar a implantação e o monitoramento da eficácia das medidas de prevenção adotadas na organização;",
+    "e) Subsidiar análises epidemiológicas e estatísticas sobre os agravos à saúde e sua relação com os riscos ocupacionais;",
+    "f) Subsidiar decisões sobre o afastamento de empregados de situações de trabalho que possam comprometer sua saúde;",
+    "g) Subsidiar a emissão de notificações de agravos relacionados ao trabalho, de acordo com a regulamentação pertinente;",
+    "h) Subsidiar o encaminhamento de empregados à Previdência Social;",
+    "i) Acompanhar de forma diferenciada o empregado cujo estado de saúde possa ser especialmente afetado pelos riscos ocupacionais;",
+    "j) Subsidiar ações de readaptação e reabilitação profissional;",
+    "k) Controlar a imunização ativa dos empregados, relacionada a riscos ocupacionais, conforme recomendação do Ministério da Saúde.",
   ];
-  diretrizes.forEach((d) => desenharParagrafo(b, d, 8, 2.2));
+  diretrizes.forEach((d) => desenharParagrafo(b, d, 7.5, 2.2));
 
   desenharParagrafo(
     b,
-    "O PCMSO inclui ações de vigilância passiva da saúde ocupacional (demanda espontânea) e vigilância ativa (exames dirigidos com foco em sinais e sintomas de agravos à saúde ocupacional). O PCMSO não tem caráter de seleção de pessoal.",
-    8.5,
-    4
-  );
-
-  // =========================================================================
-  // SEÇÃO 04: RESPONSABILIDADES DA EMPRESA
-  // =========================================================================
-  desenharTituloSecao(b, "04", "Responsabilidades da Empresa");
-  desenharParagrafo(
-    b,
-    "Compete ao empregador: garantir a elaboração e efetiva implantação do PCMSO; custear sem ônus para o empregado todos os procedimentos e exames relacionados ao programa; indicar médico do trabalho responsável pelo PCMSO."
-  );
-  desenharParagrafo(
-    b,
-    "Em caso de substituição do médico responsável pelo PCMSO, a organização deve garantir que os prontuários médicos sejam formalmente transferidos para seu sucessor. O prontuário do empregado deve ser mantido pela organização, no mínimo, por 20 (vinte) anos após o seu desligamento, exceto em caso de previsão diversa constante nos Anexos da NR-07."
-  );
-
-  // =========================================================================
-  // SEÇÃO 05: EXAMES E PLANEJAMENTO CONFORME NR-7
-  // =========================================================================
-  desenharTituloSecao(b, "05", "Exames e Planejamento conforme NR-7");
-  desenharParagrafo(
-    b,
-    "O PCMSO inclui a realização obrigatória dos exames médicos ocupacionais nas seguintes modalidades: a) Admissional; b) Periódico; c) Retorno ao trabalho; d) Mudança de riscos ocupacionais; e) Demissional."
-  );
-  desenharParagrafo(
-    b,
-    "Periodicidade estabelecida pela NR-07:\n" +
-      "• Admissional: realizado antes que o empregado assuma suas atividades.\n" +
-      "• Periódico: a cada 1 ano para empregados expostos a riscos ocupacionais identificados e classificados no PGR ou portadores de doenças crônicas; a cada 2 anos para os demais empregados não expostos a riscos ocupacionais específicos.\n" +
-      "• Retorno ao Trabalho: realizado antes do retorno às funções quando ausente por período igual ou superior a 30 (trinta) dias por motivo de doença ou acidente, de natureza ocupacional ou não.\n" +
-      "• Mudança de Riscos Ocupacionais: realizado obrigatoriamente antes da data da mudança de função ou setor que implique novos riscos.\n" +
-      "• Demissional: realizado em até 10 (dez) dias contados do término do contrato, sendo dispensado se o exame mais recente tiver sido feito há menos de 135 dias (Grau de Risco 1 e 2) ou menos de 90 dias (Grau de Risco 3 e 4).",
+    "O PCMSO inclui ações de vigilância passiva da saúde ocupacional (demanda espontânea dos colaboradores) e vigilância ativa (exames dirigidos com foco em sinais e sintomas de agravos). O PCMSO não tem caráter de seleção de pessoal.",
     8,
     4
   );
 
   // =========================================================================
-  // SEÇÃO 06: DEFINIÇÕES SOBRE O ASO
+  // SEÇÃO 06: DIRETRIZES E ATRIBUIÇÕES CONFORME NR-07
   // =========================================================================
-  desenharTituloSecao(b, "06", "Definições sobre o ASO - Atestado de Saúde Ocupacional");
+  desenharTituloSecao(b, "06", "Diretrizes e Atribuições Conforme NR-07");
   desenharParagrafo(
     b,
-    "Para cada exame clínico ocupacional realizado, o médico emitirá o ASO (em duas vias físicas ou meio digital formal), contendo: razão social e CNPJ da empresa; nome, CPF e função do empregado; descrição dos perigos ou fatores de risco identificados no PGR; indicação e data dos exames clínicos e complementares; definição de apto ou inapto para a função; nome e registro profissional do médico responsável pelo PCMSO e do médico examinador que realizou o exame."
+    "Compete ao Empregador: garantir a elaboração e efetiva implantação do PCMSO; custear sem ônus para o empregado todos os procedimentos e exames relacionados ao programa; indicar médico do trabalho responsável pela coordenação; zelar pela guarda e sigilo dos prontuários médicos por no mínimo 20 (vinte) anos após o desligamento do colaborador."
+  );
+  desenharParagrafo(
+    b,
+    "Compete ao Médico Coordenador: realizar os exames médicos ou encarregar os mesmos a médicos examinadores qualificados; planejar e executar o programa de acordo com os riscos inventariados no PGR; emitir o Relatório Analítico anual com dados estatísticos e epidemiológicos; encaminhar trabalhadores à perícia médica previdenciária quando indicado."
+  );
+  desenharParagrafo(
+    b,
+    "Compete aos Empregados: submeter-se aos exames médicos previstos no PCMSO; comparecer aos agendamentos clínicos munidos de documentos de identificação; colaborar na preservação da integridade física e saúde individual e coletiva nos ambientes de trabalho."
   );
 
   // =========================================================================
-  // SEÇÃO 07: MÉDICO RESPONSÁVEL E RELATÓRIO ANALÍTICO
+  // SEÇÃO 07: DESCRIÇÃO DAS ATIVIDADES (TABELA CONSOLIDADA G91)
   // =========================================================================
-  desenharTituloSecao(b, "07", "Médico Responsável e Relatório Analítico mediante NR-7");
+  desenharTituloSecao(b, "07", "Descrição das Atividades");
   desenharParagrafo(
     b,
-    "O médico responsável pelo PCMSO elabora anualmente o Relatório Analítico, contendo estatística dos exames realizados, resultados anormais, incidência de doenças ocupacionais e dados epidemiológicos."
+    "A relação abaixo especifica as atribuições e tarefas desempenhadas em cada função da organização, servindo de base para o enquadramento de riscos ergonômicos, físicos, químicos e mecânicos:"
   );
 
-  // Tabela de Balanço Estatístico de ASOs
-  const estat = ctx.estatisticasAsos;
-  ensureSpace(b, 35);
+  desenharTabelaAtividades(b, ctx.atividadesLista);
+
+  // =========================================================================
+  // SEÇÃO 08: EXAMES MÉDICOS OCUPACIONAIS
+  // =========================================================================
+  desenharTituloSecao(b, "08", "Exames Médicos Ocupacionais");
+  desenharParagrafo(
+    b,
+    "O PCMSO compreende a realização obrigatória dos exames médicos ocupacionais nas seguintes modalidades:"
+  );
+  desenharParagrafo(
+    b,
+    "• Exame Admissional: realizado obrigatoriamente antes que o empregado assuma suas atividades profissionais na empresa.\n" +
+      "• Exame Periódico: realizado anualmente (a cada 12 meses) para trabalhadores expostos a riscos ocupacionais ou portadores de doenças crônicas, e bienalmente (a cada 24 meses) para os demais colaboradores sem exposição a riscos específicos.\n" +
+      "• Exame de Retorno ao Trabalho: realizado obrigatoriamente antes do retorno às atividades para empregados afastados por período igual ou superior a 30 (trinta) dias por motivo de doença ou acidente, de natureza ocupacional ou não.\n" +
+      "• Exame de Mudança de Riscos Ocupacionais: realizado obrigatoriamente antes da data de transferência de setor ou função que implique mudança na exposição a riscos ocupacionais em relação ao PGR.\n" +
+      "• Exame Demissional: realizado em até 10 (dez) dias contados do término do contrato de trabalho, sendo dispensado se o exame ocupacional mais recente tiver sido realizado há menos de 135 dias (para Grau de Risco 1 e 2) ou menos de 90 dias (Grau de Risco 3 e 4).",
+    7.5,
+    4
+  );
+
+  // =========================================================================
+  // SEÇÃO 09: DEFINIÇÕES SOBRE O ASO
+  // =========================================================================
+  desenharTituloSecao(b, "09", "Definições sobre o ASO (Atestado de Saúde Ocupacional)");
+  desenharParagrafo(
+    b,
+    "Para cada exame médico ocupacional realizado, o médico emitirá o Atestado de Saúde Ocupacional - ASO em 2 (duas) vias físicas ou formato digital com assinatura eletrônica qualificada, devendo conter obrigatoriamente:"
+  );
+  desenharParagrafo(
+    b,
+    "a) Razão social e CNPJ da organização;\n" +
+      "b) Nome completo, CPF e função do empregado;\n" +
+      "c) Descrição dos fatores de riscos ocupacionais identificados no inventário do PGR ou indicação de inexistência de riscos específicos;\n" +
+      "d) Indicação dos exames médicos clínicos e complementares realizados e suas respectivas datas;\n" +
+      "e) Definição de APTO ou INAPTO para a função exercida ou a exercer;\n" +
+      "f) Nome, número de registro no CRM e assinatura do médico examinador;\n" +
+      "g) Nome, número de registro no CRM do Médico Coordenador do PCMSO.\n" +
+      "As informações emitidas no ASO subsidiam diretamente a transmissão do evento S-2220 (Monitoramento da Saúde do Trabalhador) ao eSocial nacional.",
+    7.5,
+    4
+  );
+
+  // =========================================================================
+  // SEÇÃO 10: PRIMEIROS SOCORROS E EMERGÊNCIA (ESTRUTURA G91)
+  // =========================================================================
+  desenharTituloSecao(b, "10", "Primeiros Socorros e Encaminhamento de Acidentados");
+  desenharParagrafo(
+    b,
+    "Em conformidade com a NR-01 (subitem 1.5.6.2), as organizações devem prever meios e recursos para a prestação de primeiros socorros e o encaminhamento ágil de colaboradores acidentados aos serviços de saúde pública de urgência."
+  );
+  desenharParagrafo(
+    b,
+    "A empresa deve manter Caixa de Primeiros Socorros na cor branca com cruz verde, afixada em local acessível e de conhecimento de todos, sob a guarda de responsável treinado, contendo os seguintes materiais padronizados pelo Médico do Trabalho:"
+  );
+
+  // Tabela da Composição do Kit
+  const kitItens: [string, string][] = [
+    ["Termômetro clínico digital", "01 unidade"],
+    ["Tesoura cirúrgica de ponta romba (sem ponta)", "01 unidade"],
+    ["Pinça anatômica para curativos", "01 unidade"],
+    ["Pacotes de compressas de gaze esterilizada (7,5 x 7,5 cm)", "10 pacotes"],
+    ["Rolos de atadura de crepe de 10 cm e 15 cm", "04 rolos de cada"],
+    ["Fita adesiva hospitalar tipo esparadrapo / micropore", "02 rolos"],
+    ["Curativos adesivos hipoalergênicos de pronto uso (tipo Band-Aid)", "01 caixa"],
+    ["Luvas de procedimento cirúrgico descartáveis (tamanhos M e G)", "01 caixa com 50 pares"],
+    ["Óculos de proteção individual para o socorrista", "01 unidade"],
+    ["Solução fisiológica a 0,9% para limpeza ocular e de ferimentos (250 ml / 500 ml)", "02 frascos"],
+    ["Solução antisséptica tópica aquosa (Clorexidina 0,2% ou PVPI)", "01 frasco"],
+  ];
+
+  ensureSpace(b, kitItens.length * 5.5 + 10);
   doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
   doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setTextColor(255, 255, 255);
-  doc.text("BALANÇO ESTATÍSTICO DE EXAMES OCUPACIONAIS E ASOS EMITIDOS", MARGEM + 3, b.y + 4.2);
+  doc.text("COMPOSIÇÃO PADRONIZADA DO KIT DE PRIMEIROS SOCORROS", MARGEM + 3, b.y + 4.2);
+  doc.text("QUANTIDADE MÍNIMA", DIREITA - 4, b.y + 4.2, { align: "right" });
   b.y += 6;
 
-  const colW = LARGURA_UTIL / 4;
-  const linhasEstat: [string, number][] = [
-    ["Exames Admissionais", estat.admissional],
-    ["Exames Periódicos", estat.periodico],
-    ["Retorno ao Trabalho", estat.retorno],
-    ["Mudança de Risco", estat.mudanca],
-    ["Exames Demissionais", estat.demissional],
-    ["Total de ASOs Emitidos", estat.total],
-    ["Colaboradores Aptos", estat.aptos],
-    ["Aptos com Restrição / Inaptos", estat.restricoes + estat.inaptos],
-  ];
-
-  doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-  doc.setFillColor(255, 255, 255);
-  for (let i = 0; i < linhasEstat.length; i += 2) {
-    const item1 = linhasEstat[i];
-    const item2 = linhasEstat[i + 1];
-
-    doc.rect(MARGEM, b.y, colW * 2, 6, "FD");
-    doc.rect(MARGEM + colW * 2, b.y, colW * 2, 6, "FD");
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-
-    doc.text(item1[0], MARGEM + 3, b.y + 4.2);
-    doc.setFont("helvetica", "bold");
-    doc.text(String(item1[1]), MARGEM + colW * 2 - 6, b.y + 4.2, { align: "right" });
-
-    if (item2) {
-      doc.setFont("helvetica", "normal");
-      doc.text(item2[0], MARGEM + colW * 2 + 3, b.y + 4.2);
-      doc.setFont("helvetica", "bold");
-      doc.text(String(item2[1]), DIREITA - 6, b.y + 4.2, { align: "right" });
-    }
-
-    b.y += 6;
-  }
-  b.y += 4;
-
-  if (ctx.relatorioAnaliticoTexto) {
-    desenharParagrafo(b, `Parecer do Médico Coordenador:\n${ctx.relatorioAnaliticoTexto}`, 8, 4);
-  }
-
-  // =========================================================================
-  // SEÇÃO 08: TELEFONES ÚTEIS EM CASO DE EMERGÊNCIA
-  // =========================================================================
-  desenharTituloSecao(b, "08", "Telefones Úteis em Caso de Emergência");
-  const telefones = [
-    ["Ambulância / SAMU - Serviço Público de Remoção de Doentes", "192"],
-    ["Corpo de Bombeiros Militar", "193"],
-    ["Polícia Militar", "190"],
-    ["Defesa Civil", "199"],
-    ["Disque Intoxicação (ANVISA / CEATOX)", "0800 722 6001"],
-  ];
-
-  ensureSpace(b, telefones.length * 6 + 5);
-  telefones.forEach(([servico, numero]) => {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text(servico, MARGEM + 2, b.y);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(COR_SECUNDARIA[0], COR_SECUNDARIA[1], COR_SECUNDARIA[2]);
-    doc.text(numero, DIREITA - 2, b.y, { align: "right" });
-
-    doc.setDrawColor(230, 235, 240);
-    doc.line(MARGEM, b.y + 2, DIREITA, b.y + 2);
-    b.y += 6;
-  });
-  b.y += 4;
-
-  // =========================================================================
-  // SEÇÃO 09: CAIXA DE PRIMEIROS SOCORROS (NR 1.5.6.2)
-  // =========================================================================
-  desenharTituloSecao(b, "09", "Caixa de Primeiros Socorros");
-  desenharParagrafo(
-    b,
-    "(NR 1.5.6.2) Os procedimentos de respostas aos cenários de emergências da organização devem prever os meios e recursos necessários para os primeiros socorros e encaminhamento de acidentados."
-  );
-  desenharParagrafo(
-    b,
-    "A empresa deve manter caixa de primeiros socorros de madeira ou de plástico na cor branca com uma cruz verde encimada na porta ou na tampa, afixada em local de fácil acesso aos colaboradores, com materiais, instrumentos e soluções prescritos pelo médico do trabalho:"
-  );
-
-  const kitPrimeirosSocorros: [string, string][] = [
-    ["INSTRUMENTOS:", "Pinça anatômica, termômetro clínico digital e tesoura de ponta romba."],
-    ["MATERIAIS:", "Óculos de proteção, máscara facial descartável, luvas cirúrgicas/procedimento, ataduras de crepe, algodão hidrófilo, hastes flexíveis (cotonetes), gazes esterilizadas, esparadrapo antialérgico e curativos adesivos de pronto uso."],
-    ["SOLUÇÕES:", "Água oxigenada (10 volumes), soro fisiológico a 0,9% para lavagem ocular/ferimentos e solução antisséptica tópica (clorexidina ou iodopovidona)."],
-  ];
-
-  ensureSpace(b, 25);
-  kitPrimeirosSocorros.forEach(([tipo, desc]) => {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text(tipo, MARGEM + 2, b.y);
-
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    const dLinhas = doc.splitTextToSize(desc, LARGURA_UTIL - 30);
-    doc.text(dLinhas, MARGEM + 30, b.y);
-    b.y += dLinhas.length * 4 + 2;
-  });
-  b.y += 4;
-
-  // =========================================================================
-  // SEÇÃO 10: AMBIENTES, CARGOS, RISCOS OCUPACIONAIS E EXAMES CLÍNICOS
-  // =========================================================================
-  desenharTituloSecao(b, "10", "Ambientes, Cargos, Riscos Ocupacionais e Exames Clínicos");
-  desenharParagrafo(
-    b,
-    `Abaixo estão relacionados todos os ${ctx.ambientes.length} ambientes identificados no levantamento da empresa onde os trabalhadores desempenham suas atividades:`
-  );
-
-  // Listagem dos Ambientes
-  ctx.ambientes.forEach((amb) => {
-    const descLines = doc.splitTextToSize(`Descrição do Ambiente: ${amb.descricao}`, LARGURA_UTIL - 6);
-    const boxHeight = descLines.length * 4 + 9;
-    ensureSpace(b, boxHeight + 3);
-
-    doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
+  kitItens.forEach(([item, qtd], idx) => {
     doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-    doc.rect(MARGEM, b.y, LARGURA_UTIL, boxHeight, "FD");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text(`+   ${amb.nome.toUpperCase()}`, MARGEM + 3, b.y + 5);
+    doc.setFillColor(idx % 2 === 0 ? 255 : COR_CINZA_CLARO[0], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[1], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.2, "FD");
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    doc.text(descLines, MARGEM + 3, b.y + 9);
-
-    b.y += boxHeight + 2.5;
-  });
-
-  b.y += 6;
-
-  // Detalhamento Cargo a Cargo
-  ctx.cargos.forEach((cargo) => {
-    const ativLines = doc.splitTextToSize(cargo.atividades, LARGURA_UTIL - 28);
-    const hAtiv = Math.max(7, ativLines.length * 3.8 + 3);
-
-    // Garante que o bloco de identificação do cargo e o controle médico fiquem juntos
-    ensureSpace(b, hAtiv + 48);
-
-    // Faixa do Cargo
-    doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.rect(MARGEM, b.y, LARGURA_UTIL, 7, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9.5);
-    doc.setTextColor(255, 255, 255);
-    doc.text(`CARGO: ${cargo.nome.toUpperCase()}`, MARGEM + 3, b.y + 5);
-    b.y += 7;
-
-    // Linha Ambientes
-    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-    doc.setFillColor(255, 255, 255);
-    doc.rect(MARGEM, b.y, 25, 7, "FD");
-    doc.rect(MARGEM + 25, b.y, LARGURA_UTIL - 25, 7, "FD");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text("Ambientes:", MARGEM + 2, b.y + 4.8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    doc.text(cargo.ambientes.join(", ") || "Todos os ambientes", MARGEM + 27, b.y + 4.8, { maxWidth: LARGURA_UTIL - 30 });
-    b.y += 7;
-
-    // Linha Atividades (com fill explicitamente resetado para branco)
-    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-    doc.setFillColor(255, 255, 255);
-    doc.rect(MARGEM, b.y, 25, hAtiv, "FD");
-    doc.rect(MARGEM + 25, b.y, LARGURA_UTIL - 25, hAtiv, "FD");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text("Atividades:", MARGEM + 2, b.y + 4.8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    doc.text(ativLines, MARGEM + 27, b.y + 4.5);
-    b.y += hAtiv + 2;
-
-    // Helper para desenhar item de exame com caixinha vetorial [X] sem depender de fontes Unicode
-    const desenharItemExame = (label: string, x: number, yLinha: number) => {
-      doc.setDrawColor(22, 101, 52);
-      doc.setFillColor(240, 253, 244);
-      doc.rect(x, yLinha - 2.8, 3.2, 3.2, "FD");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.5);
-      doc.setTextColor(22, 101, 52);
-      doc.text("X", x + 0.8, yLinha - 0.4);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7);
-      doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-      doc.text(label, x + 5, yLinha);
-    };
-
-    // Quadro CONTROLE MÉDICO
-    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-    doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
-    doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.5, "FD");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text(`CONTROLE MÉDICO - ${cargo.nome.toUpperCase()}`, LARGURA / 2, b.y + 4, { align: "center" });
-    b.y += 5.5;
-
-    // Avaliação Clínica Ocupacional (Código eSocial: 0295)
-    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-    doc.setFillColor(255, 255, 255);
-    doc.rect(MARGEM, b.y, 55, 20, "FD");
-    doc.rect(MARGEM + 55, b.y, 65, 20, "FD");
-    doc.rect(MARGEM + 120, b.y, LARGURA_UTIL - 120, 20, "FD");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
-    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text("Avaliação Clínica Ocupacional:", MARGEM + 2, b.y + 5);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 116, 139);
-    doc.text("Código eSocial: 0295", MARGEM + 2, b.y + 9);
-
-    desenharItemExame("Fazer no Admissional", MARGEM + 58, b.y + 4.5);
-    desenharItemExame("Fazer no Demissional", MARGEM + 58, b.y + 8);
-    desenharItemExame("Fazer no Retorno ao Trabalho", MARGEM + 58, b.y + 11.5);
-    desenharItemExame("Fazer na Mudança de Riscos*", MARGEM + 58, b.y + 15);
-    desenharItemExame("Fazer no Periódico", MARGEM + 58, b.y + 18.5);
-
-    doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
     doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    doc.text(cargo.exameClinicoPeriodicidade || "O periódico será feito a cada 12 meses.", MARGEM + 123, b.y + 10, { maxWidth: 55 });
-    b.y += 20;
+    doc.text(item, MARGEM + 3, b.y + 3.8);
 
-    // Exames complementares do cargo (se houver)
-    cargo.examesComplementares.forEach((ec) => {
-      ensureSpace(b, 14);
-      doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-      doc.setFillColor(255, 255, 255);
-      doc.rect(MARGEM, b.y, 55, 12, "FD");
-      doc.rect(MARGEM + 55, b.y, 65, 12, "FD");
-      doc.rect(MARGEM + 120, b.y, LARGURA_UTIL - 120, 12, "FD");
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.5);
-      doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-      doc.text(ec.nome, MARGEM + 2, b.y + 5);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 116, 139);
-      doc.text(`Código eSocial: ${ec.codigoEsocial}`, MARGEM + 2, b.y + 9);
-
-      desenharItemExame("Fazer no Admissional", MARGEM + 58, b.y + 5);
-      desenharItemExame("Fazer no Periódico", MARGEM + 58, b.y + 9);
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-      doc.text(ec.periodicidade, MARGEM + 123, b.y + 7, { maxWidth: 55 });
-      b.y += 12;
-    });
-
-    b.y += 2;
-
-    // Tabelas de Riscos Ocupacionais do Cargo
-    const desenharQuadroRisco = (tituloGrupo: string, bgCor: [number, number, number], listaRiscos: any[]) => {
-      if (listaRiscos.length === 0) return;
-      ensureSpace(b, 25);
-
-      doc.setFillColor(bgCor[0], bgCor[1], bgCor[2]);
-      doc.rect(MARGEM, b.y, LARGURA_UTIL, 5, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.5);
-      doc.setTextColor(255, 255, 255);
-      doc.text(tituloGrupo, LARGURA / 2, b.y + 3.8, { align: "center" });
-      b.y += 5;
-
-      listaRiscos.forEach((r) => {
-        const pLines = doc.splitTextToSize(`Perigos, fontes e circunstâncias: ${r.fonte}`, LARGURA_UTIL - 6);
-        const mLines = doc.splitTextToSize(`Medidas administrativas ou de organização do trabalho: ${r.medidas}`, LARGURA_UTIL - 6);
-        const dLines = doc.splitTextToSize(`Possíveis danos à saúde: ${r.danos}`, LARGURA_UTIL - 6);
-        const totH = (pLines.length + mLines.length + dLines.length) * 3.6 + 14;
-
-        ensureSpace(b, totH);
-        doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-        doc.setFillColor(255, 255, 255);
-        doc.rect(MARGEM, b.y, LARGURA_UTIL, totH, "FD");
-
-        // Bullet quadrado vetorial colorido
-        doc.setFillColor(bgCor[0], bgCor[1], bgCor[2]);
-        doc.rect(MARGEM + 3, b.y + 2.4, 2.2, 2.2, "F");
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(7.5);
-        doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-        doc.text(r.agente, MARGEM + 7, b.y + 4.5);
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(7);
-        doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-        let ry = b.y + 8;
-        doc.text(pLines, MARGEM + 3, ry);
-        ry += pLines.length * 3.6;
-
-        doc.text(`Metodologia: ${r.metodologia || "Critério Qualitativo."}`, MARGEM + 3, ry);
-        ry += 3.6;
-
-        doc.text(mLines, MARGEM + 3, ry);
-        ry += mLines.length * 3.6;
-
-        doc.setFont("helvetica", "bold");
-        doc.text(dLines, MARGEM + 3, ry);
-
-        b.y += totH;
-      });
-      b.y += 2;
-    };
-
-    desenharQuadroRisco(`RISCOS ACIDENTES / MECÂNICOS - ${cargo.nome.toUpperCase()}`, [71, 85, 105], cargo.riscosAcidentes);
-    desenharQuadroRisco(`RISCOS ERGONÔMICOS - ${cargo.nome.toUpperCase()}`, [202, 138, 4], cargo.riscosErgonomicos);
-    desenharQuadroRisco(`RISCOS QUÍMICOS - ${cargo.nome.toUpperCase()}`, [185, 28, 28], cargo.riscosQuimicos);
-    desenharQuadroRisco(`RISCOS FÍSICOS - ${cargo.nome.toUpperCase()}`, [37, 99, 235], cargo.riscosFisicos);
-    desenharQuadroRisco(`RISCOS BIOLÓGICOS - ${cargo.nome.toUpperCase()}`, [16, 149, 193], cargo.riscosBiologicos);
-
-    b.y += 5;
-  });
-
-  // =========================================================================
-  // SEÇÃO 11: PROFISSIONAIS EXAMINADORES
-  // =========================================================================
-  desenharTituloSecao(b, "11", "Profissionais Examinadores");
-  desenharParagrafo(
-    b,
-    "Médicos examinadores e profissionais capacitados autorizados a realizar os exames clínicos ocupacionais (ASO) vinculados a este PCMSO:"
-  );
-
-  ensureSpace(b, ctx.medicosExaminadores.length * 5 + 6);
-  ctx.medicosExaminadores.forEach((med) => {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text(`${med.nome}`, MARGEM + 4, b.y);
-
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 116, 139);
-    doc.text(`CRM-${med.uf} ${med.crm}`, DIREITA - 4, b.y, { align: "right" });
+    doc.text(qtd, DIREITA - 4, b.y + 3.8, { align: "right" });
     b.y += 5.2;
   });
   b.y += 4;
 
-  // =========================================================================
-  // SEÇÃO 12: CONSIDERAÇÕES FINAIS
-  // =========================================================================
-  desenharTituloSecao(b, "12", "Considerações Finais");
-  desenharParagrafo(
-    b,
-    "Este programa PCMSO poderá sofrer modificações quando forem constatadas significativas alterações nas condições ambientais ou no exercício profissional que justifiquem novas medidas ou ações de saúde, tendo por objetivo a preservação e promoção da saúde dos colaboradores. Sendo assim, sempre que houver qualquer modificação nos processos produtivos, aquisição de novos maquinários ou novos locais de trabalho devem ser imediatamente comunicados ao elaborador do PGR, a fim de manter-se informado e tomar as medidas necessárias para as boas práticas de saúde e segurança no local de trabalho, dentre elas a atualização dos programas PGR e PCMSO."
-  );
+  // Caixa de Alerta sobre Proibição de Medicamentos
+  ensureSpace(b, 20);
+  doc.setDrawColor(COR_SECUNDARIA[0], COR_SECUNDARIA[1], COR_SECUNDARIA[2]);
+  doc.setFillColor(254, 243, 199); // amarelo suave de atenção
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 16, "FD");
 
-  // =========================================================================
-  // SEÇÃO 13: TERMO DE COMPROMISSO
-  // =========================================================================
-  desenharTituloSecao(b, "13", "Termo de Compromisso");
-  desenharParagrafo(
-    b,
-    "Pelo presente instrumento, nos propomos garantir a viabilização e efetiva implantação do Programa de Controle Médico de Saúde Ocupacional (PCMSO), zelando e custeando sem ônus para os funcionários, os procedimentos e exames em todas as suas etapas, por ser parte integrante do conjunto mais amplo da iniciativa da empresa no campo da prevenção da saúde dos trabalhadores."
-  );
-
-  ensureSpace(b, 45);
-  b.y += 12;
-
-  // Assinatura Médico
-  doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-  doc.line(MARGEM + 15, b.y, MARGEM + 85, b.y);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-  doc.text(medicoCoordenador.nome, MARGEM + 50, b.y + 4.5, { align: "center" });
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Médico do Trabalho — CRM/${medicoCoordenador.uf} ${medicoCoordenador.crm}`, MARGEM + 50, b.y + 8.5, { align: "center" });
-  doc.text("Responsável Técnico pelo PCMSO", MARGEM + 50, b.y + 12, { align: "center" });
+  doc.setTextColor(180, 83, 9);
+  doc.text("IMPORTANTE — RESTRIÇÃO LEGAL A MEDICAMENTOS NA CAIXA DE PRIMEIROS SOCORROS:", MARGEM + 3, b.y + 5);
 
-  // Assinatura Empregador
-  doc.line(DIREITA - 85, b.y, DIREITA - 15, b.y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.8);
+  doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+  doc.text(
+    "Em estrito cumprimento à legislação sanitária vigente e ao Código de Ética Médica, a caixa de primeiros socorros NÃO deve conter medicamentos orais ou injetáveis (analgésicos, antitérmicos, anti-inflamatórios, antibióticos, calmantes, etc.). A administração de medicamentos é ato privativo da medicina, sendo expressamente vedada a automedicação e a distribuição de remédios por leigos ou socorristas.",
+    MARGEM + 3,
+    b.y + 9,
+    { maxWidth: LARGURA_UTIL - 6 }
+  );
+  b.y += 20;
+
+  // Tabela de Telefones Úteis e Órgãos de Emergência
+  ensureSpace(b, 35);
+  doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-  doc.text(empresa.nome, DIREITA - 50, b.y + 4.5, { align: "center", maxWidth: 70 });
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text("Direção da Empresa / Representante Legal", DIREITA - 50, b.y + 8.5, { align: "center" });
-  doc.text("Responsável pela Execução do PCMSO", DIREITA - 50, b.y + 12, { align: "center" });
+  doc.setTextColor(255, 255, 255);
+  doc.text("ÓRGÃOS DE EMERGÊNCIA E TELEFONES ÚTEIS", MARGEM + 3, b.y + 4.2);
+  b.y += 6;
 
-  b.y += 22;
-
-  // =========================================================================
-  // SEÇÃO 14: REFERÊNCIA BIBLIOGRÁFICA
-  // =========================================================================
-  desenharTituloSecao(b, "14", "Referência Bibliográfica");
-  const biblio = [
-    "• NR-7 - Programa de Controle Médico de Saúde Ocupacional: Portaria SEPRT n.º 6.734, de 09/03/2020.",
-    "• NR-1 - Disposições Gerais e Gerenciamento de Riscos Ocupacionais: Portaria SEPRT n.º 6.730, de 09/03/2020.",
-    "• NR-17 - Ergonomia: Portaria MTP n.º 423, de 07 de outubro de 2021.",
-    "• NR-5 - Comissão Interna de Prevenção de Acidentes e Assédio: Portaria MTP nº 4.219, de 20/12/2022.",
-    "• FUNDACENTRO: Guias de Vigilância em Saúde dos Trabalhadores e Critérios de Avaliação de Riscos Ocupacionais.",
-    "• CLT - Consolidação das Leis do Trabalho: Decreto-Lei 5.452/1943 e Lei 6.514/1977.",
+  const telefonesEmergencia: [string, string, string][] = [
+    ["SAMU - Serviço de Atendimento Móvel de Urgência", "192", "Remoção de doentes e emergências clínicas"],
+    ["Corpo de Bombeiros Militar", "193", "Resgate, traumas e combate a incêndios"],
+    ["Polícia Militar", "190", "Segurança pública e ocorrências emergenciais"],
+    ["Defesa Civil", "199", "Prevenção de sinistros e calamidades"],
+    ["Disque Intoxicação (ANVISA / CEATOX)", "0800 722 6001", "Orientações médicas sobre intoxicações"],
+    [
+      `Hospital / Pronto Atendimento Municipal (${empresa.cidade || "Alto Santo"} / ${empresa.uf || "CE"})`,
+      empresa.telefone || "Central Local",
+      "Unidade de referência médica para pronto atendimento",
+    ],
   ];
-  biblio.forEach((item) => desenharParagrafo(b, item, 8, 2.5));
+
+  telefonesEmergencia.forEach(([servico, tel, destino], idx) => {
+    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+    doc.setFillColor(idx % 2 === 0 ? 255 : COR_CINZA_CLARO[0], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[1], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.5, "FD");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+    doc.text(servico, MARGEM + 3, b.y + 4);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(COR_SECUNDARIA[0], COR_SECUNDARIA[1], COR_SECUNDARIA[2]);
+    doc.text(tel, MARGEM + 105, b.y + 4);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+    doc.text(destino, MARGEM + 125, b.y + 4, { maxWidth: 50 });
+
+    b.y += 5.5;
+  });
+  b.y += 6;
 
   // =========================================================================
-  // SEÇÃO 15: CRONOGRAMA DE AÇÕES
+  // SEÇÃO 11: FICHAS DE EXAME - RELAÇÃO DE PROCEDIMENTOS E DIAGNÓSTICOS
   // =========================================================================
-  desenharTituloSecao(b, "15", "Cronograma de Ações");
+  desenharTituloSecao(b, "11", "Relação de Procedimentos e Diagnósticos (Fichas de Exame)");
   desenharParagrafo(
     b,
-    "Plano de Ação e Cronograma Anual do PCMSO para atendimento aos requisitos normativos e prevenção da saúde dos colaboradores:"
+    "As fichas a seguir detalham, por setor e grupo homogêneo, a correlação entre os agentes agressivos inventariados no PGR e os exames clínicos e complementares exigidos pela NR-07 para a preservação da saúde dos colaboradores:"
   );
 
-  ctx.cronograma.forEach((acao) => {
-    ensureSpace(b, 28);
+  // Renderiza cada Ficha de Exame no modelo G91
+  ctx.fichasExame.forEach((ficha) => {
+    ensureSpace(b, 35);
+
+    // Faixa Superior da Ficha
+    doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 7, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`${ficha.numero.toUpperCase()} — SETOR: ${ficha.setor.toUpperCase()}`, MARGEM + 3, b.y + 5);
+    b.y += 7;
+
+    // Linha de Funções Vinculadas
+    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+    doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 7, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+    doc.text("Funções abrangidas:", MARGEM + 3, b.y + 4.8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+    doc.text(ficha.funcoes.join(", ") || "Funções do Setor", MARGEM + 34, b.y + 4.8, { maxWidth: LARGURA_UTIL - 36 });
+    b.y += 9;
+
+    // Subtítulo Riscos
+    desenharSubtitulo(b, "1. DESCRIÇÃO DOS RISCOS OCUPACIONAIS");
+
+    // Tabelas dos 5 Grupos de Risco
+    desenharTabelaRiscos5Colunas(b, "Grupo I - Riscos Físicos", [37, 99, 235], ficha.riscosFisicos);
+    desenharTabelaRiscos5Colunas(b, "Grupo II - Riscos Químicos", [185, 28, 28], ficha.riscosQuimicos);
+    desenharTabelaRiscos5Colunas(b, "Grupo III - Riscos Biológicos", [16, 149, 193], ficha.riscosBiologicos);
+    desenharTabelaRiscos5Colunas(b, "Grupo IV - Riscos Ergonômicos", [202, 138, 4], ficha.riscosErgonomicos);
+    desenharTabelaRiscos5Colunas(b, "Grupo V - Riscos de Acidentes / Mecânicos", [71, 85, 105], ficha.riscosAcidentes);
+
+    // Subtítulo Exames
+    b.y += 2;
+    desenharSubtitulo(b, "2. RELAÇÃO DE EXAMES MÉDICOS OCUPACIONAIS");
+
+    // Matriz de Exames da Ficha
+    desenharMatrizExames(b, ficha.exames);
+
+    b.y += 8;
+  });
+
+  // =========================================================================
+  // SEÇÃO 12: MÉDICOS EXAMINADORES
+  // =========================================================================
+  desenharTituloSecao(b, "12", "Médicos Examinadores Autorizados");
+  desenharParagrafo(
+    b,
+    "Médicos e profissionais capacitados autorizados pelo Médico Coordenador a realizar os exames clínicos ocupacionais (ASO) no âmbito deste PCMSO:"
+  );
+
+  ensureSpace(b, (ctx.medicosExaminadores.length + 1) * 6 + 6);
+  doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("NOME DO PROFISSIONAL", MARGEM + 3, b.y + 4.2);
+  doc.text("REGISTRO CRM", MARGEM + 110, b.y + 4.2);
+  doc.text("ESTADO / UF", DIREITA - 4, b.y + 4.2, { align: "right" });
+  b.y += 6;
+
+  ctx.medicosExaminadores.forEach((med, idx) => {
+    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+    doc.setFillColor(idx % 2 === 0 ? 255 : COR_CINZA_CLARO[0], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[1], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "FD");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+    doc.text(med.nome, MARGEM + 3, b.y + 4.2);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+    doc.text(`CRM ${med.crm}`, MARGEM + 110, b.y + 4.2);
+    doc.text(med.uf, DIREITA - 8, b.y + 4.2, { align: "right" });
+    b.y += 6;
+  });
+  b.y += 6;
+
+  // =========================================================================
+  // SEÇÃO 13: CRONOGRAMA ANUAL DE AÇÕES E TREINAMENTOS (PADRÃO G91)
+  // =========================================================================
+  desenharTituloSecao(b, "13", "Cronograma Anual de Ações e Treinamentos");
+  desenharParagrafo(
+    b,
+    "Metas, ações e treinamentos preventivos programados para execução ao longo do período de vigência deste PCMSO:"
+  );
+
+  const cronogramaAcoes = ctx.cronograma.length > 0 ? ctx.cronograma : [
+    {
+      id: "1",
+      acao: "Realização e Controle dos Exames Médicos Periódicos",
+      responsavel: "Médico Coordenador / RH",
+      data_planejada: vigenciaInicio,
+      status: "Em andamento",
+      observacoes: "Convocação e controle de 100% dos exames ocupacionais.",
+    },
+    {
+      id: "2",
+      acao: "Inspeção e Reposição dos Materiais da Caixa de Primeiros Socorros",
+      responsavel: "SESMT / Brigada",
+      data_planejada: vigenciaInicio,
+      status: "Em andamento",
+      observacoes: "Verificação mensal de validades e integridade dos itens.",
+    },
+    {
+      id: "3",
+      acao: "Treinamento de Primeiros Socorros e Suporte Básico de Vida",
+      responsavel: "Assessoria Técnica",
+      data_planejada: vigenciaInicio,
+      status: "Planejado",
+      observacoes: "Capacitação prática para colaboradores e brigadistas.",
+    },
+    {
+      id: "4",
+      acao: "Campanha Interna de Saúde e Prevenção de Doenças Crônicas / Ergonomia",
+      responsavel: "Médico Coordenador",
+      data_planejada: vigenciaInicio,
+      status: "Planejado",
+      observacoes: "Orientações posturais, controle de hipertensão e ginástica laboral.",
+    },
+    {
+      id: "5",
+      acao: "Elaboração do Relatório Analítico Anual do PCMSO",
+      responsavel: "Médico Coordenador",
+      data_planejada: vigenciaFim,
+      status: "Planejado",
+      observacoes: "Consolidação dos dados estatísticos, exames e dados epidemiológicos.",
+    },
+  ];
+
+  cronogramaAcoes.forEach((acao) => {
+    ensureSpace(b, 26);
 
     doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
     doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
     doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "FD");
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text(`CRONOGRAMA ANUAL — ${acao.acao}`, MARGEM + 3, b.y + 4.2);
+    doc.text(`AÇÃO: ${acao.acao.toUpperCase()}`, MARGEM + 3, b.y + 4.2);
     doc.text(`Status: ${acao.status || "Planejado"}`, DIREITA - 3, b.y + 4.2, { align: "right" });
     b.y += 6;
 
     doc.setFillColor(255, 255, 255);
-    doc.rect(MARGEM, b.y, LARGURA_UTIL, 18, "FD");
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 16, "FD");
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text("Responsável:", MARGEM + 3, b.y + 5);
-    doc.text("Previsão / Data:", MARGEM + 95, b.y + 5);
-    doc.text("Observações:", MARGEM + 3, b.y + 11);
+    doc.text("Responsável:", MARGEM + 3, b.y + 4.8);
+    doc.text("Previsão / Prazo:", MARGEM + 95, b.y + 4.8);
+    doc.text("Observações / Meta:", MARGEM + 3, b.y + 10.5);
 
     doc.setFont("helvetica", "normal");
     doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    doc.text(acao.responsavel || "Direção da empresa", MARGEM + 26, b.y + 5);
-    doc.text(fmtDate(acao.data_planejada) || "Durante a vigência", MARGEM + 120, b.y + 5);
-    doc.text(acao.observacoes || "Atendimento às determinações do programa.", MARGEM + 26, b.y + 11, { maxWidth: LARGURA_UTIL - 30 });
+    doc.text(acao.responsavel || "Direção da Empresa", MARGEM + 24, b.y + 4.8);
+    doc.text(fmtDate(acao.data_planejada) || "Durante a vigência", MARGEM + 120, b.y + 4.8);
+    doc.text(acao.observacoes || "Execução integral conforme cronograma pactuado.", MARGEM + 32, b.y + 10.5, { maxWidth: LARGURA_UTIL - 36 });
 
-    b.y += 20;
+    b.y += 18;
   });
 
-  // Reserva espaço para o bloco de autenticidade e QR Code no final do documento
-  if (b.y > ALTURA - 48) {
-    b.doc.addPage();
-    b.paginaAtual++;
-    b.y = 25;
-  }
+  b.y += 4;
+
+  // =========================================================================
+  // SEÇÃO 14: TERMO DE ENCERRAMENTO E RESPONSABILIDADE (PADRÃO G91)
+  // =========================================================================
+  desenharTituloSecao(b, "14", "Termo de Encerramento e Responsabilidade");
+  desenharParagrafo(
+    b,
+    "Pelo presente instrumento, a Organização e o Médico Coordenador assumem formalmente o compromisso de garantir a viabilização e efetiva implantação do Programa de Controle Médico de Saúde Ocupacional (PCMSO), zelando pela realização e custeando sem qualquer ônus para os colaboradores os exames e procedimentos preconizados pela Norma Regulamentadora 07."
+  );
+  desenharParagrafo(
+    b,
+    "Este PCMSO tem validade de 12 (doze) meses a contar da data de sua emissão, devendo ser revisto sempre que houver modificações nos riscos inventariados pelo PGR, processos de trabalho, máquinas ou novas instalações."
+  );
+
+  ensureSpace(b, 48);
+  b.y += 14;
+
+  // Assinatura do Médico Coordenador
+  doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+  doc.line(MARGEM + 10, b.y, MARGEM + 80, b.y);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.text(medicoCoordenador.nome, MARGEM + 45, b.y + 4.5, { align: "center" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+  doc.text(`Médico do Trabalho — CRM/${medicoCoordenador.uf} ${medicoCoordenador.crm}`, MARGEM + 45, b.y + 8.5, { align: "center" });
+  doc.text("Responsável Técnico pelo PCMSO", MARGEM + 45, b.y + 12, { align: "center" });
+
+  // Assinatura do Empregador / Representante Legal
+  doc.line(DIREITA - 80, b.y, DIREITA - 10, b.y);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.text(empresa.nome, DIREITA - 45, b.y + 4.5, { align: "center", maxWidth: 68 });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+  doc.text("Direção da Empresa / Representante Legal", DIREITA - 45, b.y + 8.5, { align: "center" });
+  doc.text("Responsável pela Execução do PCMSO", DIREITA - 45, b.y + 12, { align: "center" });
+
+  b.y += 24;
+
+  // =========================================================================
+  // SEÇÃO 15: REFERÊNCIA BIBLIOGRÁFICA
+  // =========================================================================
+  desenharTituloSecao(b, "15", "Referência Bibliográfica");
+  const bibliografia = [
+    "• NR-07 - Programa de Controle Médico de Saúde Ocupacional: Portaria SEPRT n.º 6.734, de 09/03/2020.",
+    "• NR-01 - Disposições Gerais e Gerenciamento de Riscos Ocupacionais: Portaria SEPRT n.º 6.730, de 09/03/2020.",
+    "• NR-17 - Ergonomia: Portaria MTP n.º 423, de 07/10/2021.",
+    "• NR-05 - Comissão Interna de Prevenção de Acidentes e Assédio: Portaria MTP n.º 4.219, de 20/12/2022.",
+    "• FUNDACENTRO: Guias de Vigilância em Saúde dos Trabalhadores e Critérios de Avaliação Ocupacional.",
+    "• CLT - Consolidação das Leis do Trabalho: Decreto-Lei 5.452/1943 e Lei Federal 6.514/1977.",
+  ];
+  bibliografia.forEach((item) => desenharParagrafo(b, item, 7.5, 2.5));
+
+  // =========================================================================
+  // DESENHO DO SUMÁRIO DINÂMICO NA PÁGINA 3 COM PONTILHADOS E PÁGINAS EXATAS
+  // =========================================================================
+  doc.setPage(paginaDoSumario);
+  let sy = 24;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.text("SUMÁRIO", MARGEM, sy);
+  sy += 3;
+
+  doc.setDrawColor(COR_SECUNDARIA[0], COR_SECUNDARIA[1], COR_SECUNDARIA[2]);
+  doc.setLineWidth(0.8);
+  doc.line(MARGEM, sy, MARGEM + 30, sy);
+  doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+  doc.setLineWidth(0.3);
+  doc.line(MARGEM + 30, sy, DIREITA, sy);
+  sy += 8;
+
+  b.sumario.forEach((s) => {
+    const textoNumTitulo = `${s.num} – ${s.titulo.toUpperCase()}`;
+    const paginaTexto = `pág. ${s.pagina}`;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+    doc.text(textoNumTitulo, MARGEM, sy);
+
+    const wTexto = doc.getTextWidth(textoNumTitulo);
+    const wPagina = doc.getTextWidth(paginaTexto);
+
+    // Pontilhado elegante entre o título e o número da página
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(180, 190, 205);
+    const xInicioPontos = MARGEM + wTexto + 2;
+    const xFimPontos = DIREITA - wPagina - 2;
+
+    if (xFimPontos > xInicioPontos + 5) {
+      let px = xInicioPontos;
+      while (px < xFimPontos) {
+        doc.text(".", px, sy);
+        px += 2.2;
+      }
+    }
+
+    // Número da página alinhado à direita
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(COR_SECUNDARIA[0], COR_SECUNDARIA[1], COR_SECUNDARIA[2]);
+    doc.text(paginaTexto, DIREITA, sy, { align: "right" });
+
+    sy += 7.5;
+  });
+
+  // Retorna para a última página
+  doc.setPage(doc.getNumberOfPages());
 
   // =========================================================================
   // CABEÇALHO E RODAPÉ OFICIAL TIMBRADO (IDÊNTICO AO PGR DO SAFETY SOLUÇÕES)
@@ -837,7 +1265,7 @@ export async function generateAndUploadPcmsoPdf(pcmsoId: string): Promise<{ blob
     }, 1000);
   }
 
-  // Tenta upload seguro no storage
+  // Upload seguro no storage
   try {
     const up = await uploadDocumentoSeguro({
       empresa_id: ctx.empresa.id,

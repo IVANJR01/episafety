@@ -77,6 +77,46 @@ export interface PcmsoAcaoCronogramaItem {
   observacoes: string | null;
 }
 
+export interface PcmsoRiscoTabelaG91 {
+  agente: string;
+  fonte: string;
+  danos: string;
+  meioPropagacao: string;
+  formaExposicao: string;
+}
+
+export interface PcmsoFichaExameG91 {
+  numero: string;
+  setor: string;
+  funcoes: string[];
+  riscosFisicos: PcmsoRiscoTabelaG91[];
+  riscosQuimicos: PcmsoRiscoTabelaG91[];
+  riscosBiologicos: PcmsoRiscoTabelaG91[];
+  riscosErgonomicos: PcmsoRiscoTabelaG91[];
+  riscosAcidentes: PcmsoRiscoTabelaG91[];
+  exames: {
+    codigo: string;
+    nome: string;
+    adm: string;
+    periodico: string;
+    rt: string;
+    mdf: string;
+    dem: string;
+  }[];
+}
+
+export interface PcmsoQuadroLaboralItem {
+  fichaNumero: string;
+  setor: string;
+  funcoes: string[];
+}
+
+export interface PcmsoAtividadeItem {
+  setor: string;
+  funcao: string;
+  descricao: string;
+}
+
 export interface PcmsoPdfContext {
   pcmso: any;
   empresa: {
@@ -109,6 +149,9 @@ export interface PcmsoPdfContext {
   medicosExaminadores: PcmsoMedicoExaminadorItem[];
   ambientes: PcmsoAmbienteItem[];
   cargos: PcmsoCargoItem[];
+  fichasExame: PcmsoFichaExameG91[];
+  quadroLaboral: PcmsoQuadroLaboralItem[];
+  atividadesLista: PcmsoAtividadeItem[];
   cronograma: PcmsoAcaoCronogramaItem[];
   relatorioAnaliticoTexto: string;
   estatisticasAsos: {
@@ -609,6 +652,130 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
     empresaFormatada.logo_url ? carregarLogoDataUrl(empresaFormatada.logo_url) : Promise.resolve(null),
   ]);
 
+  // 10. Geração das Fichas de Exame no padrão da G91
+  const mapearSetorCanonico = (nome: string, setorOriginal?: string | null): string => {
+    const s = ((setorOriginal || "") + " " + nome).toLowerCase();
+    if (s.includes("cozinh") || s.includes("alimento") || s.includes("refei")) return "COZINHA";
+    if (s.includes("limpeza") || s.includes("serviços gerais") || s.includes("faxin") || s.includes("higien")) return "LIMPEZA E HIGIENIZAÇÃO";
+    if (s.includes("corte") || s.includes("enfesto")) return "CORTE";
+    if (s.includes("costur") || s.includes("pilotag") || s.includes("acabamento")) return "COSTURA";
+    if (s.includes("embal") || s.includes("expedi") || s.includes("almoxarif") || s.includes("separ")) return "SEPARAÇÃO, ALMOXARIFADO E EXPEDIÇÃO";
+    if (s.includes("loja") || s.includes("comercial") || s.includes("venda") || s.includes("atend") || s.includes("caixa") || s.includes("market") || s.includes("foto") || s.includes("design")) return "COMERCIAL E ATENDIMENTO";
+    return "ADMINISTRAÇÃO E GESTÃO";
+  };
+
+  const gruposFichas = new Map<string, PcmsoCargoItem[]>();
+  cargos.forEach((c) => {
+    const setorCan = mapearSetorCanonico(c.nome, c.setor);
+    const arr = gruposFichas.get(setorCan) || [];
+    arr.push(c);
+    gruposFichas.set(setorCan, arr);
+  });
+
+  const ordemSetores = [
+    "ADMINISTRAÇÃO E GESTÃO",
+    "COMERCIAL E ATENDIMENTO",
+    "CORTE",
+    "COSTURA",
+    "SEPARAÇÃO, ALMOXARIFADO E EXPEDIÇÃO",
+    "COZINHA",
+    "LIMPEZA E HIGIENIZAÇÃO",
+  ];
+
+  const setoresOrdenados = Array.from(gruposFichas.keys()).sort((a, b) => {
+    const ia = ordemSetores.indexOf(a);
+    const ib = ordemSetores.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
+  const ausenteObj = {
+    agente: "Ausência de Fator de Risco",
+    fonte: "Não se aplica",
+    danos: "Não se aplica",
+    meioPropagacao: "Não se aplica",
+    formaExposicao: "Não se aplica",
+  };
+
+  const fichasExame: PcmsoFichaExameG91[] = setoresOrdenados.map((nomeSetor, idx) => {
+    const numFicha = String(idx + 1).padStart(2, "0");
+    const cargosDoGrupo = gruposFichas.get(nomeSetor) || [];
+    const funcoesNomes = Array.from(new Set(cargosDoGrupo.map((c) => c.nome.toUpperCase())));
+
+    const consolidar = (tipo: "riscosFisicos" | "riscosQuimicos" | "riscosBiologicos" | "riscosErgonomicos" | "riscosAcidentes") => {
+      const todos = cargosDoGrupo.flatMap((c) => c[tipo] || []);
+      const vistos = new Set<string>();
+      const resultado: PcmsoRiscoTabelaG91[] = [];
+      todos.forEach((r) => {
+        const k = (r.agente || "").toLowerCase().trim();
+        if (!vistos.has(k)) {
+          vistos.add(k);
+          resultado.push({
+            agente: r.agente,
+            fonte: r.fonte,
+            danos: r.danos,
+            meioPropagacao: tipo === "riscosQuimicos" || tipo === "riscosBiologicos" ? "Ar / Contato dérmico" : "Não se aplica",
+            formaExposicao: "Habitual / Intermitente",
+          });
+        }
+      });
+      return resultado.length > 0 ? resultado : [ausenteObj];
+    };
+
+    const examesFicha = [
+      {
+        codigo: "0295",
+        nome: "Avaliação Clínica Ocupacional (Anamnese e Exame físico)",
+        adm: "Sim",
+        periodico: "Anual",
+        rt: "Sim",
+        mdf: "*",
+        dem: "Sim",
+      },
+    ];
+
+    if (nomeSetor === "COZINHA") {
+      examesFicha.push(
+        { codigo: "0658", nome: "Glicemia em Jejum", adm: "Sim", periodico: "Anual", rt: "—", mdf: "—", dem: "—" },
+        { codigo: "0693", nome: "Hemograma Completo", adm: "Sim", periodico: "Anual", rt: "—", mdf: "—", dem: "—" }
+      );
+    } else if (nomeSetor === "LIMPEZA E HIGIENIZAÇÃO") {
+      examesFicha.push(
+        { codigo: "0693", nome: "Hemograma Completo", adm: "Sim", periodico: "Anual", rt: "—", mdf: "—", dem: "—" }
+      );
+    } else if (nomeSetor === "CORTE") {
+      examesFicha.push(
+        { codigo: "0281", nome: "Audiometria Tonal e Vocal", adm: "Sim", periodico: "Anual", rt: "—", mdf: "Sim", dem: "Sim" }
+      );
+    }
+
+    return {
+      numero: numFicha,
+      setor: nomeSetor,
+      funcoes: funcoesNomes,
+      riscosFisicos: consolidar("riscosFisicos"),
+      riscosQuimicos: consolidar("riscosQuimicos"),
+      riscosBiologicos: consolidar("riscosBiologicos"),
+      riscosErgonomicos: consolidar("riscosErgonomicos"),
+      riscosAcidentes: consolidar("riscosAcidentes"),
+      exames: examesFicha,
+    };
+  });
+
+  const quadroLaboral: PcmsoQuadroLaboralItem[] = fichasExame.map((f) => ({
+    fichaNumero: f.numero,
+    setor: f.setor,
+    funcoes: f.funcoes,
+  }));
+
+  const atividadesLista: PcmsoAtividadeItem[] = cargos.map((c) => ({
+    setor: mapearSetorCanonico(c.nome, c.setor),
+    funcao: c.nome.toUpperCase(),
+    descricao: c.atividades,
+  })).sort((a, b) => a.setor.localeCompare(b.setor) || a.funcao.localeCompare(b.funcao));
+
   return {
     pcmso,
     empresa: empresaFormatada,
@@ -619,6 +786,9 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
     medicosExaminadores,
     ambientes,
     cargos,
+    fichasExame,
+    quadroLaboral,
+    atividadesLista,
     cronograma,
     relatorioAnaliticoTexto: pcmso.relatorio_analitico || "",
     estatisticasAsos,
