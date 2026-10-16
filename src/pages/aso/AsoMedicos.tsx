@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { buscarProfissionalPorCrm } from "@/lib/consultaCrm";
 
 export default function AsoMedicos() {
   const { empresaId } = useAuth();
@@ -99,9 +100,49 @@ export default function AsoMedicos() {
           <DialogContent>
             <DialogHeader><DialogTitle>{editing ? "Editar médico" : "Novo médico"}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2"><Label>Nome completo *</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
-              <div><Label>CRM *</Label><Input value={form.crm} onChange={(e) => setForm({ ...form, crm: e.target.value })} /></div>
-              <div><Label>UF</Label><Input value={form.uf_crm || ""} maxLength={2} onChange={(e) => setForm({ ...form, uf_crm: e.target.value.toUpperCase() })} /></div>
+              <div>
+                <Label>CRM *</Label>
+                <Input
+                  value={form.crm}
+                  onChange={(e) => setForm({ ...form, crm: e.target.value })}
+                  onBlur={async () => {
+                    const digitos = (form.crm || "").replace(/\D/g, "");
+                    if (digitos.length >= 2 && !form.nome) {
+                      const achado = await buscarProfissionalPorCrm(form.crm, form.uf_crm);
+                      if (achado) {
+                        setForm((prev: any) => ({
+                          ...prev,
+                          nome: achado.nome,
+                          uf_crm: achado.uf || prev.uf_crm || "CE",
+                          telefone: achado.telefone || prev.telefone,
+                          email: achado.email || prev.email,
+                          cpf: achado.cpf || prev.cpf,
+                          responsavel_pcmso: achado.responsavel_pcmso ?? prev.responsavel_pcmso,
+                        }));
+                        toast.success(`Médico localizado: ${achado.nome}`);
+                      }
+                    }
+                  }}
+                  placeholder="Ex: 9245"
+                />
+              </div>
+              <div>
+                <Label>UF</Label>
+                <Input
+                  value={form.uf_crm || ""}
+                  maxLength={2}
+                  onChange={(e) => setForm({ ...form, uf_crm: e.target.value.toUpperCase() })}
+                  placeholder="CE"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label>Nome completo *</Label>
+                <Input
+                  value={form.nome}
+                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                  placeholder="Ex: Carlos Virgilio de Andrade Chaves"
+                />
+              </div>
               <div><Label>CPF</Label><Input value={form.cpf || ""} onChange={(e) => setForm({ ...form, cpf: e.target.value })} /></div>
               <div><Label>Telefone</Label><Input value={form.telefone || ""} onChange={(e) => setForm({ ...form, telefone: e.target.value })} /></div>
               <div className="col-span-2"><Label>E-mail</Label><Input type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
