@@ -787,20 +787,23 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
       setorNome = setorNome.toUpperCase().trim();
 
       // 2. Funções pertencentes a este GES
+      const normalizarNomeFuncao = (s: string) =>
+        (s || "").replace(/[,;]+$/, "").replace(/\s+/g, " ").trim().toUpperCase();
+
       const fnsGhe = (gheFuncoesData?.data || [])
         .filter((f: any) => f.ghe_id === ges.id)
-        .map((f: any) => (f.nome_funcao || "").trim().toUpperCase())
+        .map((f: any) => normalizarNomeFuncao(f.nome_funcao))
         .filter(Boolean);
 
       const fnsSnapshot = invItens
         .filter((it: any) => it.ghe_id === ges.id)
         .flatMap((it: any) => (Array.isArray(it.funcoes_snapshot) ? it.funcoes_snapshot : [it.funcoes_snapshot]))
-        .map((f: any) => (f || "").trim().toUpperCase())
+        .map((f: any) => normalizarNomeFuncao(f))
         .filter(Boolean);
 
       const fnsCargos = cargos
         .filter((c: any) => c.setor && c.setor.toUpperCase().trim() === setorNome)
-        .map((c: any) => c.nome.toUpperCase().trim());
+        .map((c: any) => normalizarNomeFuncao(c.nome));
 
       const funcoesSet = new Set<string>([...fnsGhe, ...fnsSnapshot, ...fnsCargos]);
       const funcoesNomes = Array.from(funcoesSet).sort((a, b) => a.localeCompare(b));
@@ -1015,23 +1018,16 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
     funcoes: f.funcoes,
   }));
 
-  // Mapeia cada função para o Setor do GES correspondente
-  const mapaFuncaoParaSetorGes = new Map<string, string>();
-  fichasExame.forEach((f) => {
-    f.funcoes.forEach((fnNome) => {
-      if (!mapaFuncaoParaSetorGes.has(fnNome)) {
-        mapaFuncaoParaSetorGes.set(fnNome, f.setor);
-      }
-    });
-  });
-
   const ordemSetoresGes = fichasExame.map((f) => f.setor);
 
   const atividadesLista: PcmsoAtividadeItem[] = cargos.map((c) => {
-    const nomeNorm = c.nome.toUpperCase().trim();
-    const setorGes = mapaFuncaoParaSetorGes.get(nomeNorm) || mapearSetorCanonico(c.nome, c.setor);
+    const nomeNorm = (c.nome || "").replace(/[,;]+$/, "").replace(/\s+/g, " ").trim().toUpperCase();
+    const setorDoCargo = (c.setor && !/^[0-9a-f-]{36}$/i.test(c.setor))
+      ? c.setor.toUpperCase().trim()
+      : mapearSetorCanonico(c.nome, c.setor);
+
     return {
-      setor: setorGes,
+      setor: setorDoCargo,
       funcao: nomeNorm,
       descricao: c.atividades,
     };
