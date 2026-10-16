@@ -24,6 +24,8 @@ const COR_CINZA_CLARO: [number, number, number] = [248, 250, 252];
 const COR_CINZA_TABELA: [number, number, number] = [241, 245, 249];
 const COR_BORDA: [number, number, number] = [203, 213, 225];
 const COR_VERDE: [number, number, number] = [22, 101, 52];
+const COR_CINZA_CABECALHO: [number, number, number] = [226, 232, 240];
+const COR_CINZA_SUBGRUPO: [number, number, number] = [238, 242, 246];
 
 interface SumarioItem {
   num: string;
@@ -225,78 +227,62 @@ function desenharTabelaAtividades(b: BuilderState, lista: PcmsoAtividadeItem[]) 
 }
 
 /**
- * Desenha a Tabela de Riscos em 5 Colunas Técnicas (Padrão G91)
- * Agente / Perigo | Fonte Geradora | Danos à saúde | Meios de Propagação | Formas de Exposição
+ * Desenha a Tabela de Riscos no Modelo do Print do Usuário (4 colunas):
+ * Tipo de Agente | Perigo/Fonte Exposição | Possíveis Lesões ou Agravos à Saúde | Limite de Exposição
  */
-function desenharTabelaRiscos5Colunas(
+function desenharGrupoRiscoModeloPrint(
   b: BuilderState,
   tituloGrupo: string,
-  corGrupo: [number, number, number],
   riscos: PcmsoRiscoTabelaG91[]
 ) {
   const doc = b.doc;
-  /*
-   * Cinco colunas, 180 mm.
-   *
-   * Nível e classificação do risco NÃO entram aqui. Chegaram a entrar, e o
-   * documento ficou poluído: a classificação é assunto do PGR, que avalia e
-   * prioriza o risco. O PCMSO responde outra pergunta — que exame médico
-   * acompanha aquela exposição.
-   */
-  const colW = [35, 40, 40, 32, 33]; // Total = 180mm
+  const colW = [40, 50, 58, 32]; // Total = 180mm
 
-  ensureSpace(b, 14);
+  ensureSpace(b, 18);
 
-  // Faixa do Grupo de Risco
-  doc.setFillColor(corGrupo[0], corGrupo[1], corGrupo[2]);
+  // 1. Linha com Nome do Grupo de Risco (ex: "Risco Físico", "Risco Químico", etc.)
+  doc.setFillColor(COR_CINZA_SUBGRUPO[0], COR_CINZA_SUBGRUPO[1], COR_CINZA_SUBGRUPO[2]);
   doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.5, "F");
+  doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+  doc.setLineWidth(0.25);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.5, "S");
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
-  doc.setTextColor(255, 255, 255);
-  doc.text(tituloGrupo.toUpperCase(), MARGEM + 3, b.y + 4);
+  doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+  doc.text(tituloGrupo, MARGEM + LARGURA_UTIL / 2, b.y + 3.9, { align: "center" });
   b.y += 5.5;
 
-  /*
-   * Cabeçalho da tabela.
-   *
-   * Os rótulos QUEBRAM em quantas linhas precisarem, e a altura do cabeçalho
-   * sai daí. Eram desenhados numa linha fixa de 6 mm: ao estreitar as colunas
-   * para abrir espaço ao nível e à classificação, "MEIOS DE PROPAGAÇÃO" e
-   * "FORMA DE EXPOSIÇÃO" passaram por cima das colunas vizinhas.
-   */
+  // 2. Cabeçalho das 4 Colunas
   const ROTULOS = [
-    "AGENTE / PERIGO", "FONTE GERADORA", "POSSÍVEIS DANOS À SAÚDE",
-    "MEIOS DE PROPAGAÇÃO", "FORMA DE EXPOSIÇÃO",
+    "Tipo de Agente",
+    "Perigo/Fonte Exposição",
+    "Possíveis Lesões ou Agravos à Saúde",
+    "Limite de Exposição",
   ];
-  const ALTURA_ROTULO = 2.6;
+
+  doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6.5, "F");
+  doc.rect(MARGEM, b.y, LARGURA_UTIL, 6.5, "S");
+
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(6);
-  const rotulosQuebrados = ROTULOS.map((r, i) =>
-    doc.splitTextToSize(r, colW[i] - 3) as string[]);
-  const alturaCabecalho = Math.max(
-    6, Math.max(...rotulosQuebrados.map((l) => l.length)) * ALTURA_ROTULO + 2.6,
-  );
-
-  ensureSpace(b, alturaCabecalho + 8);
-
-  doc.setFillColor(COR_CINZA_TABELA[0], COR_CINZA_TABELA[1], COR_CINZA_TABELA[2]);
-  doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaCabecalho, "F");
-  doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-  doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaCabecalho, "S");
-  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.setFontSize(6.5);
+  doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
 
   let cx = MARGEM;
-  rotulosQuebrados.forEach((linhas, i) => {
-    if (i > 0) doc.line(cx, b.y, cx, b.y + alturaCabecalho);
-    linhas.forEach((linha, j) => {
-      doc.text(linha, cx + 2, b.y + 3.6 + j * ALTURA_ROTULO);
-    });
-    cx += colW[i];
+  ROTULOS.forEach((rotulo, idx) => {
+    if (idx > 0) doc.line(cx, b.y, cx, b.y + 6.5);
+    const linhasRotulo = doc.splitTextToSize(rotulo, colW[idx] - 3);
+    if (linhasRotulo.length > 1) {
+      doc.text(linhasRotulo, cx + colW[idx] / 2, b.y + 2.8, { align: "center" });
+    } else {
+      doc.text(rotulo, cx + colW[idx] / 2, b.y + 4.2, { align: "center" });
+    }
+    cx += colW[idx];
   });
-  doc.setFontSize(6.5);
-  b.y += alturaCabecalho;
+  b.y += 6.5;
 
-  // Linhas de Dados
+  // 3. Linhas de Dados do Grupo
   const listaParaRender = riscos.length > 0 ? riscos : [
     {
       agente: "Ausência de Fator de Risco",
@@ -307,14 +293,6 @@ function desenharTabelaRiscos5Colunas(
     },
   ];
 
-  /*
-   * Campo ausente vira célula vazia, nunca a palavra "undefined".
-   *
-   * O `splitTextToSize` recebe o valor como veio: faltando a chave, ele
-   * escrevia literalmente "undefined" na coluna — e um documento que vai à
-   * fiscalização não pode estampar termo de programador. Conferido com uma
-   * ficha sem `meioPropagacao`, que saía "undefined" em duas colunas.
-   */
   const celula = (v: unknown): string =>
     v === null || v === undefined ? "" : String(v).replace(/\s+/g, " ").trim();
 
@@ -322,15 +300,16 @@ function desenharTabelaRiscos5Colunas(
     const l1 = doc.splitTextToSize(celula(r.agente), colW[0] - 4);
     const l2 = doc.splitTextToSize(celula(r.fonte), colW[1] - 4);
     const l3 = doc.splitTextToSize(celula(r.danos), colW[2] - 4);
-    const l4 = doc.splitTextToSize(celula((r as { meioPropagacao?: unknown }).meioPropagacao), colW[3] - 4);
-    const l5 = doc.splitTextToSize(celula((r as { formaExposicao?: unknown }).formaExposicao), colW[4] - 4);
+    const formaValor = celula((r as { formaExposicao?: unknown }).formaExposicao || "Não se aplica");
+    const l4 = doc.splitTextToSize(formaValor, colW[3] - 4);
 
-    const maxLinhas = Math.max(l1.length, l2.length, l3.length, l4.length, l5.length);
-    const alturaLinha = Math.max(6, maxLinhas * 3.4 + 2.5);
+    const maxLinhas = Math.max(l1.length, l2.length, l3.length, l4.length);
+    const alturaLinha = Math.max(5.5, maxLinhas * 3.2 + 2.5);
 
     ensureSpace(b, alturaLinha);
 
     doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+    doc.setLineWidth(0.25);
     doc.setFillColor(idx % 2 === 0 ? 255 : COR_CINZA_CLARO[0], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[1], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[2]);
     doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaLinha, "FD");
 
@@ -341,73 +320,81 @@ function desenharTabelaRiscos5Colunas(
       doc.line(xSep, b.y, xSep, b.y + alturaLinha);
     }
 
-    doc.setFont("helvetica", r.agente === "Ausência de Fator de Risco" ? "italic" : "bold");
+    doc.setFont("helvetica", r.agente === "Ausência de Fator de Risco" ? "italic" : "normal");
     doc.setFontSize(6.5);
     doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
 
     let xCol = MARGEM;
-    doc.text(l1, xCol + 2, b.y + 3.8);
+    // Col 1: Tipo de Agente
+    if (r.agente === "Ausência de Fator de Risco") {
+      doc.text(l1, xCol + colW[0] / 2, b.y + 3.6, { align: "center" });
+    } else {
+      doc.setFont("helvetica", "bold");
+      doc.text(l1, xCol + 2, b.y + 3.6);
+      doc.setFont("helvetica", "normal");
+    }
     xCol += colW[0];
-    doc.setFont("helvetica", "normal");
-    doc.text(l2, xCol + 2, b.y + 3.8);
+
+    // Col 2: Perigo/Fonte Exposição
+    if (celula(r.fonte).toLowerCase() === "não se aplica") {
+      doc.text(l2, xCol + colW[1] / 2, b.y + 3.6, { align: "center" });
+    } else {
+      doc.text(l2, xCol + 2, b.y + 3.6);
+    }
     xCol += colW[1];
-    doc.text(l3, xCol + 2, b.y + 3.8);
+
+    // Col 3: Possíveis Lesões ou Agravos à Saúde
+    if (celula(r.danos).toLowerCase() === "não se aplica") {
+      doc.text(l3, xCol + colW[2] / 2, b.y + 3.6, { align: "center" });
+    } else {
+      doc.text(l3, xCol + 2, b.y + 3.6);
+    }
     xCol += colW[2];
-    doc.text(l4, xCol + 2, b.y + 3.8);
-    xCol += colW[3];
-    doc.text(l5, xCol + 2, b.y + 3.8);
+
+    // Col 4: Limite de Exposição
+    doc.text(l4, xCol + colW[3] / 2, b.y + 3.6, { align: "center" });
 
     b.y += alturaLinha;
   });
-
-  b.y += 2.5;
 }
 
 /**
- * Desenha a Matriz de Exames Médicos Ocupacionais no Padrão G91
- * Código | Exame Ocupacional | ADM | Periódico | RT | MDF | DEM
+ * Desenha a Matriz de Exames no Modelo do Print:
+ * Código | Exame | ADM | Periódico | RT | MRO | DEM
  */
 function desenharMatrizExames(b: BuilderState, exames: PcmsoFichaExameG91["exames"]) {
   const doc = b.doc;
-  const colW = [18, 72, 18, 18, 18, 18, 18]; // Total = 180mm
+  const colW = [18, 76, 17, 22, 15, 17, 15]; // Total = 180mm
 
-  ensureSpace(b, 14);
+  ensureSpace(b, 20);
 
-  // Faixa Superior
-  doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-  doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.5, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(255, 255, 255);
-  doc.text("EXAMES MÉDICOS OCUPACIONAIS E COMPLEMENTARES OBRIGATÓRIOS", MARGEM + 3, b.y + 4);
-  b.y += 5.5;
-
-  // Cabeçalho da Matriz
-  doc.setFillColor(COR_CINZA_TABELA[0], COR_CINZA_TABELA[1], COR_CINZA_TABELA[2]);
+  // Cabeçalho das 7 Colunas
+  doc.setFillColor(COR_CINZA_CABECALHO[0], COR_CINZA_CABECALHO[1], COR_CINZA_CABECALHO[2]);
   doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "F");
   doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+  doc.setLineWidth(0.25);
   doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "S");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(6.5);
-  doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+  doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
 
   let cx = MARGEM;
-  doc.text("CÓDIGO", cx + colW[0] / 2, b.y + 4.2, { align: "center" });
+  doc.text("Código", cx + colW[0] / 2, b.y + 4.2, { align: "center" });
   cx += colW[0];
   doc.line(cx, b.y, cx, b.y + 6);
-  doc.text("EXAME OCUPACIONAL", cx + 3, b.y + 4.2);
+  doc.text("Exame", cx + colW[1] / 2, b.y + 4.2, { align: "center" });
   cx += colW[1];
   doc.line(cx, b.y, cx, b.y + 6);
   doc.text("ADM", cx + colW[2] / 2, b.y + 4.2, { align: "center" });
   cx += colW[2];
   doc.line(cx, b.y, cx, b.y + 6);
-  doc.text("PERIÓDICO", cx + colW[3] / 2, b.y + 4.2, { align: "center" });
+  doc.text("Periódico", cx + colW[3] / 2, b.y + 4.2, { align: "center" });
   cx += colW[3];
   doc.line(cx, b.y, cx, b.y + 6);
   doc.text("RT", cx + colW[4] / 2, b.y + 4.2, { align: "center" });
   cx += colW[4];
   doc.line(cx, b.y, cx, b.y + 6);
-  doc.text("MDF", cx + colW[5] / 2, b.y + 4.2, { align: "center" });
+  doc.text("MRO", cx + colW[5] / 2, b.y + 4.2, { align: "center" });
   cx += colW[5];
   doc.line(cx, b.y, cx, b.y + 6);
   doc.text("DEM", cx + colW[6] / 2, b.y + 4.2, { align: "center" });
@@ -415,12 +402,13 @@ function desenharMatrizExames(b: BuilderState, exames: PcmsoFichaExameG91["exame
 
   // Linhas de Exames
   exames.forEach((ex, idx) => {
-    const nomeLinhas = doc.splitTextToSize(ex.nome, colW[1] - 6);
-    const alturaLinha = Math.max(6, nomeLinhas.length * 3.5 + 2.5);
+    const nomeLinhas = doc.splitTextToSize(ex.nome, colW[1] - 4);
+    const alturaLinha = Math.max(5.5, nomeLinhas.length * 3.2 + 2.5);
 
     ensureSpace(b, alturaLinha);
 
     doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+    doc.setLineWidth(0.25);
     doc.setFillColor(idx % 2 === 0 ? 255 : COR_CINZA_CLARO[0], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[1], idx % 2 === 0 ? 255 : COR_CINZA_CLARO[2]);
     doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaLinha, "FD");
 
@@ -438,24 +426,23 @@ function desenharMatrizExames(b: BuilderState, exames: PcmsoFichaExameG91["exame
     let xCol = MARGEM;
     // Código
     doc.setFont("helvetica", "bold");
-    doc.text(ex.codigo || "0295", xCol + colW[0] / 2, b.y + 4, { align: "center" });
+    doc.text(ex.codigo || "0295", xCol + colW[0] / 2, b.y + 3.8, { align: "center" });
     xCol += colW[0];
 
     // Nome
-    doc.setFont("helvetica", "bold");
-    doc.text(nomeLinhas, xCol + 3, b.y + 4);
+    doc.setFont("helvetica", "normal");
+    doc.text(nomeLinhas, xCol + 2, b.y + 3.8);
     xCol += colW[1];
 
-    // Colunas de Periodicidade com realce
+    // Colunas de Periodicidade
+    const formatarValor = (val: string) => {
+      if (!val || val === "—") return "—";
+      return val;
+    };
+
     const pintarCelula = (val: string, largura: number) => {
-      if (val === "SIM" || val === "Anual" || val.includes("meses")) {
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(COR_VERDE[0], COR_VERDE[1], COR_VERDE[2]);
-      } else {
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(148, 163, 184); // cinza suave para traço "—"
-      }
-      doc.text(val, xCol + largura / 2, b.y + 4, { align: "center" });
+      const v = formatarValor(val);
+      doc.text(v, xCol + largura / 2, b.y + 3.8, { align: "center" });
       xCol += largura;
     };
 
@@ -468,24 +455,27 @@ function desenharMatrizExames(b: BuilderState, exames: PcmsoFichaExameG91["exame
     b.y += alturaLinha;
   });
 
-  // Legenda explicativa normativa logo abaixo da tabela
-  /*
-   * Legenda da tabela de exames.
-   *
-   * QUEBRA em quantas linhas precisar. Era uma linha só, desenhada direto:
-   * ao ganhar a explicação do "(*)" ela passou da margem direita e o fim do
-   * texto saiu cortado na borda do papel.
-   */
+  // Nota de exame audiométrico
   doc.setFont("helvetica", "italic");
-  doc.setFontSize(6.5);
-  doc.setTextColor(100, 116, 139);
-  const legenda = doc.splitTextToSize(
-    "Legenda: ADM = Admissional | Periódico = Anual (conforme NR-07) | RT = Retorno ao Trabalho | MDF = Mudança de Riscos Ocupacionais | DEM = Demissional | (*) exigido quando a mudança implicar exposição a risco diferente do atual",
+  doc.setFontSize(6);
+  doc.setTextColor(71, 85, 105);
+
+  const notaAudio = doc.splitTextToSize(
+    "* O exame audiométrico deve ser realizado, no mínimo: na admissão; anualmente, tendo como referência o exame admissional e na demissão.",
     LARGURA_UTIL - 4,
   ) as string[];
-  ensureSpace(b, legenda.length * 3 + 4);
-  legenda.forEach((linha, i) => doc.text(linha, MARGEM + 2, b.y + 4 + i * 3));
-  b.y += legenda.length * 3 + 3;
+  ensureSpace(b, notaAudio.length * 2.8 + 6);
+  notaAudio.forEach((linha, i) => doc.text(linha, MARGEM + LARGURA_UTIL / 2, b.y + 3.2 + i * 2.8, { align: "center" }));
+  b.y += notaAudio.length * 2.8 + 1.5;
+
+  // Legenda explicativa normativa
+  const linhasLegenda = [
+    "Legenda: M: Masculino, F: Feminino, ADM: Admissão, MRO: Mudança de Riscos Ocupacionais, RT: Retorno ao Trabalho, DEM: Demissional",
+    "(*) exigido quando a mudança implicar exposição a risco diferente do atual",
+  ];
+  ensureSpace(b, linhasLegenda.length * 2.8 + 4);
+  linhasLegenda.forEach((linha, i) => doc.text(linha, MARGEM + LARGURA_UTIL / 2, b.y + 3 + i * 2.8, { align: "center" }));
+  b.y += linhasLegenda.length * 2.8 + 4;
 }
 
 // ---------------------------------------------------------------------------
@@ -1038,76 +1028,94 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     "As fichas a seguir detalham, por setor e grupo homogêneo, a correlação entre os agentes agressivos inventariados no PGR e os exames clínicos e complementares exigidos pela NR-07 para a preservação da saúde dos colaboradores:"
   );
 
-  // Renderiza cada Ficha de Exame no modelo G91
+  // Renderiza cada Ficha de Exame no modelo do Print enviado pelo usuário
   ctx.fichasExame.forEach((ficha) => {
-    ensureSpace(b, 35);
+    // Quebra de página para manter cada ficha limpa no topo da folha
+    if (b.y > 55) {
+      b.doc.addPage();
+      b.paginaAtual++;
+      b.y = 22;
+    }
 
-    // Faixa Superior da Ficha
-    doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.rect(MARGEM, b.y, LARGURA_UTIL, 7, "F");
+    const colWHeader = [75, 105]; // Total = 180mm
+
+    // 1. Barra Superior da Ficha: "Ficha de Exame {numero}"
+    ensureSpace(b, 25);
+    doc.setFillColor(COR_CINZA_CABECALHO[0], COR_CINZA_CABECALHO[1], COR_CINZA_CABECALHO[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 6.5, "F");
+    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+    doc.setLineWidth(0.25);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 6.5, "S");
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
-    doc.setTextColor(255, 255, 255);
-    doc.text(`${ficha.numero.toUpperCase()} — SETOR: ${ficha.setor.toUpperCase()}`, MARGEM + 3, b.y + 5);
-    b.y += 7;
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+    doc.text(`Ficha de Exame ${ficha.numero}`, MARGEM + LARGURA_UTIL / 2, b.y + 4.5, { align: "center" });
+    b.y += 6.5;
 
-    /*
-     * Linha de funções vinculadas.
-     *
-     * A faixa tinha altura fixa de 7 mm e avançava 9 mm, qualquer que fosse o
-     * tamanho da lista. O setor ADMINISTRAÇÃO E GESTÃO tem 25 funções: o texto
-     * quebrava em três linhas e as duas últimas saíam POR CIMA do título
-     * "1. DESCRIÇÃO DOS RISCOS OCUPACIONAIS" logo abaixo — conferido no PCMSO
-     * emitido em 10/2026, páginas 9, 12 e 13.
-     *
-     * Agora a altura sai da medição do texto. `splitTextToSize` devolve as
-     * linhas que o jsPDF realmente vai desenhar, que é a única medida que não
-     * erra quando o cadastro cresce.
-     */
-    const LARG_ROTULO = 31;
-    const ALTURA_LINHA = 3.2;
-    const textoFuncoes = ficha.funcoes.join(", ") || "Funções do Setor";
-    const linhasFuncoes = doc.splitTextToSize(
-      textoFuncoes,
-      LARGURA_UTIL - LARG_ROTULO - 6,
-    ) as string[];
-    const alturaFaixa = Math.max(7, linhasFuncoes.length * ALTURA_LINHA + 3.4);
-
-    /* A faixa não pode começar no pé da página e terminar na seguinte. */
-    ensureSpace(b, alturaFaixa + 12);
-
-    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+    // 2. Linha de Rótulos: "Setor" | "Função"
     doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
-    doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaFaixa, "FD");
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.5, "F");
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.5, "S");
+    doc.line(MARGEM + colWHeader[0], b.y, MARGEM + colWHeader[0], b.y + 5.5);
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
-    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text("Funções abrangidas:", MARGEM + 3, b.y + 4.8);
-    doc.setFont("helvetica", "normal");
     doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+    doc.text("Setor", MARGEM + colWHeader[0] / 2, b.y + 3.8, { align: "center" });
+    doc.text("Função", MARGEM + colWHeader[0] + colWHeader[1] / 2, b.y + 3.8, { align: "center" });
+    b.y += 5.5;
+
+    // 3. Linha de Conteúdo: Nome do Setor | Funções
+    const textoFuncoes = ficha.funcoes.join(", ") || "Funções do Setor";
+    const linhasFuncoes = doc.splitTextToSize(textoFuncoes, colWHeader[1] - 6) as string[];
+    const alturaBlocoFuncoes = Math.max(7, linhasFuncoes.length * 3.4 + 3);
+
+    ensureSpace(b, alturaBlocoFuncoes + 10);
+
+    doc.setFillColor(255, 255, 255);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaBlocoFuncoes, "FD");
+    doc.line(MARGEM + colWHeader[0], b.y, MARGEM + colWHeader[0], b.y + alturaBlocoFuncoes);
+
+    // Setor centralizado
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+    doc.text(ficha.setor.toUpperCase(), MARGEM + colWHeader[0] / 2, b.y + alturaBlocoFuncoes / 2 + 1.2, { align: "center" });
+
+    // Funções centralizadas
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    const startYFuncoes = b.y + (alturaBlocoFuncoes - linhasFuncoes.length * 3.2) / 2 + 2.4;
     linhasFuncoes.forEach((linha, i) => {
-      doc.text(linha, MARGEM + LARG_ROTULO + 3, b.y + 4.8 + i * ALTURA_LINHA);
+      doc.text(linha, MARGEM + colWHeader[0] + colWHeader[1] / 2, startYFuncoes + i * 3.2, { align: "center" });
     });
-    b.y += alturaFaixa + 2;
+    b.y += alturaBlocoFuncoes;
 
-    // Subtítulo Riscos
-    desenharSubtitulo(b, "1. DESCRIÇÃO DOS RISCOS OCUPACIONAIS");
+    // 4. Barra: "Descrição dos Riscos"
+    doc.setFillColor(COR_CINZA_CABECALHO[0], COR_CINZA_CABECALHO[1], COR_CINZA_CABECALHO[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.5, "F");
+    doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+    doc.setLineWidth(0.25);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.5, "S");
 
-    // Tabelas dos 5 Grupos de Risco
-    desenharTabelaRiscos5Colunas(b, "Grupo I - Riscos Físicos", [37, 99, 235], ficha.riscosFisicos);
-    desenharTabelaRiscos5Colunas(b, "Grupo II - Riscos Químicos", [185, 28, 28], ficha.riscosQuimicos);
-    desenharTabelaRiscos5Colunas(b, "Grupo III - Riscos Biológicos", [16, 149, 193], ficha.riscosBiologicos);
-    desenharTabelaRiscos5Colunas(b, "Grupo IV - Riscos Ergonômicos", [202, 138, 4], ficha.riscosErgonomicos);
-    desenharTabelaRiscos5Colunas(b, "Grupo V - Riscos de Acidentes / Mecânicos", [71, 85, 105], ficha.riscosAcidentes);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+    doc.text("DESCRIÇÃO DOS RISCOS", MARGEM + LARGURA_UTIL / 2, b.y + 3.8, { align: "center" });
+    b.y += 5.5;
 
-    // Subtítulo Exames
-    b.y += 2;
-    desenharSubtitulo(b, "2. RELAÇÃO DE EXAMES MÉDICOS OCUPACIONAIS");
+    // 5. Grupos de Risco na ordem oficial
+    desenharGrupoRiscoModeloPrint(b, "Risco Físico", ficha.riscosFisicos);
+    desenharGrupoRiscoModeloPrint(b, "Risco Químico", ficha.riscosQuimicos);
+    desenharGrupoRiscoModeloPrint(b, "Risco Biológico", ficha.riscosBiologicos);
+    desenharGrupoRiscoModeloPrint(b, "Risco Ergonômico", ficha.riscosErgonomicos);
+    desenharGrupoRiscoModeloPrint(b, "Risco de Acidentes", ficha.riscosAcidentes);
 
-    // Matriz de Exames da Ficha
+    // 6. Matriz de Exames da Ficha
     desenharMatrizExames(b, ficha.exames);
 
-    b.y += 8;
+    b.y += 6;
   });
 
   // =========================================================================
@@ -1190,10 +1198,10 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   // =========================================================================
   // SEÇÃO 14: MÉDICOS EXAMINADORES
   // =========================================================================
-  desenharTituloSecao(b, "14", "Médicos Examinadores Autorizados");
+  desenharTituloSecao(b, "14", "Médicos Examinadores e Profissionais Habilitados");
   desenharParagrafo(
     b,
-    "Médicos e profissionais capacitados autorizados pelo Médico Coordenador a realizar os exames clínicos ocupacionais (ASO) no âmbito deste PCMSO:"
+    "Médicos examinadores, fonoaudiólogos e profissionais de saúde legalmente habilitados e autorizados pelo Médico Coordenador a realizar as avaliações clínicas e exames complementares ocupacionais (NR-07):"
   );
 
   ensureSpace(b, (ctx.medicosExaminadores.length + 1) * 6 + 6);
@@ -1203,8 +1211,8 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   doc.setFontSize(7.5);
   doc.setTextColor(255, 255, 255);
   doc.text("NOME DO PROFISSIONAL", MARGEM + 3, b.y + 4.2);
-  doc.text("REGISTRO CRM", MARGEM + 110, b.y + 4.2);
-  doc.text("ESTADO / UF", DIREITA - 4, b.y + 4.2, { align: "right" });
+  doc.text("REGISTRO PROFISSIONAL", MARGEM + 110, b.y + 4.2);
+  doc.text("CONSELHO / UF", DIREITA - 4, b.y + 4.2, { align: "right" });
   b.y += 6;
 
   ctx.medicosExaminadores.forEach((med, idx) => {
@@ -1217,10 +1225,17 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
     doc.text(med.nome, MARGEM + 3, b.y + 4.2);
 
+    const ufUpper = (med.uf || "").toUpperCase();
+    const crmUpper = (med.crm || "").toUpperCase();
+    const isFono = ufUpper.includes("CRFA") || crmUpper.includes("CRFA") || ufUpper.includes("CRF");
+    const regTexto = isFono
+      ? (crmUpper.startsWith("CRFA") ? crmUpper : `CRFa ${med.crm}`)
+      : `CRM ${med.crm}`;
+
     doc.setFont("helvetica", "normal");
     doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    doc.text(`CRM ${med.crm}`, MARGEM + 110, b.y + 4.2);
-    doc.text(med.uf, DIREITA - 8, b.y + 4.2, { align: "right" });
+    doc.text(regTexto, MARGEM + 110, b.y + 4.2);
+    doc.text(med.uf || "CE", DIREITA - 8, b.y + 4.2, { align: "right" });
     b.y += 6;
   });
   b.y += 6;

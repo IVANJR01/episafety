@@ -15,9 +15,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save, Loader2, Link2, Stethoscope, CalendarRange, Building2, UserPlus, Sparkles } from "lucide-react";
+import { Save, Loader2, Link2, Stethoscope, CalendarRange, Building2, UserPlus, Sparkles, UserCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { PgrStatus, PGR_STATUS_LABEL } from "@/lib/pgrTypes";
+import PcmsoProfissionalModal from "./PcmsoProfissionalModal";
 
 interface PcmsoCapaTabProps {
   pcmso: any;
@@ -40,6 +42,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
 
   const [dataInicio, setDataInicio] = useState(pcmso.data_vigencia_inicio || "");
   const [dataFim, setDataFim] = useState(pcmso.data_vigencia_fim || "");
+  const [modalProfissionalAberto, setModalProfissionalAberto] = useState(false);
 
   // Busca dados da empresa para conferência
   const { data: dadosEmpresa } = useQuery({
@@ -474,6 +477,70 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
         </Card>
       </div>
 
+      {/* Equipe de Saúde e Examinadores Credenciados (NR-07) */}
+      <Card className="shadow-sm border-t-4 border-t-blue-500">
+        <CardHeader className="py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <UserCheck className="h-4 w-4 text-blue-600" /> Equipe de Saúde e Examinadores Credenciados (NR-07)
+              </CardTitle>
+              <CardDescription className="text-xs mt-1">
+                Médicos examinadores e Fonoaudiólogos legalmente habilitados cadastrados para a realização e emissão de exames ocupacionais.
+              </CardDescription>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setModalProfissionalAberto(true)}
+              className="text-xs gap-1.5 shrink-0 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+            >
+              <UserPlus className="h-3.5 w-3.5" /> Adicionar Médico / Fonoaudiólogo
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="py-2">
+          {medicos.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-4 text-center">
+              Nenhum profissional cadastrado na base da empresa. Use o botão acima para adicionar.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+              {medicos.map((m: any) => {
+                const isFono = (m.uf_crm || "").toUpperCase().includes("CRFA") || (m.crm || "").toUpperCase().includes("CRFA");
+                const isCoord = m.id === medicoId || m.responsavel_pcmso;
+
+                return (
+                  <div
+                    key={m.id}
+                    className="p-2.5 rounded-lg border bg-slate-50/50 dark:bg-slate-900/20 text-xs flex flex-col justify-between gap-1.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-semibold text-foreground truncate">
+                        {isFono ? "" : "Dr(a). "}{m.nome}
+                      </span>
+                      {isCoord && (
+                        <Badge className="text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 shrink-0 border-none">
+                          Coordenador
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground flex-wrap">
+                      <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0">
+                        {isFono ? `CRFa: ${m.crm}/${m.uf_crm || "8"}` : `CRM: ${m.crm}/${m.uf_crm || "CE"}`}
+                      </Badge>
+                      <span className="text-[10px]">
+                        {isFono ? "Fonoaudiólogo(a)" : "Médico Examinador"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {pcmso.status === "rascunho" && (
         <div className="flex justify-end pt-4 border-t">
           <Button 
@@ -491,6 +558,14 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
           </Button>
         </div>
       )}
+
+      {/* Modal de Cadastro de Profissional (Médico / Fonoaudiólogo) */}
+      <PcmsoProfissionalModal
+        open={modalProfissionalAberto}
+        onOpenChange={setModalProfissionalAberto}
+        empresaId={alvoEmpresaId}
+        onSuccess={() => refetchMedicos()}
+      />
     </div>
   );
 }
