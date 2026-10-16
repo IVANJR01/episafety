@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { PgrStatus, PGR_STATUS_LABEL } from "@/lib/pgrTypes";
 import PcmsoProfissionalModal from "./PcmsoProfissionalModal";
+import { buscarProfissionalPorCrm } from "@/lib/consultaCrm";
 
 interface PcmsoCapaTabProps {
   pcmso: any;
@@ -383,27 +384,29 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
                 </div>
               ) : (
                 <div className="space-y-3 bg-muted/20 p-3 rounded-lg border">
-                  <div>
-                    <Label className="text-xs">Nome Completo do Médico</Label>
-                    <Input
-                      placeholder="Ex: Dr. Roger Catunda Rocha"
-                      value={medicoNome}
-                      onChange={(e) => setMedicoNome(e.target.value)}
-                      disabled={formDisabled}
-                    />
-                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs">CRM</Label>
+                      <Label className="text-xs font-semibold">CRM</Label>
                       <Input
-                        placeholder="Ex: 6353"
+                        placeholder="Ex: 9245 ou 6353"
                         value={medicoCrm}
                         onChange={(e) => setMedicoCrm(e.target.value)}
+                        onBlur={async () => {
+                          const digitos = medicoCrm.replace(/\D/g, "");
+                          if (digitos.length >= 2 && !medicoNome) {
+                            const achado = await buscarProfissionalPorCrm(medicoCrm, medicoUf);
+                            if (achado) {
+                              setMedicoNome(achado.nome);
+                              if (achado.uf) setMedicoUf(achado.uf);
+                              toast.success(`Médico localizado: ${achado.nome}`);
+                            }
+                          }
+                        }}
                         disabled={formDisabled}
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">UF CRM</Label>
+                      <Label className="text-xs font-semibold">UF CRM</Label>
                       <Input
                         placeholder="Ex: CE"
                         value={medicoUf}
@@ -411,6 +414,15 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
                         disabled={formDisabled}
                       />
                     </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Nome Completo do Médico</Label>
+                    <Input
+                      placeholder="Ex: Carlos Virgilio de Andrade Chaves"
+                      value={medicoNome}
+                      onChange={(e) => setMedicoNome(e.target.value)}
+                      disabled={formDisabled}
+                    />
                   </div>
                   <div className="flex gap-2 pt-1">
                     <Button
@@ -517,7 +529,11 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="font-semibold text-foreground truncate">
-                        {isFono ? "" : "Dr(a). "}{m.nome}
+                        {isFono
+                          ? m.nome
+                          : /^dr[aªº\.]*\s+/i.test((m.nome || "").trim())
+                          ? m.nome.trim()
+                          : `Dr(a). ${(m.nome || "").trim()}`}
                       </span>
                       {isCoord && (
                         <Badge className="text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 shrink-0 border-none">
