@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { examesNormativosDoGes, periodicidadeEmTexto } from "@/lib/examesDoGes";
 import { carregarLogoDataUrl } from "@/lib/logoParaPdf";
 import { carregarEmissor } from "@/lib/emissorDocumentos";
 
@@ -907,34 +908,28 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
           };
         });
       } else {
-        examesFicha = [
-          {
-            codigo: "0295",
-            nome: "Avaliação Clínica Ocupacional (Anamnese e Exame físico)",
-            adm: "Sim",
-            periodico: temRiscoReal ? "Anual" : "Bienal",
-            rt: "Sim",
-            mdf: "*",
-            dem: "Sim",
-          },
-        ];
-
-        // Se houver ruído no inventário, a NR-07 Anexo II exige Audiometria
-        const temRuidoNoGes = riscosDoGes.some((it: any) => {
-          const txt = `${it.tipo_agente || ""} ${it.perigo_descricao || ""} ${it.fonte_geradora || ""}`.toLowerCase();
-          return txt.includes("ruido") || txt.includes("ruído") || txt.includes("som") || txt.includes("pressão sonora");
-        });
-        if (temRuidoNoGes) {
-          examesFicha.push({
-            codigo: "0935",
-            nome: "Audiometria Tonal e Vocal",
-            adm: "Sim",
-            periodico: "Anual",
-            rt: "Sim",
-            mdf: "Sim",
-            dem: "Sim",
-          });
-        }
+        /*
+         * Mesma base normativa que o Portal de ASO usa — ver examesDoGes.ts.
+         *
+         * A regra morava aqui dentro, e o ASO lia só a Matriz de Saúde. Com
+         * a Matriz vazia, o PCMSO saía com a lista cheia e o ASO do mesmo
+         * colaborador saía sem exame nenhum. A fonte agora é uma só.
+         */
+        const textosDosRiscos = riscosDoGes.map((it: any) =>
+          `${it.tipo_agente || ""} ${it.perigo_descricao || ""} ${it.fonte_geradora || ""}`.trim(),
+        );
+        examesFicha = examesNormativosDoGes(
+          temRiscoReal ? textosDosRiscos : [],
+        ).map((e) => ({
+          codigo: e.codigo,
+          nome: e.nome,
+          adm: e.admissional ? "Sim" : "—",
+          periodico: periodicidadeEmTexto(e.periodicidadeMeses),
+          rt: e.retorno ? "Sim" : "—",
+          /* O asterisco: exigido só quando a mudança leva a risco diferente. */
+          mdf: e.mudanca ? "Sim" : (e.mudancaSeRiscoDiferente ? "*" : "—"),
+          dem: e.demissional ? "Sim" : "—",
+        }));
 
         // Exames complementares dos cargos deste GES
         const cargosDoGes = cargos.filter((c: any) =>

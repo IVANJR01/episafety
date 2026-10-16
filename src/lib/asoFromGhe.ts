@@ -1,4 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
+import {
+  examesNormativosDoGes, examesDoTipoDeExame,
+} from "@/lib/examesDoGes";
 
 export const TIPO_EXAME_COL: Record<string, string> = {
   admissional: "admissional",
@@ -37,5 +40,31 @@ export async function loadGheRiscosExames(
   const exames: ExameSnapshot[] = (examesRes.data || [])
     .filter((e: any) => e[col] === true)
     .map((e: any) => ({ nome_exame: e.nome_exame, codigo: e.codigo_exame, tipo: e.tipo_exame, periodicidade_meses: e.periodicidade_meses }));
+
+  /*
+   * Matriz de Saúde vazia para este GES: cai na MESMA base normativa que o
+   * documento do PCMSO usa.
+   *
+   * Antes devolvia lista vazia, e o ASO saía sem exame nenhum enquanto o
+   * PCMSO da mesma empresa mostrava a lista cheia — os dois liam fontes
+   * diferentes. Conferido no banco: a Matriz tem uma linha em todo o
+   * sistema, então na prática o ASO nunca via exame nenhum.
+   */
+  if (exames.length === 0) {
+    const normativos = examesDoTipoDeExame(
+      examesNormativosDoGes(riscos.map((r) => r.descricao)),
+      tipoExame,
+    );
+    return {
+      riscos,
+      exames: normativos.map((e) => ({
+        nome_exame: e.nome,
+        codigo: e.codigo,
+        tipo: null,
+        periodicidade_meses: e.periodicidadeMeses ?? undefined,
+      })),
+    };
+  }
+
   return { riscos, exames };
 }

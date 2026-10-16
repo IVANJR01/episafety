@@ -19,12 +19,21 @@ function formatarNumeroAsoParaPdf(n?: string | null): string {
   return m ? m[1] : String(n);
 }
 
-function inferValidadeTipo(aso: any): string | null {
-  // Regra automática: demissional => 90 dias; demais => 1 ano
+/**
+ * Qual quadrinho de validade marcar no PDF.
+ *
+ * Havia aqui "demissional => 90 dias; demais => 1 ano", e os dois estavam
+ * errados — ver src/lib/validadeAso.ts. O demissional não vence (NR-07,
+ * 7.5.11), e o exame clínico é bienal para quem não está exposto a risco
+ * identificado no PGR (7.5.8, II "b").
+ *
+ * O PDF não recalcula a regra: ele imprime o que foi GRAVADO no ASO, que
+ * é onde a regra já foi aplicada. Recalcular aqui faria o papel divergir
+ * do registro — e é o papel que vai à fiscalização.
+ */
+export function inferValidadeTipo(aso: any): string | null {
   const tipo = String(aso.tipo_exame || "").toLowerCase();
-  if (tipo === "demissional") return "90dias";
-  if (["admissional", "periodico", "retorno", "mudanca_risco", "mudanca_funcao"].includes(tipo)) return "1ano";
-  // fallback ao salvo
+  if (tipo === "demissional") return null;   // não vence
   if (aso.validade_tipo) {
     const v = String(aso.validade_tipo).toLowerCase();
     if (v.includes("90")) return "90dias";

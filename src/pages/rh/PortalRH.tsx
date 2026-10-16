@@ -17,6 +17,8 @@ import { Eye, FileDown, Printer, Search, LogOut, FileText, X, FilePlus2, AlertTr
 import { toast } from "sonner";
 import { differenceInDays, parseISO, format, addYears, addDays } from "date-fns";
 import { gerarPdfAso, gerarPdfAsoBlob } from "@/lib/asoPdf";
+import { validadeDoAso, type TipoExameAso } from "@/lib/validadeAso";
+import { temRiscoIdentificado } from "@/lib/examesDoGes";
 import { loadGheRiscosExames, GRUPOS_RISCO } from "@/lib/asoFromGhe";
 import { resolverGesPorFuncao, type FuncaoDeGes } from "@/lib/resolverGes";
 
@@ -25,12 +27,29 @@ const TIPO: Record<string, string> = {
   mudanca_risco: "Mudança de Risco", mudanca_funcao: "Mudança de Função", demissional: "Demissional",
 };
 
-// Regra de validade automática por tipo de exame
-// Demissional = 90 dias; demais = 1 ano
-function calcularValidade(tipo: string, emissao: string): { vencimento: string; validade_tipo: string } {
+/**
+ * Validade do ASO, pela NR-07 — a mesma regra do módulo de ASO.
+ *
+ * Aqui havia "demissional = 90 dias; demais = 1 ano". As duas metades
+ * estavam erradas:
+ *
+ *   - os 90 dias não são validade do demissional. São a janela em que um
+ *     exame anterior DISPENSA o demissional, e são 135 dias nos graus de
+ *     risco 1 e 2 (7.5.11). O demissional encerra o vínculo e não vence;
+ *     com vencimento, o painel cobra documento de quem saiu da empresa.
+ *   - "1 ano" para todos ignora o 7.5.8, II "b": quem não está exposto a
+ *     risco identificado no PGR faz o exame clínico a cada DOIS anos.
+ *
+ * A regra mora em src/lib/validadeAso.ts e é usada pelas duas telas.
+ */
+function calcularValidade(
+  tipo: string, emissao: string, expostoARisco: boolean,
+): { vencimento: string; validade_tipo: string } {
   const base = parseISO(emissao);
-  if (tipo === "demissional") {
-    return { vencimento: format(addDays(base, 90), "yyyy-MM-dd"), validade_tipo: "90dias" };
+  const regra = validadeDoAso(tipo as TipoExameAso, expostoARisco);
+  if (regra.meses === null) return { vencimento: "", validade_tipo: "nao_vence" };
+  if (regra.meses === 24) {
+    return { vencimento: format(addYears(base, 2), "yyyy-MM-dd"), validade_tipo: "2anos" };
   }
   return { vencimento: format(addYears(base, 1), "yyyy-MM-dd"), validade_tipo: "1ano" };
 }
@@ -87,13 +106,29 @@ export default function PortalRH() {
 
   const validadeBloqueada = !isSuperAdmin; // RH: bloqueado; Admin/TST: pode alterar
 
-  // Recalcula validade automaticamente ao mudar tipo de exame ou emissão
+  /*
+   * O trabalhador está exposto a risco identificado no PGR? É isso que
+   * separa o exame anual do bienal (NR-07, 7.5.8, II), e vem dos riscos do
+   * GES — os mesmos que entram no ASO.
+   */
+  const expostoARisco = useMemo(
+    () => temRiscoIdentificado(riscos.map((r) => r.descricao)),
+    [riscos],
+  );
+
+  // Recalcula validade automaticamente ao mudar tipo de exame, emissão ou risco
   useEffect(() => {
     if (!dataEmissao) return;
-    const { vencimento, validade_tipo } = calcularValidade(tipoExame, dataEmissao);
+    const { vencimento, validade_tipo } = calcularValidade(tipoExame, dataEmissao, expostoARisco);
     setDataVencimento(vencimento);
     setValidadeTipoSel(validade_tipo);
-  }, [tipoExame, dataEmissao]);
+  }, [tipoExame, dataEmissao, expostoARisco]);
+
+  /** O que a norma diz deste ASO — mostrado ao lado do campo. */
+  const regraValidade = useMemo(
+    () => validadeDoAso(tipoExame as TipoExameAso, expostoARisco),
+    [tipoExame, expostoARisco],
+  );
 
   // Funcionários da empresa (todos os ativos, com ou sem GES — o alerta aparece após seleção)
   const { data: funcionarios = [] } = useQuery({
@@ -260,7 +295,13 @@ export default function PortalRH() {
     return map;
   }, [riscos]);
 
-  const podeEmitir = !!funcSel && !!gheEfetivo && !!dataEmissao && !!dataVencimento && !!localEmissaoId;
+  /*
+   * O demissional não vence (NR-07, 7.5.11), então ele sai sem data de
+   * vencimento — e exigir uma travaria a emissão para sempre.
+   */
+  const vencimentoExigido = regraValidade.meses !== null;
+  const podeEmitir = !!funcSel && !!gheEfetivo && !!dataEmissao
+    && (!vencimentoExigido || !!dataVencimento) && !!localEmissaoId;
 
   const resetForm = () => {
     setFuncionarioId(""); setFuncSearch(""); setTipoExame("admissional");
@@ -281,7 +322,8 @@ export default function PortalRH() {
       const { data: num } = await supabase.rpc("gerar_numero_aso", { _empresa_id: empresa_id });
       const payload: any = {
         empresa_id, funcionario_id: funcSel.id, medico_id: medicoId || null,
-        tipo_exame: tipoExame, data_emissao: dataEmissao, data_vencimento: dataVencimento,
+        tipo_exame: tipoExame, data_emissao: dataEmissao,
+        data_vencimento: dataVencimento || null,
         validade_tipo: validadeTipoSel, status_aptidao: "apto",
         apto_cargo: false, inapto_cargo: false, apto_restricao: false,
         apto_nr35: false, inapto_nr35: false, nr35_nao_aplica: false,
@@ -524,7 +566,12 @@ export default function PortalRH() {
                       </div>
                       <div>
                         <Label>
-                          Validade * <span className="text-xs text-muted-foreground">(automática — {tipoExame === "demissional" ? "90 dias" : "1 ano"})</span>
+                          Validade {regraValidade.meses === null ? "" : "*"}{" "}
+                          <span className="text-xs text-muted-foreground">
+                            (automática — {regraValidade.meses === null
+                              ? "não vence"
+                              : regraValidade.meses === 24 ? "2 anos" : "1 ano"})
+                          </span>
                         </Label>
                         <Input type="date" value={dataVencimento}
                           onChange={(e) => setDataVencimento(e.target.value)}
