@@ -1111,9 +1111,86 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   });
 
   // =========================================================================
-  // SEÇÃO 12: MÉDICOS EXAMINADORES
+  // SEÇÃO 12: CRITÉRIOS DE INTERPRETAÇÃO E CONDUTAS
+  //
+  // Exigida pela NR-07, item 7.5.4 "c": a organização deve garantir que o
+  // PCMSO "contenha os critérios de interpretação e planejamento das condutas
+  // relacionadas aos achados dos exames médicos". O documento não tinha seção
+  // nenhuma sobre isso — era uma falta perante a norma, não um detalhe de
+  // layout.
+  //
+  // O texto abaixo descreve a CONDUTA, que é o que a norma pede do programa, e
+  // sai da própria NR: 7.5.5 (reavaliar o inventário com os responsáveis pelo
+  // PGR), 7.5.9.1 (retorno gradativo), 7.6.5 (discutir com SST e CIPA). Não
+  // há aqui critério clínico — isso é do médico coordenador, e a última linha
+  // diz exatamente isso.
   // =========================================================================
-  desenharTituloSecao(b, "12", "Médicos Examinadores Autorizados");
+  desenharTituloSecao(b, "12", "Critérios de Interpretação e Condutas");
+  desenharParagrafo(
+    b,
+    "Os achados dos exames médicos ocupacionais são interpretados pelo Médico Coordenador deste PCMSO e orientam as condutas descritas a seguir, conforme o item 7.5.4 \"c\" da NR-07:"
+  );
+  [
+    "a) Resultado dentro dos parâmetros de normalidade: mantém-se a periodicidade de exames definida neste programa para a função.",
+    "b) Resultado alterado sem relação com o trabalho: o empregado é orientado e encaminhado à rede de assistência à saúde, mantendo-se a aptidão quando a alteração não comprometer o exercício seguro da função.",
+    "c) Resultado alterado com suspeita de relação com o trabalho: repetição ou complementação do exame, avaliação do nexo causal, reavaliação da exposição e das medidas de controle e, quando indicado, afastamento da exposição.",
+    "d) Confirmada doença relacionada ao trabalho: emissão da Comunicação de Acidente de Trabalho (CAT), notificação epidemiológica quando aplicável, encaminhamento à Previdência Social e definição de restrições ou readaptação.",
+    "e) No retorno ao trabalho, a avaliação médica define a necessidade de retorno gradativo (NR-07, subitem 7.5.9.1).",
+    "f) Identificada inconsistência no inventário de riscos, o Médico Coordenador a reavalia em conjunto com os responsáveis pelo PGR (NR-07, subitem 7.5.5).",
+    "g) Os achados e suas condutas são apresentados e discutidos com os responsáveis por segurança e saúde no trabalho e com a CIPA, quando existente (NR-07, subitem 7.6.5).",
+  ].forEach((linha) => desenharParagrafo(b, linha, 7.5, 2));
+  desenharParagrafo(
+    b,
+    "A interpretação clínica de cada achado, os critérios de aptidão e as condutas individuais são atribuição exclusiva do Médico Coordenador e dos médicos examinadores, registradas no prontuário médico individual do empregado.",
+    7.5,
+    4
+  );
+
+  // =========================================================================
+  // SEÇÃO 13: RELATÓRIO ANALÍTICO
+  //
+  // Exigido pelo item 7.5.4 "e" c/c 7.6.2: o PCMSO deve incluir relatório
+  // analítico do programa. O sistema já calculava as estatísticas de ASO e
+  // guardava o texto do médico, e NADA disso chegava ao documento.
+  //
+  // As alíneas "a" e "b" do 7.6.2 (número de exames clínicos e número e tipos
+  // de complementares) saem dos dados; as demais dependem de prontuário, que é
+  // do médico — por isso o texto dele entra inteiro, e o 7.6.6 dispensa as
+  // outras alíneas para organizações pequenas.
+  // =========================================================================
+  desenharTituloSecao(b, "13", "Relatório Analítico do Programa");
+  desenharParagrafo(
+    b,
+    "Relatório analítico elaborado conforme o subitem 7.6.2 da NR-07, considerando o período de vigência deste programa:"
+  );
+  {
+    const e = ctx.estatisticasAsos;
+    desenharParagrafo(
+      b,
+      `a) Exames clínicos ocupacionais realizados: ${e.total} (admissionais: ${e.admissional}; periódicos: ${e.periodico}; retorno ao trabalho: ${e.retorno}; mudança de riscos: ${e.mudanca}; demissionais: ${e.demissional}).`,
+      7.5,
+      2
+    );
+    desenharParagrafo(
+      b,
+      `b) Resultados de aptidão registrados: ${e.aptos} aptos, ${e.restricoes} aptos com restrição e ${e.inaptos} inaptos.`,
+      7.5,
+      2
+    );
+    const texto = (ctx.relatorioAnaliticoTexto || "").trim();
+    desenharParagrafo(
+      b,
+      texto
+        || "Análise do Médico Coordenador não registrada até a emissão deste documento. As alíneas \"c\" a \"f\" do subitem 7.6.2 dependem dos dados dos prontuários médicos e são elaboradas pelo Médico Coordenador do PCMSO.",
+      7.5,
+      4
+    );
+  }
+
+  // =========================================================================
+  // SEÇÃO 14: MÉDICOS EXAMINADORES
+  // =========================================================================
+  desenharTituloSecao(b, "14", "Médicos Examinadores Autorizados");
   desenharParagrafo(
     b,
     "Médicos e profissionais capacitados autorizados pelo Médico Coordenador a realizar os exames clínicos ocupacionais (ASO) no âmbito deste PCMSO:"
@@ -1151,7 +1228,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   // =========================================================================
   // SEÇÃO 13: CRONOGRAMA ANUAL DE AÇÕES E TREINAMENTOS (PADRÃO G91)
   // =========================================================================
-  desenharTituloSecao(b, "13", "Cronograma Anual de Ações e Treinamentos");
+  desenharTituloSecao(b, "15", "Cronograma Anual de Ações e Treinamentos");
   desenharParagrafo(
     b,
     "Metas, ações e treinamentos preventivos programados para execução ao longo do período de vigência deste PCMSO:"
@@ -1240,7 +1317,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   // =========================================================================
   // SEÇÃO 14: TERMO DE ENCERRAMENTO E RESPONSABILIDADE (PADRÃO G91)
   // =========================================================================
-  desenharTituloSecao(b, "14", "Termo de Encerramento e Responsabilidade");
+  desenharTituloSecao(b, "16", "Termo de Encerramento e Responsabilidade");
   desenharParagrafo(
     b,
     "Pelo presente instrumento, a Organização e o Médico Coordenador assumem formalmente o compromisso de garantir a viabilização e efetiva implantação do Programa de Controle Médico de Saúde Ocupacional (PCMSO), zelando pela realização e custeando sem qualquer ônus para os colaboradores os exames e procedimentos preconizados pela Norma Regulamentadora 07."
@@ -1283,7 +1360,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   // =========================================================================
   // SEÇÃO 15: REFERÊNCIA BIBLIOGRÁFICA
   // =========================================================================
-  desenharTituloSecao(b, "15", "Referência Bibliográfica");
+  desenharTituloSecao(b, "17", "Referência Bibliográfica");
   const bibliografia = [
     "• NR-07 - Programa de Controle Médico de Saúde Ocupacional: Portaria SEPRT n.º 6.734, de 09/03/2020.",
     "• NR-01 - Disposições Gerais e Gerenciamento de Riscos Ocupacionais: Portaria SEPRT n.º 6.730, de 09/03/2020.",

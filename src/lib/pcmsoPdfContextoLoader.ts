@@ -345,18 +345,34 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
   let cargos: PcmsoCargoItem[] = [];
 
   if (funcoesList.length > 0) {
-    // Agrupa funções repetidas no cadastro para consolidar em uma ficha única por cargo
+    /*
+     * Um cargo por NOME **E SETOR**, não por nome.
+     *
+     * "Ajudante de Confecção" está cadastrado sete vezes nesta empresa — uma
+     * em cada setor: SEPARAÇÃO, ALMOXARIFADO, COMERCIAL, CORTE, COSTURA,
+     * EMBALAGEM/EXPEDIÇÃO e PCP. Agrupando só pelo nome, os sete viravam um
+     * cargo só, que recolhia os riscos dos SETE setores e caía numa ficha
+     * única: a ficha do CORTE saía com seis riscos ergonômicos e quatro de
+     * acidentes, enquanto o PGR dá ao CORTE um único risco de acidente.
+     *
+     * Mesma função em setores diferentes é exposição diferente — é o que o
+     * GES do PGR separa, e o PCMSO tem de separar igual.
+     */
     const mapaCargos = new Map<string, any[]>();
     for (const fn of funcoesList) {
       const nomeNorm = (fn.nome || "").trim().toUpperCase().replace(/\s+/g, " ");
       if (!nomeNorm) continue;
-      const arr = mapaCargos.get(nomeNorm) || [];
+      const setorDaFuncao = (nomeDoSetor.get(fn.setor_id) || "").trim().toUpperCase();
+      const chave = `${nomeNorm}@@${setorDaFuncao}`;
+      const arr = mapaCargos.get(chave) || [];
       arr.push(fn);
-      mapaCargos.set(nomeNorm, arr);
+      mapaCargos.set(chave, arr);
     }
 
-    cargos = Array.from(mapaCargos.entries()).map(([nomeCargo, funcoesDoGrupo]) => {
+    cargos = Array.from(mapaCargos.entries()).map(([chaveCargo, funcoesDoGrupo]) => {
+      const [nomeCargo, setorDoCargo] = chaveCargo.split("@@");
       const nomeNorm = nomeCargo.toLowerCase();
+      const setorNorm = (setorDoCargo || "").toLowerCase();
 
       // Ambientes consolidados de todas as variações do cargo
       const ambSet = new Set<string>();
@@ -407,7 +423,18 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
         const funcoesDoItem = Array.isArray(it.funcoes_snapshot)
           ? it.funcoes_snapshot.map(igual)
           : [];
-        return funcoesDoItem.includes(nomeNorm) || igual(it.setor) === nomeNorm;
+        const temAFuncao = funcoesDoItem.includes(nomeNorm);
+        /*
+         * E o item tem de ser DO MESMO SETOR do cargo. Sem esta parte, o
+         * "Ajudante de Confecção do CORTE" levava para a ficha do corte os
+         * riscos que o PGR deu ao ajudante da COSTURA, do PCP e dos outros
+         * cinco setores onde a mesma função existe.
+         *
+         * Cargo sem setor cadastrado não tem com que comparar: aí vale só a
+         * função, como antes.
+         */
+        if (!setorNorm) return temAFuncao || igual(it.setor) === nomeNorm;
+        return temAFuncao && igual(it.setor) === setorNorm;
       });
 
       // Deduplicação de riscos por agente
@@ -509,9 +536,15 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
         examesComp.push({
           nome: "Audiometria Tonal e Vocal",
           codigoEsocial: "0281",
-          periodicidade: "A cada 12 meses (NR-07, Anexo II)",
+          /* Anexo II, item 4.1: na admissão, anualmente e na demissão. */
+          periodicidade: "Admissional, anual e demissional (NR-07, Anexo II, item 4.1)",
           fazerAdmissional: true,
           fazerPeriodico: true,
+          /*
+           * A demissional faltava. O Anexo II a exige na alínea "c", e a 4.1.1
+           * ainda aceita exame feito até 120 dias antes do fim do contrato.
+           */
+          fazerDemissional: true,
         });
       }
 
@@ -524,7 +557,7 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
          * Sem setor cadastrado fica vazio, e as palavras-chave de
          * `mapearSetorCanonico` decidem — que é o caso em que elas servem.
          */
-        setor: nomeDoSetor.get(funcoesDoGrupo[0].setor_id) || "",
+        setor: setorDoCargo || "",
         ambientes: ambNomes,
         atividades,
         exameClinicoPeriodicidade: "O periódico será feito a cada 12 meses.",
@@ -734,32 +767,59 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
       return resultado.length > 0 ? resultado : [ausenteObj];
     };
 
+    /*
+     * Periodicidade do exame clínico — NR-07, item 7.5.8, inciso II.
+     *
+     * "a) para empregados expostos a riscos ocupacionais identificados e
+     * classificados no PGR (...) a cada ano"; "b) para os demais empregados, o
+     * exame clínico deve ser realizado a cada dois anos."
+     *
+     * A ficha dizia "Anual" para todo setor, inclusive os que saem com
+     * "Ausência de Fator de Risco" em todos os cinco grupos — contradizendo a
+     * seção 08 do próprio documento, que transcreve a regra bienal.
+     */
+    const temRiscoReal = (["riscosFisicos", "riscosQuimicos", "riscosBiologicos",
+      "riscosErgonomicos", "riscosAcidentes"] as const)
+      .some((t) => consolidar(t).some((r) => r.agente !== ausenteObj.agente));
+
     const examesFicha = [
       {
         codigo: "0295",
         nome: "Avaliação Clínica Ocupacional (Anamnese e Exame físico)",
         adm: "Sim",
-        periodico: "Anual",
+        periodico: temRiscoReal ? "Anual" : "Bienal",
         rt: "Sim",
         mdf: "*",
         dem: "Sim",
       },
     ];
 
-    if (nomeSetor === "COZINHA") {
-      examesFicha.push(
-        { codigo: "0658", nome: "Glicemia em Jejum", adm: "Sim", periodico: "Anual", rt: "—", mdf: "—", dem: "—" },
-        { codigo: "0693", nome: "Hemograma Completo", adm: "Sim", periodico: "Anual", rt: "—", mdf: "—", dem: "—" }
-      );
-    } else if (nomeSetor === "LIMPEZA E HIGIENIZAÇÃO") {
-      examesFicha.push(
-        { codigo: "0693", nome: "Hemograma Completo", adm: "Sim", periodico: "Anual", rt: "—", mdf: "—", dem: "—" }
-      );
-    } else if (nomeSetor === "CORTE") {
-      examesFicha.push(
-        { codigo: "0281", nome: "Audiometria Tonal e Vocal", adm: "Sim", periodico: "Anual", rt: "—", mdf: "Sim", dem: "Sim" }
-      );
-    }
+    /*
+     * Exames complementares da ficha: os dos CARGOS que ela reúne, que por sua
+     * vez saem do risco inventariado no PGR.
+     *
+     * Eram escolhidos pelo NOME DO SETOR: "COZINHA" ganhava Glicemia e
+     * Hemograma, "LIMPEZA E HIGIENIZAÇÃO" ganhava Hemograma, "CORTE" ganhava
+     * Audiometria. Mesmo defeito que já havia sido tirado no nível do cargo —
+     * prescrição por texto, não por exposição. E o setor CORTE recebia
+     * audiometria mesmo sem uma única medição de ruído no inventário.
+     */
+    const vistosExames = new Set<string>();
+    cargosDoGrupo.forEach((c) => {
+      (c.examesComplementares || []).forEach((ex) => {
+        if (vistosExames.has(ex.codigoEsocial)) return;
+        vistosExames.add(ex.codigoEsocial);
+        examesFicha.push({
+          codigo: ex.codigoEsocial,
+          nome: ex.nome,
+          adm: ex.fazerAdmissional ? "Sim" : "—",
+          periodico: ex.periodicidade?.toLowerCase().includes("anual") ? "Anual" : "—",
+          rt: ex.fazerRetorno ? "Sim" : "—",
+          mdf: ex.fazerMudanca ? "Sim" : "—",
+          dem: ex.fazerDemissional ? "Sim" : "—",
+        });
+      });
+    });
 
     return {
       numero: numFicha,

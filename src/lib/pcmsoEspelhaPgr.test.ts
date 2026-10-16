@@ -46,6 +46,7 @@ vi.mock("@/integrations/supabase/client", () => {
 const { carregarPcmsoPdfContexto } = await import("./pcmsoPdfContextoLoader");
 
 const SETOR_COSTURA = "1cd2f99b-7eb9-4e7b-b9c9-246658ba2bc8";
+const SETOR_CORTE = "2145df46-a138-45d6-93fa-3a8a7a02040c";
 
 /** Todos os agentes que saíram nas fichas, de todos os grupos. */
 function agentesDasFichas(ctx: { fichasExame: Record<string, unknown>[] }): string[] {
@@ -66,7 +67,10 @@ beforeEach(() => {
     data_emissao: "2026-06-30", pgr_base_id: "pgr1",
   }];
   TABELAS["empresa_config"] = [{ id: "e1", nome: "EMPRESA TESTE", grau_risco: 1 }];
-  TABELAS["sst_setores"] = [{ id: SETOR_COSTURA, nome: "COSTURA" }];
+  TABELAS["sst_setores"] = [
+    { id: SETOR_COSTURA, nome: "COSTURA" },
+    { id: SETOR_CORTE, nome: "CORTE" },
+  ];
 });
 
 describe("o PCMSO espelha o PGR", () => {
@@ -195,6 +199,58 @@ describe("o PCMSO espelha o PGR", () => {
       .flatMap((c) => c.examesComplementares);
     expect(exames.map((e) => e.nome), "o ruído do PGR não gerou audiometria")
       .toContain("Audiometria Tonal e Vocal");
+  });
+
+  it("a mesma função em dois setores não mistura os riscos", async () => {
+    /*
+     * O caso real: "Ajudante de Confecção" está cadastrado sete vezes nesta
+     * empresa, uma por setor. Agrupados pelo nome, os sete viravam um cargo
+     * que recolhia os riscos dos sete setores e caía numa ficha só — a ficha
+     * do CORTE saía com seis riscos ergonômicos e quatro de acidentes,
+     * enquanto o PGR dá ao CORTE um unico risco de acidente.
+     */
+    TABELAS["sst_funcoes"] = [
+      { id: "f1", nome: "AJUDANTE DE CONFECÇÃO", setor_id: SETOR_CORTE },
+      { id: "f2", nome: "AJUDANTE DE CONFECÇÃO", setor_id: SETOR_COSTURA },
+    ];
+    TABELAS["pgr_inventario_itens"] = [
+      {
+        id: "i1", grupo: "acidente", tipo_agente: "Cortes / Partes móveis",
+        fonte_geradora: "Máquinas de corte", lesoes: "Cortes, amputações",
+        funcoes_snapshot: ["Ajudante de Confecção"], setor: "CORTE",
+        probabilidade: 4, severidade: 3,
+      },
+      {
+        id: "i2", grupo: "ergonomico", tipo_agente: "Movimentos repetitivos",
+        fonte_geradora: "Máquina de costura", lesoes: "LER/DORT",
+        funcoes_snapshot: ["Ajudante de Confecção"], setor: "COSTURA",
+        probabilidade: 3, severidade: 3,
+      },
+      {
+        id: "i3", grupo: "ergonomico", tipo_agente: "Postura inadequada",
+        fonte_geradora: "Mobiliário", lesoes: "Lombalgia",
+        funcoes_snapshot: ["Ajudante de Confecção"], setor: "COSTURA",
+        probabilidade: 2, severidade: 2,
+      },
+    ];
+
+    const ctx = await carregarPcmsoPdfContexto("p1");
+    const ficha = (s: string) =>
+      (ctx.fichasExame as { setor: string }[]).find((f) => f.setor === s) as never as
+        Record<string, { agente: string }[]>;
+
+    const agentes = (setor: string, grupo: string) =>
+      (ficha(setor)[grupo] || []).map((r) => r.agente)
+        .filter((a) => a !== "Ausência de Fator de Risco");
+
+    expect(agentes("CORTE", "riscosAcidentes"), "o corte perdeu o risco dele")
+      .toEqual(["Cortes / Partes móveis"]);
+    expect(agentes("CORTE", "riscosErgonomicos"), "o CORTE recebeu os riscos da COSTURA")
+      .toEqual([]);
+    expect(agentes("COSTURA", "riscosErgonomicos").sort())
+      .toEqual(["Movimentos repetitivos", "Postura inadequada"]);
+    expect(agentes("COSTURA", "riscosAcidentes"), "a COSTURA recebeu o risco do CORTE")
+      .toEqual([]);
   });
 
   it("um cargo não herda os riscos de outro de nome parecido", async () => {
