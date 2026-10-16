@@ -252,6 +252,20 @@ export function descricaoDaValidade(
   return `${regra} · este: ${dias} ${dias === 1 ? "dia" : "dias"}`;
 }
 
+/**
+ * O que o campo "Validade" de uma tela de envio vira em `dataValidade`.
+ *
+ * `publicarVersao` distingue três coisas: data informada vence tudo,
+ * `undefined` manda calcular pelo prazo do tipo, `null` grava "sem
+ * vencimento". Campo vazio quer dizer "usa o padrão do tipo", e portanto
+ * `undefined` — a tela do dossiê mandava `null`, e o prazo padrão nunca se
+ * aplicava, embora o texto embaixo do campo prometesse que sim.
+ */
+export function validadeDoCampo(valor?: string | null): string | undefined {
+  const v = (valor || "").trim();
+  return v || undefined;
+}
+
 export interface EnvioDocumento {
   empresaId: string;
   documentoId: string;

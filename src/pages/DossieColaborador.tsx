@@ -23,7 +23,7 @@ import SituacaoBadge from "@/components/arquivo-digital/SituacaoBadge";
 import ScannerDocumento from "@/components/ScannerDocumento";
 import {
   garantirDocumento, publicarVersao, urlTemporaria, registrarAcesso, registrarEvento,
-  historicoVersoes, arquivarDocumento, definirEmRenovacao, prepararAbertura,
+  historicoVersoes, arquivarDocumento, definirEmRenovacao, prepararAbertura, validadeDoCampo,
   PESO_SITUACAO, descricaoDaValidade, type SituacaoDocumento,
 } from "@/lib/arquivoDigital";
 import { idsDeAsoNasVersoes, rotulosDosAsos } from "@/lib/tipoExameAso";
@@ -256,7 +256,8 @@ export default function DossieColaborador() {
         empresaId: empresaDoc, documentoId, colaboradorId: funcionario.id, file: arquivoSel,
         dataEmissao: envioData || hoje(), validadeMeses: envio.tipo.validade_meses,
         validadeDias: envio.tipo.validade_dias,
-        dataValidade: envioValidade || null,
+        /* Vazio é "usa o padrão do tipo" — ver validadeDoCampo. */
+        dataValidade: validadeDoCampo(envioValidade),
         observacao: null, userId: user?.id,
         origemTabela: "dossie", origemId: funcionario.id,
       });
@@ -660,9 +661,25 @@ export default function DossieColaborador() {
               <Label>Data de emissão *</Label>
               <Input type="date" value={envioData} onChange={(e) => setEnvioData(e.target.value)} />
             </div>
-            {(envio?.tipo.validade_meses || envio?.tipo.validade_dias) ? (
-              <div>
-                <Label>Validade personalizada</Label>
+            {/*
+              * A validade sempre pode ser informada, inclusive em tipo sem
+              * prazo padrão.
+              *
+              * Antes, tipo sem prazo mostrava só "Este tipo é permanente" e
+              * não oferecia campo nenhum. O ASO é o caso que isso quebra:
+              * ele não tem UM prazo. O admissional e o periódico valem até o
+              * próximo exame clínico — um ano para quem está exposto a risco
+              * do PGR, dois anos para os demais (NR-07, 7.5.8, II) —, e há
+              * exames com prazo próprio. Com o tipo permanente, nenhum ASO
+              * vencia; com o tipo em "12 meses", todos venciam em 12 meses,
+              * certo ou errado.
+              *
+              * O prazo é do documento, não do tipo. O tipo só dá o padrão,
+              * quando tem um.
+              */}
+            <div>
+                <Label>{(envio?.tipo.validade_meses || envio?.tipo.validade_dias)
+                  ? "Validade personalizada" : "Validade deste documento"}</Label>
                 <div className="flex flex-col gap-2 mt-1">
                   <Input type="date" value={envioValidade} onChange={(e) => setEnvioValidade(e.target.value)} />
                   <div className="flex flex-wrap gap-1.5">
@@ -699,19 +716,24 @@ export default function DossieColaborador() {
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                  Deixe vazio para o sistema usar o padrão do tipo{" "}
-                  <strong>
-                    ({envio.tipo.validade_dias
-                      ? `${envio.tipo.validade_dias} dias`
-                      : `${envio.tipo.validade_meses} meses`})
-                  </strong>, ou defina uma data manualmente se este documento for exceção.
+                  {(envio?.tipo.validade_meses || envio?.tipo.validade_dias) ? (
+                    <>
+                      Deixe vazio para o sistema usar o padrão do tipo{" "}
+                      <strong>
+                        ({envio!.tipo.validade_dias
+                          ? `${envio!.tipo.validade_dias} dias`
+                          : `${envio!.tipo.validade_meses} meses`})
+                      </strong>, ou defina uma data manualmente se este documento for exceção.
+                    </>
+                  ) : (
+                    <>
+                      Este tipo não tem prazo padrão. Deixe vazio se o documento não vence,
+                      ou informe a data se ele vencer — é o caso do ASO, cujo prazo depende
+                      do exame e do risco, e não do tipo.
+                    </>
+                  )}
                 </p>
               </div>
-            ) : (
-              <div>
-                <p className="text-[11px] text-muted-foreground mt-1">Este tipo é permanente (sem vencimento).</p>
-              </div>
-            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEnvio(null)} disabled={enviando}>Cancelar</Button>
