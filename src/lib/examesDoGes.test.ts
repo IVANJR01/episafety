@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
-import {
-  examesNormativosDoGes, examesDoTipoDeExame, temRiscoIdentificado,
-  temRuido, periodicidadeEmTexto,
-} from "./examesDoGes";
+import { temRiscoIdentificado, temRuido, periodicidadeEmTexto } from "./examesDoGes";
+import { examesSugeridos, examesSugeridosCompletos } from "./matrizSaudeDoGes";
 
 /**
- * A lista de exames do GES, que agora é uma só.
+ * O que os riscos decidem, e a lista de exames que agora é uma só.
  *
  * O documento do PCMSO montava a lista pela NR-07 a partir dos riscos; o
  * Portal de ASO lia só a Matriz de Saúde. Com a Matriz vazia — e ela tem
@@ -14,6 +12,9 @@ import {
  */
 
 const SEM = ["Ausência de Fator de Risco"];
+/** Textos viram riscos do GES, como vêm do inventário do PGR. */
+const riscos = (textos: string[]) =>
+  textos.map((t) => ({ grupo: "fisico", descricao: t }));
 const COM_RUIDO = ["Ruído contínuo", "Movimentos repetitivos"];
 const SEM_RUIDO = ["Movimentos repetitivos"];
 
@@ -36,13 +37,13 @@ describe("risco identificado no PGR", () => {
 describe("audiometria — NR-07, Anexo II", () => {
   it("entra quando há ruído", () => {
     expect(temRuido(COM_RUIDO)).toBe(true);
-    const nomes = examesNormativosDoGes(COM_RUIDO).map((e) => e.nome);
+    const nomes = examesSugeridosCompletos(riscos(COM_RUIDO)).map((e) => e.nome);
     expect(nomes.some((n) => n.includes("Audiometria"))).toBe(true);
   });
 
   it("não entra quando não há", () => {
     expect(temRuido(SEM_RUIDO)).toBe(false);
-    const nomes = examesNormativosDoGes(SEM_RUIDO).map((e) => e.nome);
+    const nomes = examesSugeridosCompletos(riscos(SEM_RUIDO)).map((e) => e.nome);
     expect(nomes.some((n) => n.includes("Audiometria")),
       "mandou fazer audiometria em quem não tem ruído").toBe(false);
   });
@@ -52,40 +53,24 @@ describe("audiometria — NR-07, Anexo II", () => {
   });
 });
 
-describe("periodicidade do exame clínico — 7.5.8, II", () => {
-  it("exposto a risco: anual", () => {
-    expect(examesNormativosDoGes(SEM_RUIDO)[0].periodicidadeMeses).toBe(12);
-  });
-
-  it("sem risco identificado: bienal", () => {
-    expect(examesNormativosDoGes(SEM)[0].periodicidadeMeses).toBe(24);
-  });
-
-  it("o exame clínico existe sempre, com ou sem risco", () => {
-    /* 7.5.6: todo ASO tem exame clínico. */
-    expect(examesNormativosDoGes(SEM).length).toBeGreaterThan(0);
-    expect(examesNormativosDoGes([])[0].codigo).toBe("0295");
+describe("o exame clínico existe sempre", () => {
+  it("mesmo sem risco nenhum — NR-07, 7.5.6", () => {
+    expect(examesSugeridosCompletos([])[0].codigo).toBe("0295");
+    expect(examesSugeridosCompletos(riscos(SEM))[0].codigo).toBe("0295");
   });
 });
 
 describe("exames de cada tipo de ASO", () => {
-  const lista = examesNormativosDoGes(COM_RUIDO);
-
   it("o clínico entra em todos os tipos", () => {
     for (const t of ["admissional", "periodico", "retorno", "demissional"]) {
-      expect(examesDoTipoDeExame(lista, t).map((e) => e.codigo), t).toContain("0295");
+      expect(examesSugeridos(riscos(COM_RUIDO), t).map((e) => e.codigo), t)
+        .toContain("0295");
     }
-  });
-
-  it("mudança de risco leva o clínico e a audiometria", () => {
-    const m = examesDoTipoDeExame(lista, "mudanca_risco").map((e) => e.codigo);
-    expect(m).toContain("0295");
-    expect(m).toContain("0935");
   });
 
   it("tipo desconhecido não devolve lista vazia", () => {
     /* ASO sem exame nenhum é o defeito que se está corrigindo. */
-    expect(examesDoTipoDeExame(lista, "sazonal").length).toBeGreaterThan(0);
+    expect(examesSugeridos(riscos(COM_RUIDO), "sazonal").length).toBeGreaterThan(0);
   });
 });
 

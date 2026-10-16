@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-import { examesNormativosDoGes, periodicidadeEmTexto } from "@/lib/examesDoGes";
+import { periodicidadeEmTexto } from "@/lib/examesDoGes";
+import { examesSugeridosCompletos, riscosDoInventario } from "@/lib/matrizSaudeDoGes";
 import { carregarLogoDataUrl } from "@/lib/logoParaPdf";
 import { carregarEmissor } from "@/lib/emissorDocumentos";
 
@@ -912,25 +913,27 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
         });
       } else {
         /*
-         * Mesma base normativa que o Portal de ASO usa — ver examesDoGes.ts.
-         *
-         * A regra morava aqui dentro, e o ASO lia só a Matriz de Saúde. Com
-         * a Matriz vazia, o PCMSO saía com a lista cheia e o ASO do mesmo
-         * colaborador saía sem exame nenhum. A fonte agora é uma só.
+         * Mesma sugestão que a Matriz de Saúde mostra, e que o Portal de
+         * ASO usa — ver matrizSaudeDoGes.ts. A regra morava aqui dentro,
+         * e o ASO lia outra tabela: o PCMSO saía com a lista cheia e o
+         * ASO do mesmo colaborador saía sem exame nenhum.
          */
-        const textosDosRiscos = riscosDoGes.map((it: any) =>
-          `${it.tipo_agente || ""} ${it.perigo_descricao || ""} ${it.fonte_geradora || ""}`.trim(),
-        );
-        examesFicha = examesNormativosDoGes(
-          temRiscoReal ? textosDosRiscos : [],
-        ).map((e) => ({
+        const riscosParaSugestao = temRiscoReal
+          ? riscosDoInventario(riscosDoGes)
+          : [];
+        examesFicha = examesSugeridosCompletos(riscosParaSugestao).map((e) => ({
           codigo: e.codigo,
           nome: e.nome,
           adm: e.admissional ? "Sim" : "—",
-          periodico: periodicidadeEmTexto(e.periodicidadeMeses),
-          rt: e.retorno ? "Sim" : "—",
-          /* O asterisco: exigido só quando a mudança leva a risco diferente. */
-          mdf: e.mudanca ? "Sim" : (e.mudancaSeRiscoDiferente ? "*" : "—"),
+          periodico: e.periodico
+            ? periodicidadeEmTexto(temRiscoReal ? e.periodicidadeMeses : 24)
+            : "—",
+          rt: e.retornoTrabalho ? "Sim" : "—",
+          /*
+           * O asterisco do exame clínico: a NR-07 só o exige na mudança
+           * quando ela leva a risco diferente do atual (7.5.10).
+           */
+          mdf: e.codigo === "0295" ? "*" : (e.mudancaRisco ? "Sim" : "—"),
           dem: e.demissional ? "Sim" : "—",
         }));
 

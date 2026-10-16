@@ -1,16 +1,21 @@
-import { supabase } from "@/integrations/supabase/client";
 import {
-  examesNormativosDoGes, examesDoTipoDeExame,
-} from "@/lib/examesDoGes";
+  carregarMatrizDoGes, TIPO_EXAME_COL, type MatrizDoGes,
+} from "@/lib/matrizSaudeDoGes";
 
-export const TIPO_EXAME_COL: Record<string, string> = {
-  admissional: "admissional",
-  periodico: "periodico",
-  retorno: "retorno_trabalho",
-  mudanca_risco: "mudanca_risco",
-  mudanca_funcao: "mudanca_funcao",
-  demissional: "demissional",
-};
+/**
+ * Riscos e exames que entram num ASO.
+ *
+ * A regra inteira mora em matrizSaudeDoGes.ts, porque é a MESMA Matriz de
+ * Saúde que o PCMSO mostra. Antes isto lia só `ghe_riscos` e `ghe_exames`,
+ * que estavam vazias, enquanto a Matriz do PCMSO lia o inventário do PGR:
+ * o PCMSO prometia os exames e o ASO saía sem nenhum, com todos os
+ * fatores de risco em "N.A.".
+ *
+ * Este arquivo continua existindo pela assinatura — é por ela que o
+ * módulo de ASO, o Portal RH e a emissão em lote entram.
+ */
+
+export { TIPO_EXAME_COL };
 
 export const GRUPOS_RISCO = [
   { k: "fisico", l: "Físicos" },
@@ -22,49 +27,24 @@ export const GRUPOS_RISCO = [
 ];
 
 export interface RiscoSnapshot { grupo: string; descricao: string; }
-export interface ExameSnapshot { nome_exame: string; codigo?: string | null; tipo?: string | null; periodicidade_meses?: number; }
+export interface ExameSnapshot {
+  nome_exame: string;
+  codigo?: string | null;
+  tipo?: string | null;
+  periodicidade_meses?: number;
+}
 
 export async function loadGheRiscosExames(
   gheId: string,
-  tipoExame: string
+  tipoExame: string,
 ): Promise<{ riscos: RiscoSnapshot[]; exames: ExameSnapshot[] }> {
-  const col = TIPO_EXAME_COL[tipoExame] || "periodico";
-  const [riscosRes, examesRes] = await Promise.all([
-    supabase.from("ghe_riscos").select("grupo, tipo_agente, texto_aso").eq("ghe_id", gheId).eq("aparece_aso", true),
-    supabase.from("ghe_exames").select("nome_exame, codigo_exame, tipo_exame, periodicidade_meses, " + col).eq("ghe_id", gheId).eq("aparece_aso", true),
-  ]);
-  const riscos: RiscoSnapshot[] = (riscosRes.data || []).map((r: any) => ({
-    grupo: r.grupo,
-    descricao: (r.texto_aso || r.tipo_agente || "").trim(),
-  })).filter((r) => r.descricao);
-  const exames: ExameSnapshot[] = (examesRes.data || [])
-    .filter((e: any) => e[col] === true)
-    .map((e: any) => ({ nome_exame: e.nome_exame, codigo: e.codigo_exame, tipo: e.tipo_exame, periodicidade_meses: e.periodicidade_meses }));
-
-  /*
-   * Matriz de Saúde vazia para este GES: cai na MESMA base normativa que o
-   * documento do PCMSO usa.
-   *
-   * Antes devolvia lista vazia, e o ASO saía sem exame nenhum enquanto o
-   * PCMSO da mesma empresa mostrava a lista cheia — os dois liam fontes
-   * diferentes. Conferido no banco: a Matriz tem uma linha em todo o
-   * sistema, então na prática o ASO nunca via exame nenhum.
-   */
-  if (exames.length === 0) {
-    const normativos = examesDoTipoDeExame(
-      examesNormativosDoGes(riscos.map((r) => r.descricao)),
-      tipoExame,
-    );
-    return {
-      riscos,
-      exames: normativos.map((e) => ({
-        nome_exame: e.nome,
-        codigo: e.codigo,
-        tipo: null,
-        periodicidade_meses: e.periodicidadeMeses ?? undefined,
-      })),
-    };
-  }
-
+  const { riscos, exames } = await carregarMatrizDoGes(gheId, tipoExame);
   return { riscos, exames };
+}
+
+/** A mesma coisa, mas dizendo de onde veio — para a tela avisar quem emite. */
+export async function loadMatrizDoGes(
+  gheId: string, tipoExame: string,
+): Promise<MatrizDoGes> {
+  return carregarMatrizDoGes(gheId, tipoExame);
 }

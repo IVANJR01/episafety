@@ -19,7 +19,7 @@ import { differenceInDays, parseISO, format, addYears, addDays } from "date-fns"
 import { gerarPdfAso, gerarPdfAsoBlob } from "@/lib/asoPdf";
 import { validadeDoAso, type TipoExameAso } from "@/lib/validadeAso";
 import { temRiscoIdentificado } from "@/lib/examesDoGes";
-import { loadGheRiscosExames, GRUPOS_RISCO } from "@/lib/asoFromGhe";
+import { loadMatrizDoGes, GRUPOS_RISCO } from "@/lib/asoFromGhe";
 import { resolverGesPorFuncao, type FuncaoDeGes } from "@/lib/resolverGes";
 
 const TIPO: Record<string, string> = {
@@ -101,6 +101,8 @@ export default function PortalRH() {
   const [localEmissao, setLocalEmissao] = useState("");
   const [riscos, setRiscos] = useState<{ grupo: string; descricao: string }[]>([]);
   const [exames, setExames] = useState<{ nome_exame: string }[]>([]);
+  /** "matriz" quando o médico prescreveu; "pgr" quando é a sugestão da NR-07. */
+  const [origemMatriz, setOrigemMatriz] = useState<"matriz" | "pgr" | "vazio">("vazio");
   const [loadingGhe, setLoadingGhe] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -278,14 +280,15 @@ export default function PortalRH() {
 
   // Carrega riscos/exames do GES
   useEffect(() => {
-    if (!gheEfetivo) { setRiscos([]); setExames([]); return; }
+    if (!gheEfetivo) { setRiscos([]); setExames([]); setOrigemMatriz("vazio"); return; }
     setLoadingGhe(true);
-    loadGheRiscosExames(gheEfetivo, tipoExame)
-      .then(({ riscos: r, exames: ex }) => {
+    loadMatrizDoGes(gheEfetivo, tipoExame)
+      .then(({ riscos: r, exames: ex, origemRiscos }) => {
+        setOrigemMatriz(origemRiscos);
         setRiscos(r);
         setExames(ex.map((e) => ({ nome_exame: e.nome_exame })));
       })
-      .catch(() => { setRiscos([]); setExames([]); })
+      .catch(() => { setRiscos([]); setExames([]); setOrigemMatriz("vazio"); })
       .finally(() => setLoadingGhe(false));
   }, [gheEfetivo, tipoExame]);
 
@@ -695,10 +698,25 @@ export default function PortalRH() {
                               );
                             })}
                           </div>
-                          {Object.values(gruposPreenchidos).every((v) => v === 0) && (
+                          {Object.values(gruposPreenchidos).every((v) => v === 0) ? (
                             <div className="mt-2 p-2 rounded bg-orange-500/10 border border-orange-500/30 text-orange-700 text-xs flex gap-2">
                               <AlertTriangle className="h-4 w-4 shrink-0" />
-                              O GES deste colaborador ainda não possui riscos cadastrados. Cadastre os riscos do PCMSO antes de gerar o ASO.
+                              O GES deste colaborador não tem risco no inventário do PGR nem na Matriz de Saúde do PCMSO. Cadastre o risco antes de gerar o ASO.
+                            </div>
+                          ) : origemMatriz === "pgr" && (
+                            /*
+                              * De onde vieram estes riscos e exames.
+                              *
+                              * A Matriz de Saúde do PCMSO permite ao médico
+                              * prescrever exame por GES. Enquanto ela não é
+                              * preenchida, o ASO usa o inventário do PGR e a
+                              * sugestão da NR-07 — a mesma coisa que a Matriz
+                              * mostra marcada como "Sugerido NR-07". Quem
+                              * emite precisa saber qual dos dois está vendo.
+                              */
+                            <div className="mt-2 p-2 rounded bg-muted border text-muted-foreground text-xs">
+                              Riscos e exames vindos do inventário do PGR, com a sugestão da NR-07.
+                              Para prescrever exames próprios deste GES, use a Matriz de Saúde do PCMSO.
                             </div>
                           )}
                         </div>
