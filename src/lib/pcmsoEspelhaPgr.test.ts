@@ -201,6 +201,37 @@ describe("o PCMSO espelha o PGR", () => {
       .toContain("Audiometria Tonal e Vocal");
   });
 
+  it("exame clínico: anual com exposição, bienal sem — NR-07, 7.5.8, II", async () => {
+    /*
+     * "a) para empregados expostos a riscos ocupacionais identificados e
+     * classificados no PGR (...) a cada ano"; "b) para os demais empregados,
+     * o exame clínico deve ser realizado a cada dois anos."
+     *
+     * A ficha dizia "Anual" para todo setor, inclusive os que saem com
+     * "Ausência de Fator de Risco" nos cinco grupos — contradizendo a seção
+     * 08 do próprio documento, que transcreve a regra bienal.
+     */
+    TABELAS["sst_funcoes"] = [
+      { id: "f1", nome: "COSTUREIRA", setor_id: SETOR_COSTURA },
+      { id: "f2", nome: "AUXILIAR DE ESCRITÓRIO", setor_id: SETOR_CORTE },
+    ];
+    TABELAS["pgr_inventario_itens"] = [{
+      id: "i1", grupo: "ergonomico", tipo_agente: "Movimentos repetitivos",
+      fonte_geradora: "Máquina de costura", lesoes: "LER/DORT",
+      funcoes_snapshot: ["COSTUREIRA"], setor: "COSTURA",
+      probabilidade: 3, severidade: 3,
+    }];
+
+    const ctx = await carregarPcmsoPdfContexto("p1");
+    const clinico = (setor: string) =>
+      (ctx.fichasExame as { setor: string; exames: { codigo: string; periodico: string }[] }[])
+        .find((f) => f.setor === setor)?.exames.find((e) => e.codigo === "0295")?.periodico;
+
+    expect(clinico("COSTURA"), "setor com exposição deveria ser anual").toBe("Anual");
+    expect(clinico("CORTE"), "setor sem exposição continua pedindo exame anual")
+      .toBe("Bienal");
+  });
+
   it("a mesma função em dois setores não mistura os riscos", async () => {
     /*
      * O caso real: "Ajudante de Confecção" está cadastrado sete vezes nesta
