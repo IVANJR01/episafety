@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import { mesExtenso } from "@/lib/mesPrevisto";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadDocumentoSeguro } from "@/lib/secureStorage";
@@ -1319,9 +1320,15 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     doc.setFont("helvetica", "normal");
     doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
     doc.text(acao.responsavel || "Direção da Empresa", MARGEM + 24, b.y + 4.8);
-    /* Sem data cadastrada, o cronograma diz o prazo em palavras. */
-    const prazo = fmtDate(acao.data_planejada);
-    doc.text(prazo === "—" ? "Durante a vigência" : prazo, MARGEM + 120, b.y + 4.8);
+    /*
+     * Mês e ano, não dia.
+     *
+     * O cronograma planeja o ano — "campanha de vacinação em maio" —, e
+     * imprimir 20/05/2026 afirma um dia que ninguém combinou. Sem data
+     * cadastrada, o prazo sai em palavras.
+     */
+    const prazo = mesExtenso(acao.data_planejada);
+    doc.text(prazo || "Durante a vigência", MARGEM + 120, b.y + 4.8);
     doc.text(acao.observacoes || "Execução integral conforme cronograma pactuado.", MARGEM + 32, b.y + 10.5, { maxWidth: LARGURA_UTIL - 36 });
 
     b.y += 18;

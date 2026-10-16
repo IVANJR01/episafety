@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { mesParaData, mesCurto } from "@/lib/mesPrevisto";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -22,7 +23,8 @@ export default function PcmsoCronogramaTab({ pcmso }: PcmsoCronogramaTabProps) {
   const queryClient = useQueryClient();
 
   const [acaoDesc, setAcaoDesc] = useState("");
-  const [dataPlan, setDataPlan] = useState("");
+  /* Mês previsto, no formato "2026-05" — ver mesPrevisto.ts. */
+  const [mesPlan, setMesPlan] = useState("");
   const [responsavel, setResponsavel] = useState("");
   const [gerandoPadrao, setGerandoPadrao] = useState(false);
 
@@ -48,7 +50,11 @@ export default function PcmsoCronogramaTab({ pcmso }: PcmsoCronogramaTabProps) {
           pcmso_id: pcmso.id,
           empresa_id: pcmso.empresa_id || empresaId,
           acao: acaoDesc,
-          data_planejada: dataPlan || null,
+          /*
+           * O cronograma planeja o ano, não o dia: grava sempre o primeiro
+           * dia do mês escolhido. A coluna continua sendo uma data.
+           */
+          data_planejada: mesParaData(mesPlan),
           responsavel: responsavel || null,
           status: "Planejado"
         });
@@ -57,7 +63,7 @@ export default function PcmsoCronogramaTab({ pcmso }: PcmsoCronogramaTabProps) {
     onSuccess: () => {
       toast.success("Ação adicionada ao cronograma.");
       setAcaoDesc("");
-      setDataPlan("");
+      setMesPlan("");
       setResponsavel("");
       queryClient.invalidateQueries({ queryKey: ["pcmso-cronograma", pcmso.id] });
     },
@@ -192,8 +198,8 @@ export default function PcmsoCronogramaTab({ pcmso }: PcmsoCronogramaTabProps) {
                 <Input placeholder="Ex: SESMT / CIPA" value={responsavel} onChange={e => setResponsavel(e.target.value)} />
               </div>
               <div className="w-full sm:w-40 space-y-2">
-                <Label>Data Prevista</Label>
-                <Input type="date" value={dataPlan} onChange={e => setDataPlan(e.target.value)} />
+                <Label>Mês Previsto</Label>
+                <Input type="month" value={mesPlan} onChange={e => setMesPlan(e.target.value)} />
               </div>
               <div className="flex items-end">
                 <Button onClick={handleAdd} disabled={insertMutation.isPending} className="w-full sm:w-auto">
@@ -237,7 +243,7 @@ export default function PcmsoCronogramaTab({ pcmso }: PcmsoCronogramaTabProps) {
                         {a.observacoes && <p className="text-xs text-muted-foreground mt-0.5">{a.observacoes}</p>}
                       </TableCell>
                       <TableCell>{a.responsavel || "Direção da empresa"}</TableCell>
-                      <TableCell>{a.data_planejada ? new Date(a.data_planejada).toLocaleDateString("pt-BR") : "Durante a vigência"}</TableCell>
+                      <TableCell>{mesCurto(a.data_planejada) || "Durante a vigência"}</TableCell>
                       <TableCell>
                         <Select 
                           value={a.status} 
