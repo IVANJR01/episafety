@@ -167,3 +167,25 @@ function diasCorridos(de?: string | null, ate?: string | null): number | null {
   if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
   return Math.round((b.getTime() - a.getTime()) / 86_400_000);
 }
+
+/**
+ * O prazo que duas datas gravadas representam.
+ *
+ * Serve para o ASO que entra pronto no sistema — o PDF digitalizado que
+ * já traz emissão e vencimento —, e para o PDF do ASO decidir qual
+ * quadrinho marcar. A regra estava escrita nos dois lugares.
+ */
+export function validadeTipoPelasDatas(
+  dataEmissao?: string | null, dataVencimento?: string | null,
+): string | null {
+  if (!dataEmissao || !dataVencimento) return null;
+  const a = new Date(`${dataEmissao.slice(0, 10)}T00:00:00`);
+  const b = new Date(`${dataVencimento.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
+  const dias = Math.round((b.getTime() - a.getTime()) / 86_400_000);
+  if (dias <= 0) return null;
+  if (dias <= 100) return "90dias";
+  if (dias <= 200) return "6meses";
+  if (dias <= 400) return "1ano";
+  return "2anos";
+}

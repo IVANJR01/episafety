@@ -13,6 +13,7 @@ import AsoLote from "./AsoLote";
 import AsoRelatorios from "./AsoRelatorios";
 import AsoLocaisEmissao from "./AsoLocaisEmissao";
 import AsoExames from "./AsoExames";
+import AsoImportarAnexados from "./AsoImportarAnexados";
 import AsoDiagnostico from "@/components/aso/AsoDiagnostico";
 import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
 
@@ -39,7 +40,7 @@ export default function AsoModule() {
         </div>
       </div>
 
-      <Tabs value={tab === "novo" ? "asos" : tab} onValueChange={setTab} className="w-full">
+      <Tabs value={tab === "novo" || tab === "importar_anexados" ? "asos" : tab} onValueChange={setTab} className="w-full">
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="dashboard" className="gap-1"><LayoutDashboard className="h-4 w-4" />Dashboard</TabsTrigger>
           <TabsTrigger value="asos" className="gap-1"><FileText className="h-4 w-4" />ASOs</TabsTrigger>
@@ -54,9 +55,19 @@ export default function AsoModule() {
         <TabsContent value="asos" className="mt-4">
           {tab === "novo" ? (
             <AsoNovo editingId={editingId} onSaved={() => setTab("asos")} />
+          ) : tab === "importar_anexados" ? (
+            <AsoImportarAnexados onVoltar={() => setTab("asos")} />
           ) : (
             <div className="space-y-4">
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                {/*
+                  * Muitos ASOs foram anexados direto no dossiê e o módulo não
+                  * os conhece: não geram vencimento nem entram no Relatório
+                  * Analítico. Esta porta traz esses papéis para cá.
+                  */}
+                <Button variant="outline" onClick={() => setTab("importar_anexados")}>
+                  <Upload className="h-4 w-4 mr-2" />Importar anexados
+                </Button>
                 <Button onClick={() => openNovo()}><Plus className="h-4 w-4 mr-2" />Novo ASO</Button>
               </div>
               <AsoList onEdit={openNovo} />

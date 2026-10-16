@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { supabase } from "@/integrations/supabase/client";
+import { validadeTipoPelasDatas } from "@/lib/validadeAso";
 import { format, parseISO, differenceInDays } from "date-fns";
 
 const GRUPOS: { k: string; l: string }[] = [
@@ -41,14 +42,7 @@ export function inferValidadeTipo(aso: any): string | null {
     if (v.includes("2")) return "2anos";
     if (v.includes("1")) return "1ano";
   }
-  if (aso.data_emissao && aso.data_vencimento) {
-    const d = differenceInDays(parseISO(aso.data_vencimento), parseISO(aso.data_emissao));
-    if (d <= 100) return "90dias";
-    if (d <= 200) return "6meses";
-    if (d <= 400) return "1ano";
-    return "2anos";
-  }
-  return null;
+  return validadeTipoPelasDatas(aso.data_emissao, aso.data_vencimento);
 }
 
 async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; nomeFunc: string }> {
