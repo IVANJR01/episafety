@@ -304,7 +304,7 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
 
   // 6. Cargos, Atividades e Riscos (Integrado com PGR Base)
   const pgrBaseId = pcmso.pgr_base_id;
-  const [funcoesRaw, ghesData, gheFuncoesData, inventarioRaw, setoresRaw] = await Promise.all([
+  const [funcoesRaw, ghesData, gheFuncoesData, inventarioRaw, setoresRaw, gheSetoresRaw] = await Promise.all([
     (supabase.from as any)("sst_funcoes")
       .select("id, nome, setor_id, cbo, descricao_atividades")
       .eq("empresa_id", empresaId)
@@ -330,7 +330,30 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
     (supabase.from as any)("sst_setores")
       .select("id, nome")
       .eq("empresa_id", empresaId),
+    /*
+     * O vínculo GES <-> setor, para a ficha de exame levar o NÚMERO DO GES.
+     *
+     * As fichas saíam numeradas 01, 02, 03... na ordem interna do PCMSO, e o
+     * setor CORTE — que é o GES 08 no PGR — aparecia como ficha 01. Quem
+     * compara os dois documentos lado a lado não acha o grupo.
+     */
+    (supabase.from as any)("ghe_setores")
+      .select("ghe_id, setor_id")
+      .eq("empresa_id", empresaId),
   ]);
+
+  /** Código do GES de cada setor, pelo vínculo ghe_setores. */
+  const codigoGesDoSetor = new Map<string, string>();
+  {
+    const codigoPorGhe = new Map<string, string>();
+    for (const g of (ghesData?.data || []) as any[]) {
+      if (g?.id && (g.codigo || "").trim()) codigoPorGhe.set(g.id, String(g.codigo).trim());
+    }
+    for (const v of (gheSetoresRaw?.data || []) as any[]) {
+      const cod = codigoPorGhe.get(v?.ghe_id);
+      if (cod && v?.setor_id) codigoGesDoSetor.set(v.setor_id, cod);
+    }
+  }
 
   /** setor_id -> nome do setor. */
   const nomeDoSetor = new Map<string, string>();
@@ -725,7 +748,28 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
     "LIMPEZA E HIGIENIZAÇÃO",
   ];
 
+  /** Código do GES pelo NOME do setor — é por nome que as fichas são agrupadas. */
+  const codigoGesPorNome = new Map<string, string>();
+  for (const [setorId, nome] of nomeDoSetor.entries()) {
+    const cod = codigoGesDoSetor.get(setorId);
+    if (cod) codigoGesPorNome.set(nome.trim().toUpperCase(), cod);
+  }
+
+  /*
+   * A ordem das fichas é a ORDEM DOS GES do PGR.
+   *
+   * Era a ordem interna desta lista, e o setor CORTE — GES 08 no PGR — saía
+   * como ficha 01. Quem põe os dois documentos lado a lado não acha o grupo.
+   *
+   * Setor sem GES vinculado vai para o fim, em ordem alfabética: não tem
+   * número para disputar, e inventar um o colocaria no meio dos que têm.
+   */
   const setoresOrdenados = Array.from(gruposFichas.keys()).sort((a, b) => {
+    const ca = codigoGesPorNome.get(a);
+    const cb = codigoGesPorNome.get(b);
+    if (ca && cb) return ca.localeCompare(cb, "pt-BR", { numeric: true });
+    if (ca) return -1;
+    if (cb) return 1;
     const ia = ordemSetores.indexOf(a);
     const ib = ordemSetores.indexOf(b);
     if (ia !== -1 && ib !== -1) return ia - ib;
@@ -743,7 +787,12 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
   };
 
   const fichasExame: PcmsoFichaExameG91[] = setoresOrdenados.map((nomeSetor, idx) => {
-    const numFicha = String(idx + 1).padStart(2, "0");
+    /*
+     * O número da ficha é o NÚMERO DO GES quando o setor tem um. Assim a
+     * ficha 08 do PCMSO é o GES 08 do PGR, e os dois documentos se conferem
+     * um contra o outro. Sem GES vinculado, segue a contagem da ficha.
+     */
+    const numFicha = codigoGesPorNome.get(nomeSetor) || String(idx + 1).padStart(2, "0");
     const cargosDoGrupo = gruposFichas.get(nomeSetor) || [];
     const funcoesNomes = Array.from(new Set(cargosDoGrupo.map((c) => c.nome.toUpperCase())));
 

@@ -128,6 +128,33 @@ describe("fichas de exame por setor cadastrado", () => {
     ).toBeUndefined();
   });
 
+  it("a ficha leva o número do GES, e as fichas saem na ordem dos GES", async () => {
+    /*
+     * O setor CORTE é o GES 08 no PGR e saía como ficha 01 no PCMSO, porque a
+     * numeração seguia a ordem interna do gerador. Quem põe os dois
+     * documentos lado a lado não achava o grupo.
+     */
+    TABELAS["sst_ges"] = [
+      { id: "g08", codigo: "08", nome: "CORTE" },
+      { id: "g07", codigo: "07", nome: "COSTURA" },
+      { id: "g06", codigo: "06", nome: "ATELIER" },
+    ];
+    TABELAS["ghe_ges"] = TABELAS["sst_ges"];
+    TABELAS["ghe_setores"] = [
+      { ghe_id: "g08", setor_id: SETOR_CORTE },
+      { ghe_id: "g07", setor_id: SETOR_COSTURA },
+      { ghe_id: "g06", setor_id: SETOR_ATELIER },
+    ];
+
+    const ctx = await carregarPcmsoPdfContexto("p1");
+    const fichas = ctx.fichasExame as { numero: string; setor: string }[];
+
+    expect(fichas.map((f) => f.setor), "as fichas não seguem a ordem dos GES")
+      .toEqual(["ATELIER", "COSTURA", "CORTE"]);
+    expect(fichas.map((f) => f.numero), "a ficha não leva o número do GES")
+      .toEqual(["06", "07", "08"]);
+  });
+
   it("função sem setor cadastrado ainda entra em alguma ficha", async () => {
     TABELAS["sst_funcoes"] = [
       ...(TABELAS["sst_funcoes"] as unknown[]),

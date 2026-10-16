@@ -56,7 +56,15 @@ export default function DossieColaboradores() {
 
   const [busca, setBusca] = useState("");
   const [soPendentes, setSoPendentes] = useState(false);
-  const [incluirDesligados, setIncluirDesligados] = useState(false);
+  /*
+   * Ativos e desligados em abas separadas.
+   *
+   * Era uma caixa "Incluir desligados", e a lista vinha misturada: 73 nomes
+   * sem dizer quem ainda trabalha ali. A documentação de quem saiu se trata
+   * de outro jeito — é arquivo, não cobrança — e por isso tem aba própria,
+   * como já acontece na devolução de EPI.
+   */
+  const [aba, setAba] = useState<"ativos" | "desligados">("ativos");
   const [indisponivel, setIndisponivel] = useState(false);
 
   const { data: funcionarios = [], isLoading } = useQuery({
@@ -142,11 +150,20 @@ export default function DossieColaboradores() {
     return m;
   }, [situacoes, funcionarios, requisitos]);
 
+  /** Quantos em cada aba, antes de qualquer busca — o rótulo não pode dançar. */
+  const totaisPorSituacao = useMemo(() => {
+    let ativos = 0, desligados = 0;
+    funcionarios.forEach((f) => { f.data_demissao ? desligados++ : ativos++; });
+    return { ativos, desligados };
+  }, [funcionarios]);
+
   const linhas = useMemo(() => {
     const b = normalizar(busca);
     return funcionarios
       .filter((f) => {
-        if (!incluirDesligados && f.data_demissao) return false;
+        const desligado = !!f.data_demissao;
+        if (aba === "ativos" && desligado) return false;
+        if (aba === "desligados" && !desligado) return false;
         const c = porColaborador.get(f.id) || {};
         const pendencias = (c.vencido || 0) + (c.vence_em_breve || 0) + (c.nao_enviado || 0);
         if (soPendentes && pendencias === 0) return false;
@@ -176,13 +193,13 @@ export default function DossieColaboradores() {
         const d = peso(b2.c) - peso(a.c);
         return d !== 0 ? d : a.f.nome.localeCompare(b2.f.nome);
       });
-  }, [funcionarios, porColaborador, busca, soPendentes, incluirDesligados]);
+  }, [funcionarios, porColaborador, busca, soPendentes, aba]);
 
   // Paginação: 227 colaboradores numa página só é rolagem sem fim, e no
   // celular cada linha vira um cartão alto — pior ainda.
   const [porPagina, setPorPagina] = useState(50);
   const [pagina, setPagina] = useState(1);
-  useEffect(() => { setPagina(1); }, [busca, soPendentes, incluirDesligados, porPagina]);
+  useEffect(() => { setPagina(1); }, [busca, soPendentes, aba, porPagina]);
 
   const totalPaginas = Math.max(1, Math.ceil(linhas.length / porPagina));
   const paginaAtual = Math.min(pagina, totalPaginas);
@@ -233,10 +250,30 @@ export default function DossieColaboradores() {
       <Contador valor={c.nao_enviado || 0} icone={AlertCircle} titulo="Documentos obrigatórios não enviados"
         cor="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900" />
       {!(c.vencido || c.vence_em_breve || c.nao_enviado) && (
-        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-3 py-1 rounded-full whitespace-nowrap font-medium shadow-2xs">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-          <span>Em dia</span>
-        </span>
+        /*
+         * "Em dia" só quando há documento EXIGIDO e ele está em ordem.
+         *
+         * O selo verde aparecia para todo mundo numa empresa que não tem
+         * nenhum documento obrigatório cadastrado — nada é cobrado, logo nada
+         * falta, logo "em dia". Conferido no banco: a empresa da tela tinha
+         * zero requisitos, e os 73 colaboradores apareciam verdes sem um único
+         * documento no dossiê.
+         *
+         * Dizer "em dia" ali é afirmar que a documentação está certa quando
+         * ninguém disse qual é. Sem exigência cadastrada, o selo diz isso.
+         */
+        requisitos.length === 0 ? (
+          <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-full whitespace-nowrap font-medium"
+            title="Nenhum documento obrigatório foi cadastrado para esta empresa, em Tipos de Documento.">
+            <Info className="w-3.5 h-3.5" />
+            <span>Sem exigência cadastrada</span>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-3 py-1 rounded-full whitespace-nowrap font-medium shadow-2xs">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Em dia</span>
+          </span>
+        )
       )}
     </div>
   );
@@ -255,6 +292,29 @@ export default function DossieColaboradores() {
 
       <Card className="shadow-xs border border-border/80">
         <CardContent className="p-4 sm:p-5 space-y-4">
+          {/* Ativos e desligados: listas separadas, como na devolução de EPI. */}
+          <div className="flex items-center gap-1 border-b border-border mb-4">
+            {([
+              ["ativos", "Ativos", totaisPorSituacao.ativos],
+              ["desligados", "Desligados", totaisPorSituacao.desligados],
+            ] as const).map(([chave, rotulo, quantos]) => (
+              <button
+                key={chave}
+                type="button"
+                onClick={() => setAba(chave)}
+                aria-current={aba === chave ? "page" : undefined}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  aba === chave
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {rotulo}
+                <span className="ml-2 text-xs tabular-nums opacity-70">{quantos}</span>
+              </button>
+            ))}
+          </div>
+
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative flex-1 min-w-[300px]">
               <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground" />
@@ -269,10 +329,6 @@ export default function DossieColaboradores() {
               <label className="flex items-center gap-2.5 text-sm text-foreground cursor-pointer hover:opacity-80 transition-opacity select-none font-medium">
                 <Checkbox checked={soPendentes} onCheckedChange={(v) => setSoPendentes(!!v)} className="rounded-[4px] h-4 w-4" />
                 Só com pendência
-              </label>
-              <label className="flex items-center gap-2.5 text-sm text-foreground cursor-pointer hover:opacity-80 transition-opacity select-none font-medium">
-                <Checkbox checked={incluirDesligados} onCheckedChange={(v) => setIncluirDesligados(!!v)} className="rounded-[4px] h-4 w-4" />
-                Incluir desligados
               </label>
             </div>
             <div className="ml-auto">
