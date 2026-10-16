@@ -884,10 +884,13 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
        * 1. Prioridade: Exames prescritos/customizados salvos na tabela `ghe_exames`
        * 2. Fallback: Base normativa da NR-07 baseada nos riscos reais do inventário
        */
-      const examesDoGesCustomizados = gheExamesList.filter((e: any) => e.ghe_id === ges.id);
+      const temCustomizacaoExplicita = gheExamesList.some((e: any) => e.ghe_id === ges.id);
+      const examesDoGesCustomizados = gheExamesList.filter(
+        (e: any) => e.ghe_id === ges.id && e.codigo_exame !== "NENHUM"
+      );
       let examesFicha: any[] = [];
 
-      if (examesDoGesCustomizados.length > 0) {
+      if (temCustomizacaoExplicita) {
         examesFicha = examesDoGesCustomizados.map((ex: any) => {
           let periodicidadeStr = "—";
           if (ex.periodico) {

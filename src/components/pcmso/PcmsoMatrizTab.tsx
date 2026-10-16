@@ -15,6 +15,7 @@ import {
   Pencil,
   Trash2,
   Sparkles,
+  RotateCcw,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -391,6 +392,13 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
       if (error) throw error;
       toast.success("Exame atualizado!");
     } else {
+      // Remove registro sentinela "NENHUM" se houver para esse GES
+      await supabase
+        .from("ghe_exames")
+        .delete()
+        .eq("ghe_id", dados.ghe_id)
+        .eq("codigo_exame", "NENHUM");
+
       const { error } = await supabase.from("ghe_exames").insert({
         empresa_id: dados.empresa_id,
         ghe_id: dados.ghe_id,
@@ -417,16 +425,174 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
     queryClient.invalidateQueries({ queryKey: ["pcmso-ghe-exames"] });
   };
 
-  const handleExcluirExame = async (exameId: string, nomeExame: string) => {
+  const handleExcluirExame = async (exameId: string, nomeExame: string, gheId?: string) => {
     if (!confirm(`Remover "${nomeExame}" deste GES?`)) return;
 
     try {
-      const { error } = await supabase.from("ghe_exames").delete().eq("id", exameId);
-      if (error) throw error;
-      toast.success("Exame removido.");
+      const examesDeste = examesSalvos.filter((e) => e.ghe_id === gheId && e.codigo_exame !== "NENHUM");
+      if (examesDeste.length <= 1 && gheId) {
+        // Se este era o último exame deste GES, remove e insere o sentinela para não reverter às sugestões
+        await supabase.from("ghe_exames").delete().eq("id", exameId);
+        await supabase.from("ghe_exames").insert({
+          empresa_id: pcmso.empresa_id,
+          ghe_id: gheId,
+          codigo_exame: "NENHUM",
+          nome_exame: "Nenhum exame ocupacional prescrito",
+          tipo_exame: "nenhum",
+          obrigatorio: false,
+          aparece_aso: false,
+          admissional: false,
+          periodico: false,
+          retorno_trabalho: false,
+          mudanca_risco: false,
+          mudanca_funcao: false,
+          demissional: false,
+          periodicidade_meses: 0,
+          observacao: "Customizado pelo usuário sem exames",
+        });
+      } else {
+        const { error } = await supabase.from("ghe_exames").delete().eq("id", exameId);
+        if (error) throw error;
+      }
+      toast.success("Exame removido com sucesso.");
       refetchExames();
+      queryClient.invalidateQueries({ queryKey: ["pcmso-ghe-exames"] });
     } catch (e: any) {
       toast.error(`Erro ao excluir: ${e.message}`);
+    }
+  };
+
+  const handleExcluirSugestao = async (
+    g: { gesId: string; codigoFormatado: string; nome: string },
+    sug: ExameCatalogoItem,
+    todasSugestoes: ExameCatalogoItem[]
+  ) => {
+    if (!confirm(`Remover o exame "${sug.nome}" do GES ${g.codigoFormatado}?`)) return;
+
+    try {
+      if (!g.gesId || g.gesId === "sem_ges") {
+        toast.error("Não foi possível identificar o GES.");
+        return;
+      }
+
+      // Filtra as sugestões mantendo todas menos a que o usuário mandou excluir
+      const restantes = todasSugestoes.filter((s) => s.codigo !== sug.codigo);
+
+      if (restantes.length > 0) {
+        // Grava as demais sugestões na tabela ghe_exames para este GES,
+        // garantindo que o exame excluído nunca mais apareça
+        const inserts = restantes.map((s) => ({
+          empresa_id: pcmso.empresa_id,
+          ghe_id: g.gesId,
+          codigo_exame: s.codigo,
+          nome_exame: s.nome,
+          tipo_exame: s.tipo,
+          obrigatorio: true,
+          aparece_aso: true,
+          admissional: s.admissional,
+          periodico: s.periodico,
+          retorno_trabalho: s.retornoTrabalho,
+          mudanca_risco: s.mudancaRisco,
+          mudanca_funcao: s.mudancaRisco,
+          demissional: s.demissional,
+          periodicidade_meses: s.periodicidadeMeses || 12,
+          observacao: s.observacaoPadrao || null,
+        }));
+
+        const { error } = await supabase.from("ghe_exames").insert(inserts);
+        if (error) throw error;
+      } else {
+        // Se excluiu o único exame restante, insere o registro sentinela "NENHUM"
+        // para marcar este GES como customizado vazio e não trazer as sugestões de volta
+        const { error } = await supabase.from("ghe_exames").insert({
+          empresa_id: pcmso.empresa_id,
+          ghe_id: g.gesId,
+          codigo_exame: "NENHUM",
+          nome_exame: "Nenhum exame ocupacional prescrito",
+          tipo_exame: "nenhum",
+          obrigatorio: false,
+          aparece_aso: false,
+          admissional: false,
+          periodico: false,
+          retorno_trabalho: false,
+          mudanca_risco: false,
+          mudanca_funcao: false,
+          demissional: false,
+          periodicidade_meses: 0,
+          observacao: "Customizado pelo usuário sem exames",
+        });
+        if (error) throw error;
+      }
+
+      toast.success(`Exame "${sug.nome}" removido do GES ${g.codigoFormatado}.`);
+      await refetchExames();
+      queryClient.invalidateQueries({ queryKey: ["pcmso-ghe-exames"] });
+    } catch (e: any) {
+      toast.error(`Erro ao remover exame: ${e.message}`);
+    }
+  };
+
+  const handleEditarSugestao = async (
+    g: { gesId: string; codigoFormatado: string; nome: string },
+    sug: ExameCatalogoItem,
+    todasSugestoes: ExameCatalogoItem[]
+  ) => {
+    try {
+      if (!g.gesId || g.gesId === "sem_ges") {
+        toast.error("GES não identificado.");
+        return;
+      }
+
+      // Persiste todas as sugestões deste GES em ghe_exames para que passem a ser editáveis individualmente
+      const inserts = todasSugestoes.map((s) => ({
+        empresa_id: pcmso.empresa_id,
+        ghe_id: g.gesId,
+        codigo_exame: s.codigo,
+        nome_exame: s.nome,
+        tipo_exame: s.tipo,
+        obrigatorio: true,
+        aparece_aso: true,
+        admissional: s.admissional,
+        periodico: s.periodico,
+        retorno_trabalho: s.retornoTrabalho,
+        mudanca_risco: s.mudancaRisco,
+        mudanca_funcao: s.mudancaRisco,
+        demissional: s.demissional,
+        periodicidade_meses: s.periodicidadeMeses || 12,
+        observacao: s.observacaoPadrao || null,
+      }));
+
+      const { data: gravados, error } = await supabase
+        .from("ghe_exames")
+        .insert(inserts)
+        .select("*");
+
+      if (error) throw error;
+
+      await refetchExames();
+      queryClient.invalidateQueries({ queryKey: ["pcmso-ghe-exames"] });
+
+      // Encontra o exame correspondente que acabou de ser gravado para abrir no modal
+      const exameGravado = gravados?.find((e: any) => e.codigo_exame === sug.codigo) || gravados?.[0];
+
+      if (exameGravado) {
+        handleAbrirEditarExame(g, exameGravado);
+      }
+    } catch (e: any) {
+      toast.error(`Erro ao personalizar exame: ${e.message}`);
+    }
+  };
+
+  const handleRestaurarSugestoesGes = async (gheId: string, codigoGes: string) => {
+    if (!confirm(`Deseja restaurar as sugestões automáticas da NR-07 para o GES ${codigoGes}? Todas as customizações manuais deste GES serão descartadas.`)) return;
+    try {
+      const { error } = await supabase.from("ghe_exames").delete().eq("ghe_id", gheId);
+      if (error) throw error;
+      toast.success(`Sugestões da NR-07 restauradas para o GES ${codigoGes}.`);
+      await refetchExames();
+      queryClient.invalidateQueries({ queryKey: ["pcmso-ghe-exames"] });
+    } catch (e: any) {
+      toast.error(`Erro ao restaurar sugestões: ${e.message}`);
     }
   };
 
@@ -552,6 +718,7 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
         <div className="space-y-4">
           {gruposFiltrados.map((g) => {
             const examesDesteGes = examesSalvos.filter((e) => e.ghe_id === g.gesId);
+            const examesValidosDesteGes = examesDesteGes.filter((e) => e.codigo_exame !== "NENHUM");
             const temExamesSalvos = examesDesteGes.length > 0;
 
             // Se não tem exames salvos, consolida as sugestões normativas da NR-07
@@ -603,6 +770,18 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
                       {g.itens.length} risco(s) PGR
                     </Button>
 
+                    {temExamesSalvos && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleRestaurarSugestoesGes(g.gesId, g.codigoFormatado)}
+                        className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1 px-2"
+                        title="Restaurar sugestões automáticas da NR-07"
+                      >
+                        <RotateCcw className="h-3 w-3" /> Restaurar NR-07
+                      </Button>
+                    )}
+
                     <Button
                       size="sm"
                       onClick={() => handleAbrirNovoExame(g)}
@@ -627,86 +806,115 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
                     </TableHeader>
                     <TableBody>
                       {temExamesSalvos ? (
-                        examesDesteGes.map((ex) => {
-                          const isAudio = ex.nome_exame.toLowerCase().includes("audiometria") || ex.codigo_exame === "0935";
-                          const isFono = ex.observacao?.toLowerCase().includes("fonoaudiól") || isAudio;
-                          const perStr = ex.periodico
-                            ? ex.periodicidade_meses === 6
-                              ? "Semestral"
-                              : ex.periodicidade_meses === 24
-                              ? "Bienal"
-                              : "Anual"
-                            : "—";
+                        examesValidosDesteGes.length > 0 ? (
+                          examesValidosDesteGes.map((ex) => {
+                            const isAudio = ex.nome_exame.toLowerCase().includes("audiometria") || ex.codigo_exame === "0935";
+                            const isFono = ex.observacao?.toLowerCase().includes("fonoaudiól") || isAudio;
+                            const perStr = ex.periodico
+                              ? ex.periodicidade_meses === 6
+                                ? "Semestral"
+                                : ex.periodicidade_meses === 24
+                                ? "Bienal"
+                                : "Anual"
+                              : "—";
 
-                          const asosList = [
-                            ex.admissional ? "ADM" : null,
-                            ex.periodico ? "Periódico" : null,
-                            ex.retorno_trabalho ? "Retorno" : null,
-                            ex.mudanca_risco ? "Mudança" : null,
-                            ex.demissional ? "DEM" : null,
-                          ].filter(Boolean);
+                            const asosList = [
+                              ex.admissional ? "ADM" : null,
+                              ex.periodico ? "Periódico" : null,
+                              ex.retorno_trabalho ? "Retorno" : null,
+                              ex.mudanca_risco ? "Mudança" : null,
+                              ex.demissional ? "DEM" : null,
+                            ].filter(Boolean);
 
-                          return (
-                            <TableRow key={ex.id} className="text-xs hover:bg-muted/5">
-                              <TableCell className="py-2.5">
-                                <div className="flex items-center gap-1.5">
-                                  <Badge variant="outline" className="font-mono text-[10px] px-1 py-0">
-                                    {ex.codigo_exame || "0295"}
-                                  </Badge>
-                                  <span className="font-medium text-foreground">{ex.nome_exame}</span>
-                                </div>
-                                {ex.observacao && (
-                                  <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1 italic">
-                                    {ex.observacao}
-                                  </p>
-                                )}
-                              </TableCell>
-                              <TableCell className="py-2.5 text-muted-foreground font-medium">
-                                {perStr}
-                              </TableCell>
-                              <TableCell className="py-2.5">
-                                <span className="text-[11px] text-muted-foreground">
-                                  {asosList.join(", ") || "—"}
-                                </span>
-                              </TableCell>
-                              <TableCell className="py-2.5">
-                                {isFono ? (
-                                  <Badge className="text-[10px] font-normal bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300 border-none">
-                                    Fonoaudiólogo
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="secondary" className="text-[10px] font-normal">
-                                    Médico
-                                  </Badge>
-                                )}
-                              </TableCell>
-                              <TableCell className="py-2.5 text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                    onClick={() => handleAbrirEditarExame(g, ex)}
-                                    title="Editar exame"
-                                  >
-                                    <Pencil className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                    onClick={() => handleExcluirExame(ex.id!, ex.nome_exame)}
-                                    title="Excluir exame"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
+                            return (
+                              <TableRow key={ex.id} className="text-xs hover:bg-muted/5">
+                                <TableCell className="py-2.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <Badge variant="outline" className="font-mono text-[10px] px-1 py-0">
+                                      {ex.codigo_exame || "0295"}
+                                    </Badge>
+                                    <span className="font-medium text-foreground">{ex.nome_exame}</span>
+                                  </div>
+                                  {ex.observacao && (
+                                    <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1 italic">
+                                      {ex.observacao}
+                                    </p>
+                                  )}
+                                </TableCell>
+                                <TableCell className="py-2.5 text-muted-foreground font-medium">
+                                  {perStr}
+                                </TableCell>
+                                <TableCell className="py-2.5">
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {asosList.join(", ") || "—"}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="py-2.5">
+                                  {isFono ? (
+                                    <Badge className="text-[10px] font-normal bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300 border-none">
+                                      Fonoaudiólogo
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="secondary" className="text-[10px] font-normal">
+                                      Médico
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell className="py-2.5 text-right">
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                      onClick={() => handleAbrirEditarExame(g, ex)}
+                                      title="Editar exame"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                                      onClick={() => handleExcluirExame(ex.id!, ex.nome_exame, g.gesId)}
+                                      title="Excluir este exame do GES"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={5} className="py-6 text-center text-xs text-muted-foreground bg-muted/5">
+                              <p className="font-medium text-foreground">Nenhum exame ocupacional prescrito para este GES.</p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                Este GES foi customizado sem exames complementares.
+                              </p>
+                              <div className="mt-2.5 flex items-center justify-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs gap-1 border-dashed"
+                                  onClick={() => handleAbrirNovoExame(g)}
+                                >
+                                  <Plus className="h-3 w-3" /> Adicionar Exame
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                                  onClick={() => handleRestaurarSugestoesGes(g.gesId, g.codigoFormatado)}
+                                >
+                                  <RotateCcw className="h-3 w-3" /> Restaurar Sugestões NR-07
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
                       ) : (
-                        /* Se não tem exames salvos, exibe as sugestões normativas de forma elegante e limpa */
+                        /* Se não tem exames salvos, exibe as sugestões normativas de forma elegante e limpa com botões de Editar e Excluir */
                         sugestoesLista.map((sug, sIdx) => (
                           <TableRow key={sIdx} className="text-xs hover:bg-muted/5 bg-slate-50/30 dark:bg-slate-900/10">
                             <TableCell className="py-2.5">
@@ -732,14 +940,26 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
                               </Badge>
                             </TableCell>
                             <TableCell className="py-2.5 text-right">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 text-[11px] text-primary hover:text-primary gap-1 px-1.5"
-                                onClick={() => handleAbrirNovoExame(g)}
-                              >
-                                Personalizar
-                              </Button>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                  onClick={() => handleEditarSugestao(g, sug, sugestoesLista)}
+                                  title="Personalizar / editar este exame"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                                  onClick={() => handleExcluirSugestao(g, sug, sugestoesLista)}
+                                  title="Excluir este exame do GES"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
