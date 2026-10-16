@@ -320,7 +320,6 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
           .select("*")
           .eq("pgr_id", pgrBaseId)
       : Promise.resolve({ data: [] }),
-<<<<<<< HEAD
     /*
      * Os setores, para traduzir o `setor_id` da função em NOME.
      *
@@ -328,26 +327,20 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
      * se fosse o nome do setor — saiu assim de verdade: "01 — SETOR:
      * 04F209F2-F0FF-4264-AC84-4E80AA1C57A2".
      */
-=======
->>>>>>> d869af1a (fix(pcmso): ordenar fichas de exame e quadro laboral na ordem estrita dos GES (01..13))
     (supabase.from as any)("sst_setores")
       .select("id, nome")
       .eq("empresa_id", empresaId),
   ]);
 
-<<<<<<< HEAD
   /** setor_id -> nome do setor. */
   const nomeDoSetor = new Map<string, string>();
-  for (const st of (setoresRaw?.data || []) as any[]) {
-    if (st?.id && (st.nome || "").trim()) nomeDoSetor.set(st.id, String(st.nome).trim());
-=======
-  const sstSetoresList = (setoresRaw?.data || []) as any[];
   const mapaSetoresPorId = new Map<string, string>();
-  for (const s of sstSetoresList) {
-    if (s.id && s.nome) {
-      mapaSetoresPorId.set(s.id, s.nome.trim().toUpperCase());
+  for (const st of (setoresRaw?.data || []) as any[]) {
+    if (st?.id && (st.nome || "").trim()) {
+      const n = String(st.nome).trim();
+      nomeDoSetor.set(st.id, n);
+      mapaSetoresPorId.set(st.id, n.toUpperCase());
     }
->>>>>>> d869af1a (fix(pcmso): ordenar fichas de exame e quadro laboral na ordem estrita dos GES (01..13))
   }
 
   const funcoesList = (funcoesRaw.data || []) as any[];
@@ -846,6 +839,12 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
                 fonte: r.fonte,
                 danos: r.danos,
                 meioPropagacao: tipo === "riscosQuimicos" || tipo === "riscosBiologicos" ? "Ar / Contato dérmico" : "Não se aplica",
+                formaExposicao: "Habitual / Intermitente",
+              });
+            }
+          });
+        }
+
         return resultado.length > 0 ? resultado : [ausenteObj];
       };
 
