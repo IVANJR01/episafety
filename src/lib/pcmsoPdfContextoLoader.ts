@@ -320,6 +320,7 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
           .select("*")
           .eq("pgr_id", pgrBaseId)
       : Promise.resolve({ data: [] }),
+<<<<<<< HEAD
     /*
      * Os setores, para traduzir o `setor_id` da função em NOME.
      *
@@ -327,15 +328,26 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
      * se fosse o nome do setor — saiu assim de verdade: "01 — SETOR:
      * 04F209F2-F0FF-4264-AC84-4E80AA1C57A2".
      */
+=======
+>>>>>>> d869af1a (fix(pcmso): ordenar fichas de exame e quadro laboral na ordem estrita dos GES (01..13))
     (supabase.from as any)("sst_setores")
       .select("id, nome")
       .eq("empresa_id", empresaId),
   ]);
 
+<<<<<<< HEAD
   /** setor_id -> nome do setor. */
   const nomeDoSetor = new Map<string, string>();
   for (const st of (setoresRaw?.data || []) as any[]) {
     if (st?.id && (st.nome || "").trim()) nomeDoSetor.set(st.id, String(st.nome).trim());
+=======
+  const sstSetoresList = (setoresRaw?.data || []) as any[];
+  const mapaSetoresPorId = new Map<string, string>();
+  for (const s of sstSetoresList) {
+    if (s.id && s.nome) {
+      mapaSetoresPorId.set(s.id, s.nome.trim().toUpperCase());
+    }
+>>>>>>> d869af1a (fix(pcmso): ordenar fichas de exame e quadro laboral na ordem estrita dos GES (01..13))
   }
 
   const funcoesList = (funcoesRaw.data || []) as any[];
@@ -548,6 +560,21 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
         });
       }
 
+      // Resolve o nome do setor pelo mapa de setores cadastrados
+      let setorResolvido = "";
+      for (const fn of funcoesDoGrupo) {
+        if (fn.setor_id) {
+          const nomeMapeado = mapaSetoresPorId.get(fn.setor_id);
+          if (nomeMapeado) {
+            setorResolvido = nomeMapeado;
+            break;
+          }
+        }
+      }
+      if (!setorResolvido) {
+        setorResolvido = funcoesDoGrupo[0].setor_id || "Operacional";
+      }
+
       return {
         id: funcoesDoGrupo[0].id,
         nome: nomeCargo,
@@ -557,7 +584,9 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
          * Sem setor cadastrado fica vazio, e as palavras-chave de
          * `mapearSetorCanonico` decidem — que é o caso em que elas servem.
          */
-        setor: setorDoCargo || "",
+        setor: setorResolvido && !/^[0-9a-f-]{36}$/i.test(setorResolvido)
+          ? setorResolvido
+          : (setorDoCargo && !/^[0-9a-f-]{36}$/i.test(setorDoCargo) ? setorDoCargo : ""),
         ambientes: ambNomes,
         atividades,
         exameClinicoPeriodicidade: "O periódico será feito a cada 12 meses.",
@@ -709,31 +738,6 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
     gruposFichas.set(setorCan, arr);
   });
 
-  /*
-   * Ordem das fichas. Os setores que o sistema já conhecia vêm primeiro, na
-   * ordem de sempre; os que vêm do cadastro da empresa seguem em ordem
-   * alfabética. Assim o documento não reordena sozinho de uma emissão para
-   * outra, e nenhum setor cadastrado fica de fora por não estar nesta lista.
-   */
-  const ordemSetores = [
-    "ADMINISTRAÇÃO E GESTÃO",
-    "COMERCIAL E ATENDIMENTO",
-    "CORTE",
-    "COSTURA",
-    "SEPARAÇÃO, ALMOXARIFADO E EXPEDIÇÃO",
-    "COZINHA",
-    "LIMPEZA E HIGIENIZAÇÃO",
-  ];
-
-  const setoresOrdenados = Array.from(gruposFichas.keys()).sort((a, b) => {
-    const ia = ordemSetores.indexOf(a);
-    const ib = ordemSetores.indexOf(b);
-    if (ia !== -1 && ib !== -1) return ia - ib;
-    if (ia !== -1) return -1;
-    if (ib !== -1) return 1;
-    return a.localeCompare(b);
-  });
-
   const ausenteObj = {
     agente: "Ausência de Fator de Risco",
     fonte: "Não se aplica",
@@ -742,97 +746,261 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
     formaExposicao: "Não se aplica",
   };
 
-  const fichasExame: PcmsoFichaExameG91[] = setoresOrdenados.map((nomeSetor, idx) => {
-    const numFicha = String(idx + 1).padStart(2, "0");
-    const cargosDoGrupo = gruposFichas.get(nomeSetor) || [];
-    const funcoesNomes = Array.from(new Set(cargosDoGrupo.map((c) => c.nome.toUpperCase())));
+  const extrairNumGes = (cod?: string | null): number => {
+    if (!cod) return 9999;
+    const num = String(cod).replace(/\D/g, "");
+    return num ? parseInt(num, 10) : 9999;
+  };
 
-    const consolidar = (tipo: "riscosFisicos" | "riscosQuimicos" | "riscosBiologicos" | "riscosErgonomicos" | "riscosAcidentes") => {
-      const todos = cargosDoGrupo.flatMap((c) => c[tipo] || []);
-      const vistos = new Set<string>();
-      const resultado: PcmsoRiscoTabelaG91[] = [];
-      todos.forEach((r) => {
-        const k = (r.agente || "").toLowerCase().trim();
-        if (!vistos.has(k)) {
-          vistos.add(k);
-          resultado.push({
-            agente: r.agente,
-            fonte: r.fonte,
-            danos: r.danos,
-            meioPropagacao: tipo === "riscosQuimicos" || tipo === "riscosBiologicos" ? "Ar / Contato dérmico" : "Não se aplica",
-            formaExposicao: "Habitual / Intermitente",
-          });
-        }
-      });
-      return resultado.length > 0 ? resultado : [ausenteObj];
-    };
+  const ghesList = (ghesData?.data || []) as any[];
+  let fichasExame: PcmsoFichaExameG91[] = [];
 
+  if (ghesList.length > 0) {
     /*
-     * Periodicidade do exame clínico — NR-07, item 7.5.8, inciso II.
-     *
-     * "a) para empregados expostos a riscos ocupacionais identificados e
-     * classificados no PGR (...) a cada ano"; "b) para os demais empregados, o
-     * exame clínico deve ser realizado a cada dois anos."
-     *
-     * A ficha dizia "Anual" para todo setor, inclusive os que saem com
-     * "Ausência de Fator de Risco" em todos os cinco grupos — contradizendo a
-     * seção 08 do próprio documento, que transcreve a regra bienal.
+     * ORDEM ESTRITA DO GES (NR-07 / NR-01 articulados):
+     * As Fichas de Exame e o Quadro Laboral DEVEM seguir rigorosamente
+     * a ordem numérica dos Grupos Homogêneos de Exposição (GES 01, 02, 03... N).
      */
-    const temRiscoReal = (["riscosFisicos", "riscosQuimicos", "riscosBiologicos",
-      "riscosErgonomicos", "riscosAcidentes"] as const)
-      .some((t) => consolidar(t).some((r) => r.agente !== ausenteObj.agente));
-
-    const examesFicha = [
-      {
-        codigo: "0295",
-        nome: "Avaliação Clínica Ocupacional (Anamnese e Exame físico)",
-        adm: "Sim",
-        periodico: temRiscoReal ? "Anual" : "Bienal",
-        rt: "Sim",
-        mdf: "*",
-        dem: "Sim",
-      },
-    ];
-
-    /*
-     * Exames complementares da ficha: os dos CARGOS que ela reúne, que por sua
-     * vez saem do risco inventariado no PGR.
-     *
-     * Eram escolhidos pelo NOME DO SETOR: "COZINHA" ganhava Glicemia e
-     * Hemograma, "LIMPEZA E HIGIENIZAÇÃO" ganhava Hemograma, "CORTE" ganhava
-     * Audiometria. Mesmo defeito que já havia sido tirado no nível do cargo —
-     * prescrição por texto, não por exposição. E o setor CORTE recebia
-     * audiometria mesmo sem uma única medição de ruído no inventário.
-     */
-    const vistosExames = new Set<string>();
-    cargosDoGrupo.forEach((c) => {
-      (c.examesComplementares || []).forEach((ex) => {
-        if (vistosExames.has(ex.codigoEsocial)) return;
-        vistosExames.add(ex.codigoEsocial);
-        examesFicha.push({
-          codigo: ex.codigoEsocial,
-          nome: ex.nome,
-          adm: ex.fazerAdmissional ? "Sim" : "—",
-          periodico: ex.periodicidade?.toLowerCase().includes("anual") ? "Anual" : "—",
-          rt: ex.fazerRetorno ? "Sim" : "—",
-          mdf: ex.fazerMudanca ? "Sim" : "—",
-          dem: ex.fazerDemissional ? "Sim" : "—",
-        });
-      });
+    const ghesOrdenados = [...ghesList].sort((a, b) => {
+      const na = extrairNumGes(a.codigo);
+      const nb = extrairNumGes(b.codigo);
+      if (na !== nb) return na - nb;
+      return String(a.codigo || "").localeCompare(String(b.codigo || ""));
     });
 
-    return {
-      numero: numFicha,
-      setor: nomeSetor,
-      funcoes: funcoesNomes,
-      riscosFisicos: consolidar("riscosFisicos"),
-      riscosQuimicos: consolidar("riscosQuimicos"),
-      riscosBiologicos: consolidar("riscosBiologicos"),
-      riscosErgonomicos: consolidar("riscosErgonomicos"),
-      riscosAcidentes: consolidar("riscosAcidentes"),
-      exames: examesFicha,
-    };
-  });
+    fichasExame = ghesOrdenados.map((ges, idx) => {
+      const numGes = extrairNumGes(ges.codigo);
+      const numFicha = numGes < 9999 ? String(numGes).padStart(2, "0") : String(idx + 1).padStart(2, "0");
+
+      // 1. Identifica o Setor Oficial do GES
+      const itemPgr = invItens.find((it: any) => it.ghe_id === ges.id && it.setor);
+      let setorNome = itemPgr ? itemPgr.setor.trim() : "";
+      if (!setorNome && ges.setor) setorNome = ges.setor.trim();
+      if (!setorNome && ges.nome && !/^\d+$/.test(ges.nome.trim())) setorNome = ges.nome.trim();
+      if (setorNome && mapaSetoresPorId.has(setorNome)) {
+        setorNome = mapaSetoresPorId.get(setorNome)!;
+      }
+      if (!setorNome) {
+        setorNome = `GES ${numFicha}`;
+      }
+      setorNome = setorNome.toUpperCase().trim();
+
+      // 2. Funções pertencentes a este GES
+      const fnsGhe = (gheFuncoesData?.data || [])
+        .filter((f: any) => f.ghe_id === ges.id)
+        .map((f: any) => (f.nome_funcao || "").trim().toUpperCase())
+        .filter(Boolean);
+
+      const fnsSnapshot = invItens
+        .filter((it: any) => it.ghe_id === ges.id)
+        .flatMap((it: any) => (Array.isArray(it.funcoes_snapshot) ? it.funcoes_snapshot : [it.funcoes_snapshot]))
+        .map((f: any) => (f || "").trim().toUpperCase())
+        .filter(Boolean);
+
+      const fnsCargos = cargos
+        .filter((c: any) => c.setor && c.setor.toUpperCase().trim() === setorNome)
+        .map((c: any) => c.nome.toUpperCase().trim());
+
+      const funcoesSet = new Set<string>([...fnsGhe, ...fnsSnapshot, ...fnsCargos]);
+      const funcoesNomes = Array.from(funcoesSet).sort((a, b) => a.localeCompare(b));
+
+      // 3. Riscos do GES
+      const riscosDoGes = invItens.filter((it: any) => {
+        if (it.ghe_id === ges.id) return true;
+        if (it.setor && it.setor.toUpperCase().trim() === setorNome) return true;
+        return false;
+      });
+
+      const consolidarGrupo = (
+        grupoFiltro: string,
+        tipo: "riscosFisicos" | "riscosQuimicos" | "riscosBiologicos" | "riscosErgonomicos" | "riscosAcidentes"
+      ): PcmsoRiscoTabelaG91[] => {
+        const itensGrupo = riscosDoGes.filter((r: any) => (r.grupo || "").toLowerCase().includes(grupoFiltro));
+        const vistos = new Set<string>();
+        const resultado: PcmsoRiscoTabelaG91[] = [];
+
+        itensGrupo.forEach((r: any) => {
+          const agente = (r.tipo_agente || r.perigo_descricao || "Agente identificado").trim();
+          const k = agente.toLowerCase();
+          if (!vistos.has(k)) {
+            vistos.add(k);
+            resultado.push({
+              agente,
+              fonte: textoCurto(r.fonte_geradora) || textoCurto(r.perigo_descricao) || "Não informado",
+              danos: textoCurto(r.lesoes) || "Possíveis danos à saúde e integridade física",
+              meioPropagacao: grupoFiltro.includes("quim") || grupoFiltro.includes("biol") ? "Ar / Contato dérmico" : "Não se aplica",
+              formaExposicao: "Habitual / Intermitente",
+            });
+          }
+        });
+
+        if (resultado.length === 0) {
+          const cargosDoSetor = cargos.filter((c: any) => c.setor && c.setor.toUpperCase().trim() === setorNome);
+          const todos = cargosDoSetor.flatMap((c) => c[tipo] || []);
+          todos.forEach((r) => {
+            const k = (r.agente || "").toLowerCase().trim();
+            if (!vistos.has(k)) {
+              vistos.add(k);
+              resultado.push({
+                agente: r.agente,
+                fonte: r.fonte,
+                danos: r.danos,
+                meioPropagacao: tipo === "riscosQuimicos" || tipo === "riscosBiologicos" ? "Ar / Contato dérmico" : "Não se aplica",
+        return resultado.length > 0 ? resultado : [ausenteObj];
+      };
+
+      const rf = consolidarGrupo("fisi", "riscosFisicos");
+      const rq = consolidarGrupo("quim", "riscosQuimicos");
+      const rb = consolidarGrupo("biol", "riscosBiologicos");
+      const re = consolidarGrupo("ergo", "riscosErgonomicos");
+      const ra = consolidarGrupo("acid", "riscosAcidentes");
+
+      /*
+       * Periodicidade do exame clínico — NR-07, item 7.5.8, inciso II.
+       * Exame bienal para setores sem nenhum risco ocupacional inventariado.
+       */
+      const temRiscoReal = [rf, rq, rb, re, ra].some((grupo) =>
+        grupo.some((r) => r.agente !== ausenteObj.agente)
+      );
+
+      const examesFicha = [
+        {
+          codigo: "0295",
+          nome: "Avaliação Clínica Ocupacional (Anamnese e Exame físico)",
+          adm: "Sim",
+          periodico: temRiscoReal ? "Anual" : "Bienal",
+          rt: "Sim",
+          mdf: "*",
+          dem: "Sim",
+        },
+      ];
+
+      // Exames complementares dos cargos deste GES
+      const cargosDoGes = cargos.filter((c: any) =>
+        (c.setor && c.setor.toUpperCase().trim() === setorNome) ||
+        funcoesNomes.includes(c.nome.toUpperCase().trim())
+      );
+      const vistosExames = new Set<string>();
+      cargosDoGes.forEach((c) => {
+        (c.examesComplementares || []).forEach((ex) => {
+          if (vistosExames.has(ex.codigoEsocial)) return;
+          vistosExames.add(ex.codigoEsocial);
+          examesFicha.push({
+            codigo: ex.codigoEsocial,
+            nome: ex.nome,
+            adm: ex.fazerAdmissional ? "Sim" : "—",
+            periodico: ex.periodicidade?.toLowerCase().includes("anual") ? "Anual" : "—",
+            rt: ex.fazerRetorno ? "Sim" : "—",
+            mdf: ex.fazerMudanca ? "Sim" : "—",
+            dem: ex.fazerDemissional ? "Sim" : "—",
+          });
+        });
+      });
+
+      return {
+        numero: numFicha,
+        setor: setorNome,
+        funcoes: funcoesNomes,
+        riscosFisicos: rf,
+        riscosQuimicos: rq,
+        riscosBiologicos: rb,
+        riscosErgonomicos: re,
+        riscosAcidentes: ra,
+        exames: examesFicha,
+      };
+    });
+  } else {
+    // Fallback puro para caso a empresa não possua nenhum GES cadastrado
+    const ordemSetores = [
+      "ADMINISTRAÇÃO E GESTÃO",
+      "COMERCIAL E ATENDIMENTO",
+      "CORTE",
+      "COSTURA",
+      "SEPARAÇÃO, ALMOXARIFADO E EXPEDIÇÃO",
+      "COZINHA",
+      "LIMPEZA E HIGIENIZAÇÃO",
+    ];
+
+    const setoresOrdenados = Array.from(gruposFichas.keys()).sort((a, b) => {
+      const ia = ordemSetores.indexOf(a);
+      const ib = ordemSetores.indexOf(b);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    fichasExame = setoresOrdenados.map((nomeSetor, idx) => {
+      const numFicha = String(idx + 1).padStart(2, "0");
+      const cargosDoGrupo = gruposFichas.get(nomeSetor) || [];
+      const funcoesNomes = Array.from(new Set(cargosDoGrupo.map((c) => c.nome.toUpperCase())));
+
+      const consolidar = (tipo: "riscosFisicos" | "riscosQuimicos" | "riscosBiologicos" | "riscosErgonomicos" | "riscosAcidentes") => {
+        const todos = cargosDoGrupo.flatMap((c) => c[tipo] || []);
+        const vistos = new Set<string>();
+        const resultado: PcmsoRiscoTabelaG91[] = [];
+        todos.forEach((r) => {
+          const k = (r.agente || "").toLowerCase().trim();
+          if (!vistos.has(k)) {
+            vistos.add(k);
+            resultado.push({
+              agente: r.agente,
+              fonte: r.fonte,
+              danos: r.danos,
+              meioPropagacao: tipo === "riscosQuimicos" || tipo === "riscosBiologicos" ? "Ar / Contato dérmico" : "Não se aplica",
+              formaExposicao: "Habitual / Intermitente",
+            });
+          }
+        });
+        return resultado.length > 0 ? resultado : [ausenteObj];
+      };
+
+      const temRiscoReal = (["riscosFisicos", "riscosQuimicos", "riscosBiologicos",
+        "riscosErgonomicos", "riscosAcidentes"] as const)
+        .some((t) => consolidar(t).some((r) => r.agente !== ausenteObj.agente));
+
+      const examesFicha = [
+        {
+          codigo: "0295",
+          nome: "Avaliação Clínica Ocupacional (Anamnese e Exame físico)",
+          adm: "Sim",
+          periodico: temRiscoReal ? "Anual" : "Bienal",
+          rt: "Sim",
+          mdf: "*",
+          dem: "Sim",
+        },
+      ];
+
+      const vistosExames = new Set<string>();
+      cargosDoGrupo.forEach((c) => {
+        (c.examesComplementares || []).forEach((ex) => {
+          if (vistosExames.has(ex.codigoEsocial)) return;
+          vistosExames.add(ex.codigoEsocial);
+          examesFicha.push({
+            codigo: ex.codigoEsocial,
+            nome: ex.nome,
+            adm: ex.fazerAdmissional ? "Sim" : "—",
+            periodico: ex.periodicidade?.toLowerCase().includes("anual") ? "Anual" : "—",
+            rt: ex.fazerRetorno ? "Sim" : "—",
+            mdf: ex.fazerMudanca ? "Sim" : "—",
+            dem: ex.fazerDemissional ? "Sim" : "—",
+          });
+        });
+      });
+
+      return {
+        numero: numFicha,
+        setor: nomeSetor,
+        funcoes: funcoesNomes,
+        riscosFisicos: consolidar("riscosFisicos"),
+        riscosQuimicos: consolidar("riscosQuimicos"),
+        riscosBiologicos: consolidar("riscosBiologicos"),
+        riscosErgonomicos: consolidar("riscosErgonomicos"),
+        riscosAcidentes: consolidar("riscosAcidentes"),
+        exames: examesFicha,
+      };
+    });
+  }
 
   const quadroLaboral: PcmsoQuadroLaboralItem[] = fichasExame.map((f) => ({
     fichaNumero: f.numero,
@@ -840,11 +1008,35 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
     funcoes: f.funcoes,
   }));
 
-  const atividadesLista: PcmsoAtividadeItem[] = cargos.map((c) => ({
-    setor: mapearSetorCanonico(c.nome, c.setor),
-    funcao: c.nome.toUpperCase(),
-    descricao: c.atividades,
-  })).sort((a, b) => a.setor.localeCompare(b.setor) || a.funcao.localeCompare(b.funcao));
+  // Mapeia cada função para o Setor do GES correspondente
+  const mapaFuncaoParaSetorGes = new Map<string, string>();
+  fichasExame.forEach((f) => {
+    f.funcoes.forEach((fnNome) => {
+      if (!mapaFuncaoParaSetorGes.has(fnNome)) {
+        mapaFuncaoParaSetorGes.set(fnNome, f.setor);
+      }
+    });
+  });
+
+  const ordemSetoresGes = fichasExame.map((f) => f.setor);
+
+  const atividadesLista: PcmsoAtividadeItem[] = cargos.map((c) => {
+    const nomeNorm = c.nome.toUpperCase().trim();
+    const setorGes = mapaFuncaoParaSetorGes.get(nomeNorm) || mapearSetorCanonico(c.nome, c.setor);
+    return {
+      setor: setorGes,
+      funcao: nomeNorm,
+      descricao: c.atividades,
+    };
+  }).sort((a, b) => {
+    const ia = ordemSetoresGes.indexOf(a.setor);
+    const ib = ordemSetoresGes.indexOf(b.setor);
+    if (ia !== -1 && ib !== -1) {
+      if (ia !== ib) return ia - ib;
+    } else if (ia !== -1) return -1;
+    else if (ib !== -1) return 1;
+    return a.setor.localeCompare(b.setor) || a.funcao.localeCompare(b.funcao);
+  });
 
   return {
     pcmso,
