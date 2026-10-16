@@ -27,6 +27,8 @@ interface VersaoResumo {
   data_emissao: string | null;
   data_validade: string | null;
   created_at: string;
+  /** Registro que originou a versão — o ASO, o treinamento, a entrega. */
+  origem_id: string | null;
 }
 
 const dataBr = (iso?: string | null) =>
@@ -45,7 +47,7 @@ const dataHoraBr = (iso?: string | null) =>
  */
 export default function DocumentoEvidencia({
   empresaId, colaboradorId, tipoDocumentoId, registroId, validadeMeses, dataValidade,
-  origemTabela, origemId, userId, podeEditar,
+  origemTabela, origemId, userId, podeEditar, versaoDoRegistro, rotuloVersao,
   semTipoTexto = "Curso não cadastrado",
   semTipoTitulo = "Cadastre este curso em 'Cursos e Evidências' para poder anexar o comprovante",
 }: {
@@ -64,6 +66,23 @@ export default function DocumentoEvidencia({
   /** Registro de origem desta versão. Sem isso, cai no padrão de Treinamentos. */
   origemTabela?: string;
   origemId?: string;
+  /**
+   * Mostra na linha a versão DESTE registro, e não a mais recente do
+   * documento.
+   *
+   * O documento é um só por colaborador e tipo. No módulo de ASO, cada
+   * linha é um exame do MESMO colaborador e do MESMO tipo de documento, e
+   * as cinco linhas mostravam o mesmo "Ver PDF" e a mesma contagem de
+   * versões: não dava para saber qual arquivo era o admissional e qual era
+   * o demissional, e "Renovar" numa linha mexia no monte inteiro.
+   *
+   * Com isto ligado, a linha olha só o que foi anexado nela. O histórico
+   * continua mostrando o documento inteiro — é ele que prova a situação de
+   * um período passado.
+   */
+  versaoDoRegistro?: boolean;
+  /** Rótulo de cada versão no histórico, pelo registro que a originou. */
+  rotuloVersao?: (origemId: string | null) => string | null;
   userId?: string | null;
   podeEditar: boolean;
   /** Texto/título quando não há tipo de documento — padrão é o de cursos. */
@@ -81,7 +100,7 @@ export default function DocumentoEvidencia({
   const carregar = useCallback(async () => {
     if (!tipoDocumentoId) { setVersoes([]); return; }
     const { data, error } = await (supabase.from as any)("internal_documents")
-      .select("id, internal_document_versions(id, versao, caminho_arquivo, nome_original, data_emissao, data_validade, created_at)")
+      .select("id, internal_document_versions(id, versao, caminho_arquivo, nome_original, data_emissao, data_validade, created_at, origem_id)")
       .eq("colaborador_id", colaboradorId)
       .eq("tipo_documento_id", tipoDocumentoId)
       .is("arquivado_em", null)
@@ -180,7 +199,18 @@ export default function DocumentoEvidencia({
     );
   }
 
-  const atual = versoes[0];
+  /*
+   * A versão que a linha mostra. Com `versaoDoRegistro`, é a última anexada
+   * NESTE registro; sem ele, a última do documento, como sempre foi.
+   */
+  const atual = versaoDoRegistro
+    ? versoes.find((v) => v.origem_id && v.origem_id === (origemId || registroId))
+    : versoes[0];
+
+  /* "2 versões" na linha tem de contar o que a linha mostra. */
+  const quantas = versaoDoRegistro
+    ? versoes.filter((v) => v.origem_id && v.origem_id === (origemId || registroId)).length
+    : versoes.length;
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -200,7 +230,7 @@ export default function DocumentoEvidencia({
             <ExternalLink className="w-3 h-3 opacity-60" />
           </button>
           <span className="text-[10px] text-muted-foreground">
-            {versoes.length} {versoes.length === 1 ? "versão" : "versões"} · {dataBr(atual.created_at)}
+            {quantas} {quantas === 1 ? "versão" : "versões"} · {dataBr(atual.created_at)}
           </span>
           {podeEditar && (
             <div className="flex gap-1">
@@ -209,7 +239,7 @@ export default function DocumentoEvidencia({
                 {enviando ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
                 <span className="ml-1">Renovar</span>
               </Button>
-              {versoes.length > 1 && (
+              {versoes.length > 0 && (
                 <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px]"
                   onClick={() => setHistAberto(true)}>
                   <History className="w-3 h-3" /><span className="ml-1">Histórico</span>
@@ -223,13 +253,26 @@ export default function DocumentoEvidencia({
           <Badge variant="outline" className="w-fit bg-amber-100 text-amber-800 border-amber-300 text-[10px]">
             Sem comprovante
           </Badge>
-          {podeEditar && (
-            <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px] w-fit"
-              disabled={enviando} onClick={() => inputRef.current?.click()}>
-              {enviando ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-              <span className="ml-1">Anexar</span>
-            </Button>
-          )}
+          <div className="flex gap-1">
+            {podeEditar && (
+              <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px] w-fit"
+                disabled={enviando} onClick={() => inputRef.current?.click()}>
+                {enviando ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                <span className="ml-1">Anexar</span>
+              </Button>
+            )}
+            {/*
+              * Este registro não tem arquivo, mas o colaborador pode ter
+              * outros no mesmo documento. Sem este botão, "Sem comprovante"
+              * daria a entender que não há nada anexado em lugar nenhum.
+              */}
+            {versoes.length > 0 && (
+              <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px] w-fit"
+                onClick={() => setHistAberto(true)}>
+                <History className="w-3 h-3" /><span className="ml-1">Histórico</span>
+              </Button>
+            )}
+          </div>
         </>
       )}
 
@@ -248,6 +291,11 @@ export default function DocumentoEvidencia({
                 <Badge variant={i === 0 ? "default" : "outline"} className="shrink-0 text-[10px]">
                   v{v.versao}{i === 0 ? " · atual" : ""}
                 </Badge>
+                {rotuloVersao?.(v.origem_id) && (
+                  <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
+                    {rotuloVersao(v.origem_id)}
+                  </Badge>
+                )}
                 <div className="min-w-0 flex-1 text-xs">
                   <div className="truncate font-medium">{v.nome_original || "documento"}</div>
                   <div className="text-muted-foreground text-[11px]">

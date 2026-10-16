@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -85,6 +85,24 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
       return data || [];
     },
   });
+
+  /*
+   * O anexo é por ASO, não por colaborador.
+   *
+   * O documento do Arquivo Digital é um só por colaborador e tipo, e o ASO
+   * tem um tipo só. Com isso, as linhas do admissional, do periódico e do
+   * demissional do MESMO colaborador mostravam o mesmo "Ver PDF" e a mesma
+   * contagem: não dava para saber qual arquivo era qual, e "Renovar" numa
+   * linha mexia no monte inteiro.
+   *
+   * Cada versão já guarda o id do ASO que a originou. Daqui sai o rótulo
+   * do tipo de exame de cada uma, e a linha passa a mostrar só o seu.
+   */
+  const rotuloDoAso = useCallback((origemId: string | null) => {
+    if (!origemId) return null;
+    const aso = (asos as any[]).find((a) => a.id === origemId);
+    return aso ? (TIPO[aso.tipo_exame] || aso.tipo_exame) : null;
+  }, [asos]);
 
   const rows = useMemo(() => {
     return asos.filter((a: any) => {
@@ -194,6 +212,8 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
                         empresaId={a.empresa_id}
                         colaboradorId={a.funcionario_id}
                         tipoDocumentoId={tipoDocumentoAso || null}
+                        versaoDoRegistro
+                        rotuloVersao={rotuloDoAso}
                         dataValidade={a.data_vencimento}
                         registroId={a.id}
                         origemTabela="asos"
