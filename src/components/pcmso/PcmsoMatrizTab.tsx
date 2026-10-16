@@ -41,6 +41,21 @@ function extrairNumGes(cod?: string): number {
   return num ? parseInt(num, 10) : 9999;
 }
 
+/**
+ * Retorna as sugestões normativas de forma segura e retrocompatível,
+ * blindando o componente contra caches antigos ou campos vazios.
+ */
+function obterSugestoesItem(item: any): ExameCatalogoItem[] {
+  if (!item) return [];
+  if (Array.isArray(item.examesSugeridos) && item.examesSugeridos.length > 0) {
+    return item.examesSugeridos;
+  }
+  if (Array.isArray(item.exames) && item.exames.length > 0) {
+    return item.exames;
+  }
+  return sugerirExamesCompletosNr07(item.grupo, item.risco, item.fonte) || [];
+}
+
 interface PcmsoMatrizTabProps {
   pcmso: any;
 }
@@ -117,7 +132,7 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
 
   // Busca o inventário de riscos do PGR base vinculado e dados de GES e Funções
   const { data: dadosMatriz, isLoading } = useQuery({
-    queryKey: ["pcmso-riscos-base-estruturado", pgrIdAtivo, pcmso.empresa_id],
+    queryKey: ["pcmso-matriz-saude-v3", pgrIdAtivo, pcmso.empresa_id],
     queryFn: async () => {
       if (!pgrIdAtivo || pgrIdAtivo === "none") {
         return { grupos: [], totalRiscos: 0 };
@@ -227,7 +242,7 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
         }
 
         // Sugestão normativa detalhada para o risco
-        const examesSugeridos = sugerirExamesCompletosNr07(r.grupo, risco, fonte);
+        const examesSugeridos = sugerirExamesCompletosNr07(r.grupo, risco, fonte) || [];
 
         return {
           ...r,
@@ -239,6 +254,7 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
           risco,
           fonte,
           funcoes: Array.from(funcoesItemSet),
+          exames: examesSugeridos,
           examesSugeridos,
         };
       });
@@ -420,8 +436,8 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
     try {
       // Coleta todas as sugestões do GES
       const mapaSugestoes = new Map<string, ExameCatalogoItem>();
-      for (const item of g.itens) {
-        for (const sug of item.examesSugeridos) {
+      for (const item of (g?.itens || [])) {
+        for (const sug of obterSugestoesItem(item)) {
           if (!mapaSugestoes.has(sug.codigo)) {
             mapaSugestoes.set(sug.codigo, sug);
           }
@@ -476,8 +492,8 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
         if (jaTem.length > 0) continue; // Pula os que já têm customização
 
         const mapaSugestoes = new Map<string, ExameCatalogoItem>();
-        for (const item of g.itens) {
-          for (const sug of item.examesSugeridos) {
+        for (const item of (g?.itens || [])) {
+          for (const sug of obterSugestoesItem(item)) {
             if (!mapaSugestoes.has(sug.codigo)) {
               mapaSugestoes.set(sug.codigo, sug);
             }
@@ -614,8 +630,8 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
 
                 // Sugestões combinadas dos riscos para caso ainda não tenha exames salvos
                 const mapaSugestoes = new Map<string, ExameCatalogoItem>();
-                for (const item of g.itens) {
-                  for (const sug of item.examesSugeridos) {
+                for (const item of (g?.itens || [])) {
+                  for (const sug of obterSugestoesItem(item)) {
                     if (!mapaSugestoes.has(sug.codigo)) {
                       mapaSugestoes.set(sug.codigo, sug);
                     }
@@ -858,13 +874,15 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
                             </TableCell>
                             <TableCell>
                               <div className="space-y-1">
-                                {r.examesSugeridos.map((ex: any, idx: number) => (
+                                {obterSugestoesItem(r).map((ex: any, idx: number) => (
                                   <div
                                     key={idx}
                                     className="text-xs flex items-center justify-between py-0.5 border-b border-border/40 last:border-none"
                                   >
                                     <span className="font-medium text-foreground">{ex.nome}</span>
-                                    <span className="text-[10px] text-muted-foreground ml-2 shrink-0">{ex.baseNormativa.split("(")[0]}</span>
+                                    <span className="text-[10px] text-muted-foreground ml-2 shrink-0">
+                                      {ex.baseNormativa ? ex.baseNormativa.split("(")[0] : "NR-07"}
+                                    </span>
                                   </div>
                                 ))}
                               </div>
