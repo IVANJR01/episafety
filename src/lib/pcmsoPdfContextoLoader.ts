@@ -419,10 +419,23 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
       }
 
       // Mapear riscos do inventário do PGR correspondentes à função
+      /*
+       * Os itens do inventário DESTE cargo.
+       *
+       * A comparação é exata, nome por nome. Era por "contém" sobre a lista
+       * inteira de funções juntas num texto só, e aí "AJUDANTE" casava com
+       * "AJUDANTE DE CONFECÇÃO": o cargo herdava riscos de outro cargo e o
+       * PCMSO somava exposições que o PGR não dá àquela função.
+       *
+       * A reserva pelo SETOR também é exata: antes "COSTURA" casava com
+       * "COSTURA E ACABAMENTO" e com qualquer setor que a contivesse.
+       */
+      const igual = (v: unknown) => String(v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
       const riscosDoCargo = invItens.filter((it: any) => {
-        const funcsSnapshot = Array.isArray(it.funcoes_snapshot) ? it.funcoes_snapshot.join(" ").toLowerCase() : "";
-        const setorItem = (it.setor || "").toLowerCase();
-        return funcsSnapshot.includes(nomeNorm) || setorItem.includes(nomeNorm);
+        const funcoesDoItem = Array.isArray(it.funcoes_snapshot)
+          ? it.funcoes_snapshot.map(igual)
+          : [];
+        return funcoesDoItem.includes(nomeNorm) || igual(it.setor) === nomeNorm;
       });
 
       // Deduplicação de riscos por agente
@@ -487,75 +500,23 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
         else if (grupo.includes("biol")) riscosBiologicosRaw.push(obj);
       });
 
-      // Se não havia no inventário, injeta padrões preventivos conforme o perfil da ocupação
-      if (riscosAcidentesRaw.length === 0) {
-        if (nomeNorm.includes("costur") || nomeNorm.includes("ajudante")) {
-          riscosAcidentesRaw.push({
-            agente: "Cortes / Perfurações / Partes móveis",
-            fonte: "Máquinas de costura",
-            metodologia: "Critério Qualitativo.",
-            medidas: "Protetores de máquina, treinamento",
-            danos: "Perfurações, cortes, prensagem",
-          });
-        } else if (nomeNorm.includes("cozinh")) {
-          riscosAcidentesRaw.push({
-            agente: "Cortes e perfurações",
-            fonte: "Manipulação de alimentos e utensílios",
-            metodologia: "Critério Qualitativo.",
-            medidas: "Treinamento de segurança, uso de luvas de malha de aço e calçados fechados",
-            danos: "Queimaduras, ferimentos",
-          });
-        } else if (nomeNorm.includes("limpeza") || nomeNorm.includes("faxin")) {
-          riscosAcidentesRaw.push({
-            agente: "Piso molhado / escorregadio",
-            fonte: "Água e resíduos durante a limpeza",
-            metodologia: "Critério Qualitativo.",
-            medidas: "Sinalização de piso molhado, calçado antiderrapante, rotina programada",
-            danos: "Escorregões, torções, quedas",
-          });
-        }
-      }
-
-      if (riscosErgonomicosRaw.length === 0) {
-        if (nomeNorm.includes("escrit") || nomeNorm.includes("admin") || nomeNorm.includes("comercial") || nomeNorm.includes("gerente") || nomeNorm.includes("pcp")) {
-          riscosErgonomicosRaw.push(
-            {
-              agente: "Sobrecarga / Pressão por prazos",
-              fonte: "Pressão por metas, prazos curtos, trabalho mental contínuo",
-              metodologia: "Critério Qualitativo.",
-              medidas: "Programas de qualidade de vida, pausas, apoio psicológico",
-              danos: "Estresse, ansiedade, fadiga mental, burnout",
-            },
-            {
-              agente: "Postura inadequada",
-              fonte: "Mobiliário; Computador",
-              metodologia: "Critério Qualitativo.",
-              medidas: "Ajuste ergonômico de mesas/cadeiras, orientação postural e pausas",
-              danos: "Dores lombares, cervicais, fadiga muscular",
-            }
-          );
-        } else {
-          riscosErgonomicosRaw.push(
-            {
-              agente: "Postura inadequada / Movimentos repetitivos",
-              fonte: "Posto de trabalho operacional",
-              metodologia: "Critério Qualitativo.",
-              medidas: "Ajuste ergonômico, pausas regulares e revezamento",
-              danos: "Lombalgias, LER/DORT, desconforto postural",
-            }
-          );
-        }
-      }
-
-      if (riscosQuimicosRaw.length === 0 && (nomeNorm.includes("limpeza") || nomeNorm.includes("faxin") || nomeNorm.includes("serviços gerais"))) {
-        riscosQuimicosRaw.push({
-          agente: "Produtos de limpeza",
-          fonte: "Manipulação, diluição e uso de produtos saneantes e detergentes",
-          metodologia: "Critério Qualitativo.",
-          medidas: "Uso de luvas nitrílicas, máscara PFF2, ventilação e produtos menos agressivos",
-          danos: "Irritação cutânea, ardência ocular, alergias, intoxicação leve",
-        });
-      }
+      /*
+       * O PGR é a fonte. O PCMSO não acrescenta risco nenhum.
+       *
+       * Havia aqui três blocos que INJETAVAM riscos quando o inventário não
+       * trazia nenhum daquele grupo, escolhidos por palavra no nome do cargo:
+       * "costureira" ganhava "Cortes / Perfurações — Máquinas de costura",
+       * "escritório" ganhava "Sobrecarga / Pressão por prazos", "limpeza"
+       * ganhava "Produtos de limpeza". Nenhum deles existia no PGR da empresa.
+       *
+       * Era por isso que o PCMSO saía com MAIS riscos que o PGR da mesma
+       * empresa — e um documento médico que afirma exposição que o inventário
+       * não reconhece contradiz o documento que deveria refletir.
+       *
+       * Grupo sem risco no inventário sai como "Ausência de Fator de Risco",
+       * que é o que a tabela já escreve quando a lista vem vazia. Se o risco
+       * existe e não está no PGR, o lugar de corrigir é o inventário.
+       */
 
       return {
         id: funcoesDoGrupo[0].id,
@@ -578,79 +539,20 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
         riscosBiologicos: deduplicarRiscos(riscosBiologicosRaw),
       };
     });
-  } else {
-    // Fallback com os cargos do documento modelo fornecido pelo usuário
-    cargos = [
-      {
-        id: "c1",
-        nome: "AJUDANTE",
-        ambientes: ["COSTURA (Ambiente Principal)"],
-        atividades: "Operar máquinas de costura, acabamento de peças, movimentação manual de tecidos.",
-        exameClinicoPeriodicidade: "O periódico será feito a cada 12 meses.",
-        examesComplementares: [],
-        riscosAcidentes: [{ agente: "Cortes / Perfurações / Partes móveis", fonte: "Máquinas de costura", metodologia: "Critério Qualitativo.", medidas: "Protetores de máquina, treinamento", danos: "Perfurações, cortes, prensagem" }],
-        riscosErgonomicos: [
-          { agente: "Postura inadequada", fonte: "Máquinas de costura, mobiliário", metodologia: "Critério Qualitativo.", medidas: "Ajuste ergonômico de cadeiras/mesas, pausas", danos: "Dores lombares, desvios posturais" },
-          { agente: "Movimentos repetitivos", fonte: "Máquinas de costura", metodologia: "Critério Qualitativo.", medidas: "Revezamento de tarefas, pausas regulares", danos: "LER/DORT" },
-          { agente: "Pressão por metas/prazos", fonte: "Ritmo e cobrança de produção", metodologia: "Critério Qualitativo.", medidas: "Programas de qualidade de vida, apoio psicológico", danos: "Estresse, ansiedade, burnout" },
-        ],
-        riscosQuimicos: [], riscosFisicos: [], riscosBiologicos: [],
-      },
-      {
-        id: "c2",
-        nome: "AUXILIAR DE COZINHA",
-        ambientes: ["COZINHA (Ambiente Principal)"],
-        atividades: "Realizar o corte, cozimento, fritura e preparo dos alimentos; higienizar utensílios e bancadas; operar fogões e fornos.",
-        exameClinicoPeriodicidade: "O periódico será feito a cada 12 meses.",
-        examesComplementares: [
-          { nome: "Glicemia", codigoEsocial: "0658", periodicidade: "O periódico será feito a cada 12 meses.", fazerAdmissional: true, fazerPeriodico: true },
-          { nome: "Hemograma Completo", codigoEsocial: "0693", periodicidade: "O periódico será feito a cada 12 meses.", fazerAdmissional: true, fazerPeriodico: true },
-        ],
-        riscosAcidentes: [{ agente: "Cortes e perfurações", fonte: "Manipulação de alimentos e utensílios", metodologia: "Critério Qualitativo.", medidas: "Treinamento de segurança, uso de luvas de malha metálica, calçados fechados", danos: "Queimaduras, ferimentos" }],
-        riscosErgonomicos: [{ agente: "Postura em pé prolongada / movimentos repetitivos", fonte: "Bancadas, pias e manipulação manual", metodologia: "Critério Qualitativo.", medidas: "Apoio para pés, pausas regulares, ajuste de altura das bancadas", danos: "Lombalgias, fadiga muscular" }],
-        riscosQuimicos: [], riscosFisicos: [], riscosBiologicos: [],
-      },
-      {
-        id: "c3",
-        nome: "AUXILIAR DE SERVIÇOS GERAIS",
-        ambientes: ["LIMPEZA (Ambiente Principal)", "COSTURA", "ESCRITÓRIO", "COMERCIAL"],
-        atividades: "Esfregar e lavar pisos, esvaziar lixeiras, recolher e descartar resíduos, aplicar produtos químicos de higienização, realizar a desinfecção de sanitários.",
-        exameClinicoPeriodicidade: "O periódico será feito a cada 12 meses.",
-        examesComplementares: [
-          { nome: "Hemograma Completo", codigoEsocial: "0693", periodicidade: "O periódico será feito a cada 12 meses.", fazerAdmissional: true, fazerPeriodico: true },
-        ],
-        riscosAcidentes: [{ agente: "Piso molhado / escorregadio", fonte: "Água e resíduos durante a limpeza", metodologia: "Critério Qualitativo.", medidas: "Sinalização de piso molhado, calçado antiderrapante", danos: "Escorregões, torções, quedas" }],
-        riscosErgonomicos: [{ agente: "Esforço físico / posturas forçadas", fonte: "Movimentação de baldes, agachamentos", metodologia: "Critério Qualitativo.", medidas: "Treinamento de levantamento seguro, rodízio de tarefas", danos: "Lombalgias, distensões" }],
-        riscosQuimicos: [{ agente: "Produtos de limpeza", fonte: "Manipulação e diluição de produtos saneantes", metodologia: "Critério Qualitativo.", medidas: "Uso de luvas nitrílicas, máscara PFF2, ventilação adequada", danos: "Irritação cutânea, alergias, intoxicação leve" }],
-        riscosFisicos: [], riscosBiologicos: [],
-      },
-      {
-        id: "c4",
-        nome: "ASSISTENTE ADMINISTRATIVO",
-        ambientes: ["ESCRITÓRIO (Ambiente Principal)", "PCP"],
-        atividades: "Planejamento, cronogramas, controles administrativos, atendimento e relatórios.",
-        exameClinicoPeriodicidade: "O periódico será feito a cada 12 meses.",
-        examesComplementares: [],
-        riscosAcidentes: [],
-        riscosErgonomicos: [
-          { agente: "Sobrecarga", fonte: "Pressão por metas e prazos curtos", metodologia: "Critério Qualitativo.", medidas: "Gestão de clima, pausas, apoio psicológico", danos: "Estresse, ansiedade, burnout" },
-          { agente: "Postura inadequada", fonte: "Mobiliário; Computador", metodologia: "Critério Qualitativo.", medidas: "Ajuste ergonômico de mesas/cadeiras, pausas para alongamento", danos: "Dores lombares, cervicais" },
-        ],
-        riscosQuimicos: [], riscosFisicos: [], riscosBiologicos: [],
-      },
-      {
-        id: "c5",
-        nome: "CORTADOR",
-        ambientes: ["CORTE (Ambiente Principal)"],
-        atividades: "Corte manual e em máquinas, organização de peças, transporte interno.",
-        exameClinicoPeriodicidade: "O periódico será feito a cada 12 meses.",
-        examesComplementares: [],
-        riscosAcidentes: [{ agente: "Cortes / Partes móveis", fonte: "Máquinas de corte", metodologia: "Critério Qualitativo.", medidas: "Protetores de máquina, treinamento", danos: "Cortes, amputações" }],
-        riscosErgonomicos: [{ agente: "Postura em pé prolongada", fonte: "Máquinas de corte, mesas", metodologia: "Critério Qualitativo.", medidas: "Rodízio de tarefas, pausas", danos: "Lombalgias, fadiga" }],
-        riscosQuimicos: [], riscosFisicos: [], riscosBiologicos: [],
-      },
-    ];
   }
+
+  /*
+   * Empresa sem função cadastrada gera um PCMSO SEM fichas.
+   *
+   * Havia aqui uma lista fixa de cargos e riscos, copiada de um documento
+   * modelo: AJUDANTE, COSTUREIRA, CORTADOR, com "Cortes / Partes móveis —
+   * Máquinas de corte" e companhia. Qualquer empresa sem cadastro recebia um
+   * PCMSO descrevendo uma confecção que não é a dela — assinado por um médico
+   * e entregue a uma fiscalização.
+   *
+   * Documento vazio mostra que falta cadastrar. Documento inventado parece
+   * pronto, e é o erro que ninguém percebe a tempo.
+   */
 
   // 7. Cronograma de Ações
   const { data: acoesCronRaw } = await (supabase.from as any)("pcmso_cronograma_acoes")
