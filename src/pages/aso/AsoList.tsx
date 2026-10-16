@@ -17,23 +17,6 @@ import DocumentoEvidencia from "@/components/treinamentos/DocumentoEvidencia";
 
 const NOME_TIPO_ASO = "ASO - Atestado de Saúde Ocupacional";
 
-/**
- * Cada tipo de exame tem seu próprio tipo de documento no dossiê — é como
- * a NR-07 trata o assunto, e é o que permite ver "falta o demissional"
- * sem que o periódico vigente mascare a ausência.
- *
- * O tipo genérico continua existindo como reserva: documentos anexados
- * nele antes desta separação seguem lá, e documento publicado não se
- * remaneja.
- */
-const TIPO_POR_EXAME: Record<string, string> = {
-  admissional: "ASO Admissional",
-  periodico: "ASO Periódico",
-  retorno: "ASO Retorno ao Trabalho",
-  mudanca_risco: "ASO Mudança de Risco/Função",
-  demissional: "ASO Demissional",
-};
-
 const TIPO: Record<string, string> = {
   admissional: "Admissional", periodico: "Periódico", retorno: "Retorno",
   mudanca_risco: "Mudança de Risco", demissional: "Demissional",
@@ -62,31 +45,32 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
   const [tipo, setTipo] = useState<string>("all");
   const [valid, setValid] = useState<string>("all");
 
-  // Tipos globais de ASO (não dependem de empresa): um por tipo de exame,
-  // mais o genérico como reserva.
-  const { data: tiposAso } = useQuery({
-    queryKey: ["internal-document-types-aso"],
+  /*
+   * O ASO tem UM tipo de documento no dossiê, e admissional, periódico,
+   * demissional etc. são versões dele.
+   *
+   * Houve aqui um mapa de cinco subtipos ("ASO Admissional", "ASO
+   * Periódico"...). Eles foram apagados do catálogo pela migração
+   * 20260809100000_remove_aso_subtipos.sql, a pedido do cliente, e o mapa
+   * ficou procurando nome que não existe mais — toda busca caía no tipo
+   * genérico pela cláusula de reserva. Sai o mapa; fica a consulta de um
+   * tipo só.
+   *
+   * Quem precisa ver "falta o demissional" vê pela lista do próprio módulo
+   * de ASO, que guarda o tipo de exame de cada registro.
+   */
+  const { data: tipoDocumentoAso } = useQuery({
+    queryKey: ["internal-document-type-aso"],
     queryFn: async () => {
-      const nomes = [...Object.values(TIPO_POR_EXAME), NOME_TIPO_ASO];
       const { data } = await (supabase.from as any)("internal_document_types")
-        .select("id, nome")
+        .select("id")
         .is("empresa_id", null)
-        .in("nome", nomes);
-      const m = new Map<string, string>();
-      (data || []).forEach((t: any) => m.set(t.nome.toLowerCase(), t.id));
-      return m;
+        .eq("nome", NOME_TIPO_ASO)
+        .maybeSingle();
+      return data?.id || null;
     },
     staleTime: Infinity,
   });
-
-  /** Tipo do exame; cai no genérico se o subtipo ainda não foi semeado. */
-  const tipoDocumentoDoAso = (tipoExame?: string | null): string | null => {
-    if (!tiposAso) return null;
-    const especifico = TIPO_POR_EXAME[tipoExame || ""];
-    return (especifico && tiposAso.get(especifico.toLowerCase()))
-      || tiposAso.get(NOME_TIPO_ASO.toLowerCase())
-      || null;
-  };
 
   const { data: asos = [], isLoading } = useQuery({
     queryKey: ["asos-list", empresaId],
@@ -209,7 +193,7 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
                       <DocumentoEvidencia
                         empresaId={a.empresa_id}
                         colaboradorId={a.funcionario_id}
-                        tipoDocumentoId={tipoDocumentoDoAso(a.tipo_exame)}
+                        tipoDocumentoId={tipoDocumentoAso || null}
                         dataValidade={a.data_vencimento}
                         registroId={a.id}
                         origemTabela="asos"
