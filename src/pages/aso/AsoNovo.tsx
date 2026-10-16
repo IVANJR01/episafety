@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { addDays, addMonths, addYears, format } from "date-fns";
 import { gerarPdfAso } from "@/lib/asoPdf";
 import { loadGheRiscosExames } from "@/lib/asoFromGhe";
+import { validadeDoAso, dispensaDemissional, type TipoExameAso } from "@/lib/validadeAso";
 
 const TIPO_EXAMES = [
   { v: "admissional", l: "Admissional" },
@@ -64,6 +65,12 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
 
   // Calc validade
   useEffect(() => {
+    /*
+     * O demissional encerra o vínculo: não vence (NR-07, 7.5.11). Guardar
+     * vencimento nele faz o painel cobrar documento de quem não trabalha
+     * mais na empresa.
+     */
+    if (validadeTipo === "nao_vence") { setDataVencimento(""); return; }
     const base = new Date(dataEmissao);
     if (isNaN(base.getTime())) return;
     let venc = base;
@@ -75,11 +82,65 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
     setDataVencimento(format(venc, "yyyy-MM-dd"));
   }, [validadeTipo, dataEmissao]);
 
+  /*
+   * O trabalhador está exposto a risco identificado e classificado no PGR?
+   * É isso que separa o exame anual do bienal (NR-07, 7.5.8, II).
+   */
+  const expostoARisco = useMemo(
+    () => riscos.some((r) => (r.descricao || "").trim()),
+    [riscos],
+  );
+
+  /** O que a NR-07 diz para este ASO — mostrado embaixo do campo. */
+  const regraValidade = useMemo(
+    () => validadeDoAso(tipoExame as TipoExameAso, expostoARisco),
+    [tipoExame, expostoARisco],
+  );
+
+  /*
+   * Sugestão de validade pelo tipo de exame.
+   *
+   * O formulário abria em "1 ano" para tudo — inclusive para o demissional,
+   * que não vence, e para quem não tem risco no PGR, cujo exame é bienal.
+   * A sugestão acompanha o tipo do exame; quem quiser outro prazo escolhe
+   * "Personalizada" e o sistema para de sugerir.
+   */
+  useEffect(() => {
+    if (editingId) return;              // ASO já emitido não se remaneja.
+    if (validadeTipo === "personalizada") return;
+    const sugerido = regraValidade.meses === null
+      ? "nao_vence"
+      : regraValidade.meses === 24 ? "2anos" : "1ano";
+    setValidadeTipo((atual) => (atual === sugerido ? atual : sugerido));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regraValidade.meses, editingId]);
+
+  /*
+   * Dispensa do demissional — NR-07, 7.5.11. Um exame ocupacional recente
+   * dispensa o demissional: 135 dias nos graus de risco 1 e 2, 90 nos
+   * graus 3 e 4. Quem monta o ASO precisa ver isso antes de emitir.
+   */
+  const [ultimoAsoAnterior, setUltimoAsoAnterior] = useState<string | null>(null);
+  useEffect(() => {
+    if (tipoExame !== "demissional" || !funcionarioId) { setUltimoAsoAnterior(null); return; }
+    let vivo = true;
+    (async () => {
+      const { data } = await (supabase.from as any)("asos")
+        .select("data_emissao")
+        .eq("funcionario_id", funcionarioId)
+        .neq("tipo_exame", "demissional")
+        .order("data_emissao", { ascending: false })
+        .limit(1);
+      if (vivo) setUltimoAsoAnterior((data || [])[0]?.data_emissao || null);
+    })();
+    return () => { vivo = false; };
+  }, [tipoExame, funcionarioId]);
+
   const { data: empresas = [] } = useQuery({
     queryKey: ["aso-empresas", empresaId],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("empresa_config").select("id, nome, cnpj").eq("id", empresaId!).order("nome");
+      const { data, error } = await supabase.from("empresa_config").select("id, nome, cnpj, grau_risco").eq("id", empresaId!).order("nome");
       if (error) throw error;
       return data || [];
     },
@@ -428,14 +489,26 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
                   <SelectItem value="6m">6 meses</SelectItem>
                   <SelectItem value="1ano">1 ano</SelectItem>
                   <SelectItem value="2anos">2 anos</SelectItem>
+                  <SelectItem value="nao_vence">Não vence (demissional)</SelectItem>
                   <SelectItem value="personalizada">Personalizada</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {regraValidade.explicacao} <span className="opacity-70">({regraValidade.base})</span>
+              </p>
             </div>
             <div className="col-span-2">
               <Label>Data de vencimento</Label>
-              <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} disabled={validadeTipo !== "personalizada"} />
+              <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} disabled={validadeTipo === "nao_vence" || validadeTipo !== "personalizada"} />
             </div>
+            {tipoExame === "demissional" && (
+              <div className="col-span-2 rounded-md border bg-muted/40 p-3 text-xs">
+                <p className="font-medium mb-1">Dispensa do demissional — NR-07, item 7.5.11</p>
+                <p className="text-muted-foreground">
+                  {dispensaDemissional(ultimoAsoAnterior, dataEmissao, (empSel as any)?.grau_risco).motivo}
+                </p>
+              </div>
+            )}
           </div>
         )}
 

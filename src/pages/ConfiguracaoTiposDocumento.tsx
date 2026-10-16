@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Plus, Search, Settings2, Loader2, Info, Globe, Building2, Trash2, Pencil } from "lucide-react";
+import { tiposRepetidos } from "@/lib/tiposDocumentoRepetidos";
 import { toast } from "@/hooks/use-toast";
 import { separarValidade, unirValidade, type UnidadeDeValidade } from "@/lib/arquivoDigital";
 
@@ -137,6 +138,13 @@ export default function ConfiguracaoTiposDocumento() {
     });
     return m;
   }, [requisitos]);
+
+  /*
+   * Tipo da empresa que repete um nome do catálogo compartilhado.
+   * Buscando "aso" apareciam duas linhas com o mesmo nome e prazos
+   * diferentes, e quem anexa não tinha como saber em qual anexar.
+   */
+  const repetidos = useMemo(() => tiposRepetidos(tipos), [tipos]);
 
   const listados = useMemo(() => {
     const b = busca.trim().toLowerCase();
@@ -385,6 +393,12 @@ export default function ConfiguracaoTiposDocumento() {
                             ? <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Tipo da sua empresa" />
                             : <Globe className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Catálogo compartilhado" />}
                           <span className="font-medium leading-snug text-foreground">{t.nome}</span>
+                          {repetidos.has(t.id) && (
+                            <Badge variant="outline" className="shrink-0 whitespace-nowrap border-amber-300 bg-amber-50 font-normal text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                              title="Já existe um tipo com este nome no catálogo compartilhado. Com os dois na lista, metade dos anexos vai para um e metade para o outro, e cada um cobra um prazo. Decida qual fica.">
+                              Repetido
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="whitespace-nowrap py-3 text-muted-foreground">{rotuloCategoria(t)}</TableCell>
@@ -418,6 +432,12 @@ export default function ConfiguracaoTiposDocumento() {
                       ? <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Tipo da sua empresa" />
                       : <Globe className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Catálogo compartilhado" />}
                     <span className="font-medium leading-snug">{t.nome}</span>
+                    {repetidos.has(t.id) && (
+                      <Badge variant="outline" className="shrink-0 whitespace-nowrap border-amber-300 bg-amber-50 font-normal text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                        title="Já existe um tipo com este nome no catálogo compartilhado. Com os dois na lista, metade dos anexos vai para um e metade para o outro, e cada um cobra um prazo. Decida qual fica.">
+                        Repetido
+                      </Badge>
+                    )}
                   </div>
                   <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                     <div>
