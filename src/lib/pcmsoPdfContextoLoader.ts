@@ -312,7 +312,7 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
 
   // 6. Cargos, Atividades e Riscos (Integrado com PGR Base)
   const pgrBaseId = pcmso.pgr_base_id;
-  const [funcoesRaw, ghesData, gheFuncoesData, inventarioRaw, setoresRaw] = await Promise.all([
+  const [funcoesRaw, ghesData, gheFuncoesData, inventarioRaw, setoresRaw, gheExamesRaw] = await Promise.all([
     (supabase.from as any)("sst_funcoes")
       .select("id, nome, setor_id, cbo, descricao_atividades")
       .eq("empresa_id", empresaId)
@@ -338,7 +338,12 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
     (supabase.from as any)("sst_setores")
       .select("id, nome")
       .eq("empresa_id", empresaId),
+    (supabase.from as any)("ghe_exames")
+      .select("*")
+      .eq("empresa_id", empresaId),
   ]);
+
+  const gheExamesList = (gheExamesRaw?.data || []) as any[];
 
   /** setor_id -> nome do setor. */
   const nomeDoSetor = new Map<string, string>();
@@ -873,39 +878,85 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
         grupo.some((r) => r.agente !== ausenteObj.agente)
       );
 
-      const examesFicha = [
-        {
-          codigo: "0295",
-          nome: "Avaliação Clínica Ocupacional (Anamnese e Exame físico)",
-          adm: "Sim",
-          periodico: temRiscoReal ? "Anual" : "Bienal",
-          rt: "Sim",
-          mdf: "*",
-          dem: "Sim",
-        },
-      ];
+      /*
+       * EXAMES OCUPACIONAIS DA FICHA DO GES:
+       * 1. Prioridade: Exames prescritos/customizados salvos na tabela `ghe_exames`
+       * 2. Fallback: Base normativa da NR-07 baseada nos riscos reais do inventário
+       */
+      const examesDoGesCustomizados = gheExamesList.filter((e: any) => e.ghe_id === ges.id);
+      let examesFicha: any[] = [];
 
-      // Exames complementares dos cargos deste GES
-      const cargosDoGes = cargos.filter((c: any) =>
-        (c.setor && c.setor.toUpperCase().trim() === setorNome) ||
-        funcoesNomes.includes(c.nome.toUpperCase().trim())
-      );
-      const vistosExames = new Set<string>();
-      cargosDoGes.forEach((c) => {
-        (c.examesComplementares || []).forEach((ex) => {
-          if (vistosExames.has(ex.codigoEsocial)) return;
-          vistosExames.add(ex.codigoEsocial);
+      if (examesDoGesCustomizados.length > 0) {
+        examesFicha = examesDoGesCustomizados.map((ex: any) => {
+          let periodicidadeStr = "—";
+          if (ex.periodico) {
+            if (ex.periodicidade_meses === 6) periodicidadeStr = "Semestral";
+            else if (ex.periodicidade_meses === 24) periodicidadeStr = "Bienal";
+            else periodicidadeStr = "Anual";
+          }
+
+          return {
+            codigo: ex.codigo_exame || "0295",
+            nome: ex.nome_exame || "Avaliação Clínica Ocupacional",
+            adm: ex.admissional ? "Sim" : "—",
+            periodico: periodicidadeStr,
+            rt: ex.retorno_trabalho ? "Sim" : "—",
+            mdf: ex.mudanca_risco || ex.mudanca_funcao ? "Sim" : "—",
+            dem: ex.demissional ? "Sim" : "—",
+          };
+        });
+      } else {
+        examesFicha = [
+          {
+            codigo: "0295",
+            nome: "Avaliação Clínica Ocupacional (Anamnese e Exame físico)",
+            adm: "Sim",
+            periodico: temRiscoReal ? "Anual" : "Bienal",
+            rt: "Sim",
+            mdf: "*",
+            dem: "Sim",
+          },
+        ];
+
+        // Se houver ruído no inventário, a NR-07 Anexo II exige Audiometria
+        const temRuidoNoGes = riscosDoGes.some((it: any) => {
+          const txt = `${it.tipo_agente || ""} ${it.perigo_descricao || ""} ${it.fonte_geradora || ""}`.toLowerCase();
+          return txt.includes("ruido") || txt.includes("ruído") || txt.includes("som") || txt.includes("pressão sonora");
+        });
+        if (temRuidoNoGes) {
           examesFicha.push({
-            codigo: ex.codigoEsocial,
-            nome: ex.nome,
-            adm: ex.fazerAdmissional ? "Sim" : "—",
-            periodico: ex.periodicidade?.toLowerCase().includes("anual") ? "Anual" : "—",
-            rt: ex.fazerRetorno ? "Sim" : "—",
-            mdf: ex.fazerMudanca ? "Sim" : "—",
-            dem: ex.fazerDemissional ? "Sim" : "—",
+            codigo: "0935",
+            nome: "Audiometria Tonal e Vocal",
+            adm: "Sim",
+            periodico: "Anual",
+            rt: "Sim",
+            mdf: "Sim",
+            dem: "Sim",
+          });
+        }
+
+        // Exames complementares dos cargos deste GES
+        const cargosDoGes = cargos.filter((c: any) =>
+          (c.setor && c.setor.toUpperCase().trim() === setorNome) ||
+          funcoesNomes.includes(c.nome.toUpperCase().trim())
+        );
+        const vistosExames = new Set<string>(examesFicha.map((e) => e.codigo));
+        cargosDoGes.forEach((c) => {
+          (c.examesComplementares || []).forEach((ex) => {
+            if (vistosExames.has(ex.codigoEsocial)) return;
+            vistosExames.add(ex.codigoEsocial);
+            examesFicha.push({
+              codigo: ex.codigoEsocial,
+              nome: ex.nome,
+              adm: ex.fazerAdmissional ? "Sim" : "—",
+              periodico: ex.periodicidade?.toLowerCase().includes("anual") ? "Anual" : "—",
+              rt: ex.fazerRetorno ? "Sim" : "—",
+              mdf: ex.fazerMudanca ? "Sim" : "—",
+              dem: ex.fazerDemissional ? "Sim" : "—",
+            });
           });
         });
-      });
+      }
 
       return {
         numero: numFicha,

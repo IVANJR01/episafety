@@ -5,101 +5,26 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Activity, AlertTriangle, Loader2, Users, Search, Layers, Stethoscope } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Activity,
+  AlertTriangle,
+  Loader2,
+  Users,
+  Search,
+  Layers,
+  Stethoscope,
+  Plus,
+  Pencil,
+  Trash2,
+  Sparkles,
+  CheckCircle2,
+  FileCheck2,
+} from "lucide-react";
 import { CLASSE_TEXT, GRUPO_LABEL } from "@/lib/pgrMatriz";
-
-/**
- * Sugere exames ocupacionais complementares e clínicos com base no
- * agente nocivo e nos quadros e anexos obrigatórios da NR-07.
- */
-function sugerirExamesNr07(grupo: string, risco: string, fonte: string) {
-  const texto = `${grupo || ""} ${risco || ""} ${fonte || ""}`.toLowerCase();
-  const exames: { nome: string; periodicidade: string; base: string; obrigatorio: boolean }[] = [
-    {
-      nome: "Exame Clínico Ocupacional (Anamnese + Físico)",
-      periodicidade: "Admissional, Periódico, Mudança de Risco, Retorno e Demissional",
-      base: "NR-07 Item 7.5.6",
-      obrigatorio: true,
-    },
-  ];
-
-  if (texto.includes("ruído") || texto.includes("ruido") || texto.includes("som") || texto.includes("pressão sonora")) {
-    exames.push({
-      nome: "Audiometria Tonal e Vocal",
-      periodicidade: "Admissional, 6 meses (NR-07), Periódico Anual, Demissional",
-      base: "NR-07 Anexo II",
-      obrigatorio: true,
-    });
-  }
-
-  if (texto.includes("poeira") || texto.includes("sílica") || texto.includes("silica") || texto.includes("fumos") || texto.includes("respirat")) {
-    exames.push(
-      {
-        nome: "Espirometria Ocupacional",
-        periodicidade: "Admissional, Periódico Bienal/Anual",
-        base: "NR-07 Anexo I",
-        obrigatorio: true,
-      },
-      {
-        nome: "Radiografia de Tórax (RX Padrão OIT)",
-        periodicidade: "Admissional, Periódico Anual",
-        base: "NR-07 Anexo I",
-        obrigatorio: true,
-      }
-    );
-  }
-
-  if (texto.includes("químic") || texto.includes("quimic") || texto.includes("solvente") || texto.includes("tinta") || texto.includes("vapor") || texto.includes("combust")) {
-    exames.push(
-      {
-        nome: "Hemograma Completo + Plaquetas",
-        periodicidade: "Admissional, Periódico Semestral/Anual",
-        base: "NR-07 Quadro 1",
-        obrigatorio: true,
-      },
-      {
-        nome: "Indicadores Biológicos de Exposição (IBE)",
-        periodicidade: "Periódico Semestral",
-        base: "NR-07 Quadro 1 e 2",
-        obrigatorio: true,
-      }
-    );
-  }
-
-  if (texto.includes("biológ") || texto.includes("biolog") || texto.includes("vírus") || texto.includes("bactéria") || texto.includes("sangue")) {
-    exames.push({
-      nome: "Controle Imunológico (Anti-HBs / Vacinação)",
-      periodicidade: "Admissional e Acompanhamento Anual",
-      base: "NR-07 e NR-32",
-      obrigatorio: true,
-    });
-  }
-
-  if (texto.includes("altura") || texto.includes("nr-35") || texto.includes("confinado") || texto.includes("nr-33") || texto.includes("eletric") || texto.includes("nr-10")) {
-    exames.push(
-      {
-        nome: "Eletrocardiograma (ECG) + Eletroencefalograma (EEG)",
-        periodicidade: "Admissional, Periódico Anual",
-        base: "NR-35 / NR-33 / NR-07",
-        obrigatorio: true,
-      },
-      {
-        nome: "Glicemia de Jejum + Acuidade Visual",
-        periodicidade: "Admissional, Periódico Anual",
-        base: "Critério Médico Ocupacional",
-        obrigatorio: true,
-      },
-      {
-        nome: "Avaliação Psicossocial",
-        periodicidade: "Admissional, Periódico Anual",
-        base: "NR-33 / NR-35",
-        obrigatorio: true,
-      }
-    );
-  }
-
-  return exames;
-}
+import { sugerirExamesCompletosNr07, ExameCatalogoItem } from "@/lib/pcmsoCatalogoExames";
+import PcmsoExameModal, { DadosExameGes } from "./PcmsoExameModal";
+import { toast } from "sonner";
 
 function formatarCodigoGes(cod?: string): string {
   if (!cod) return "GES 01";
@@ -124,6 +49,16 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
   const queryClient = useQueryClient();
   const [pgrIdAtivo, setPgrIdAtivo] = useState<string | null>(pcmso.pgr_base_id || null);
   const [busca, setBusca] = useState("");
+  const [aplicandoLote, setAplicandoLote] = useState(false);
+
+  // Estado do Modal de Edição/Adição de Exame
+  const [modalAberto, setModalAberto] = useState(false);
+  const [gesSelecionadoParaExame, setGesSelecionadoParaExame] = useState<{
+    gheId: string;
+    codigoFormatado: string;
+    nome: string;
+  } | null>(null);
+  const [exameEmEdicao, setExameEmEdicao] = useState<DadosExameGes | null>(null);
 
   // Se o documento ainda não tem o vínculo salvo, busca o PGR mais recente da empresa e vincula
   useEffect(() => {
@@ -159,6 +94,26 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
       })();
     }
   }, [pcmso.pgr_base_id, pcmso.empresa_id, pcmso.id, pgrIdAtivo]);
+
+  // Busca os exames customizados salvos em ghe_exames para a empresa
+  const { data: examesSalvos = [], refetch: refetchExames } = useQuery({
+    queryKey: ["pcmso-ghe-exames", pcmso.empresa_id],
+    queryFn: async () => {
+      if (!pcmso.empresa_id) return [];
+      const { data, error } = await supabase
+        .from("ghe_exames")
+        .select("*")
+        .eq("empresa_id", pcmso.empresa_id)
+        .order("nome_exame");
+
+      if (error) {
+        console.error("Erro ao carregar exames do GES:", error);
+        return [];
+      }
+      return (data || []) as DadosExameGes[];
+    },
+    enabled: !!pcmso.empresa_id,
+  });
 
   // Busca o inventário de riscos do PGR base vinculado e dados de GES e Funções
   const { data: dadosMatriz, isLoading } = useQuery({
@@ -271,11 +226,12 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
           }
         }
 
-        const exames = sugerirExamesNr07(r.grupo, risco, fonte);
+        // Sugestão normativa detalhada para o risco
+        const examesSugeridos = sugerirExamesCompletosNr07(r.grupo, risco, fonte);
 
         return {
           ...r,
-          gesId: r.ghe_id || "sem_ges",
+          gesId: r.ghe_id || gesObj?.id || "sem_ges",
           gesNome: gesObj?.nome || r.setor || "Geral",
           setor: r.setor || gesObj?.setor || "—",
           codigoFormatado,
@@ -283,7 +239,7 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
           risco,
           fonte,
           funcoes: Array.from(funcoesItemSet),
-          exames,
+          examesSugeridos,
         };
       });
 
@@ -352,8 +308,7 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
           matchGes ||
           i.risco.toLowerCase().includes(termo) ||
           i.fonte.toLowerCase().includes(termo) ||
-          (i.grupo && i.grupo.toLowerCase().includes(termo)) ||
-          i.exames.some((e: any) => e.nome.toLowerCase().includes(termo))
+          (i.grupo && i.grupo.toLowerCase().includes(termo))
         );
 
         if (matchGes || itensFiltrados.length > 0) {
@@ -367,6 +322,202 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
       .filter(Boolean) as typeof dadosMatriz.grupos;
   }, [dadosMatriz, busca]);
 
+  // Modal handlers
+  const handleAbrirNovoExame = (g: { gesId: string; codigoFormatado: string; nome: string }) => {
+    setGesSelecionadoParaExame({
+      gheId: g.gesId,
+      codigoFormatado: g.codigoFormatado,
+      nome: g.nome,
+    });
+    setExameEmEdicao(null);
+    setModalAberto(true);
+  };
+
+  const handleAbrirEditarExame = (
+    g: { gesId: string; codigoFormatado: string; nome: string },
+    exame: DadosExameGes
+  ) => {
+    setGesSelecionadoParaExame({
+      gheId: g.gesId,
+      codigoFormatado: g.codigoFormatado,
+      nome: g.nome,
+    });
+    setExameEmEdicao(exame);
+    setModalAberto(true);
+  };
+
+  const handleSalvarExame = async (dados: DadosExameGes) => {
+    if (dados.id) {
+      const { error } = await supabase
+        .from("ghe_exames")
+        .update({
+          codigo_exame: dados.codigo_exame,
+          nome_exame: dados.nome_exame,
+          tipo_exame: dados.tipo_exame,
+          obrigatorio: dados.obrigatorio,
+          aparece_aso: dados.aparece_aso,
+          admissional: dados.admissional,
+          periodico: dados.periodico,
+          retorno_trabalho: dados.retorno_trabalho,
+          mudanca_risco: dados.mudanca_risco,
+          mudanca_funcao: dados.mudanca_funcao,
+          demissional: dados.demissional,
+          periodicidade_meses: dados.periodicidade_meses,
+          observacao: dados.observacao,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", dados.id);
+
+      if (error) throw error;
+      toast.success("Exame atualizado com sucesso!");
+    } else {
+      const { error } = await supabase.from("ghe_exames").insert({
+        empresa_id: dados.empresa_id,
+        ghe_id: dados.ghe_id,
+        codigo_exame: dados.codigo_exame,
+        nome_exame: dados.nome_exame,
+        tipo_exame: dados.tipo_exame,
+        obrigatorio: dados.obrigatorio,
+        aparece_aso: dados.aparece_aso,
+        admissional: dados.admissional,
+        periodico: dados.periodico,
+        retorno_trabalho: dados.retorno_trabalho,
+        mudanca_risco: dados.mudanca_risco,
+        mudanca_funcao: dados.mudanca_funcao,
+        demissional: dados.demissional,
+        periodicidade_meses: dados.periodicidade_meses,
+        observacao: dados.observacao,
+      });
+
+      if (error) throw error;
+      toast.success("Exame adicionado ao GES com sucesso!");
+    }
+
+    refetchExames();
+    queryClient.invalidateQueries({ queryKey: ["pcmso-ghe-exames"] });
+  };
+
+  const handleExcluirExame = async (exameId: string, nomeExame: string) => {
+    if (!confirm(`Remover o exame "${nomeExame}" deste GES?`)) return;
+
+    try {
+      const { error } = await supabase.from("ghe_exames").delete().eq("id", exameId);
+      if (error) throw error;
+      toast.success("Exame removido com sucesso.");
+      refetchExames();
+    } catch (e: any) {
+      toast.error(`Erro ao excluir: ${e.message}`);
+    }
+  };
+
+  // Aplica sugestões da NR-07 em lote para o GES ou para todos os GES
+  const handleGravarSugestoesParaGes = async (g: any) => {
+    if (!g.gesId || g.gesId === "sem_ges") {
+      toast.error("Este GES não possui identificador válido para vínculo.");
+      return;
+    }
+
+    try {
+      // Coleta todas as sugestões do GES
+      const mapaSugestoes = new Map<string, ExameCatalogoItem>();
+      for (const item of g.itens) {
+        for (const sug of item.examesSugeridos) {
+          if (!mapaSugestoes.has(sug.codigo)) {
+            mapaSugestoes.set(sug.codigo, sug);
+          }
+        }
+      }
+
+      const lista = Array.from(mapaSugestoes.values());
+      if (lista.length === 0) {
+        toast.info("Nenhuma sugestão normativa aplicável encontrada.");
+        return;
+      }
+
+      const inserts = lista.map((s) => ({
+        empresa_id: pcmso.empresa_id,
+        ghe_id: g.gesId,
+        codigo_exame: s.codigo,
+        nome_exame: s.nome,
+        tipo_exame: s.tipo,
+        obrigatorio: true,
+        aparece_aso: true,
+        admissional: s.admissional,
+        periodico: s.periodico,
+        retorno_trabalho: s.retornoTrabalho,
+        mudanca_risco: s.mudancaRisco,
+        mudanca_funcao: s.mudancaRisco,
+        demissional: s.demissional,
+        periodicidade_meses: s.periodicidadeMeses,
+        observacao: s.observacaoPadrao,
+      }));
+
+      const { error } = await supabase.from("ghe_exames").insert(inserts);
+      if (error) throw error;
+
+      toast.success(`Sugestões da NR-07 gravadas com sucesso no ${g.codigoFormatado}!`);
+      refetchExames();
+    } catch (e: any) {
+      toast.error(`Erro ao gravar sugestões: ${e.message}`);
+    }
+  };
+
+  const handleAplicarSugestoesTodosGes = async () => {
+    if (!dadosMatriz?.grupos || dadosMatriz.grupos.length === 0) return;
+    if (!confirm("Deseja aplicar as sugestões da NR-07 nos grupos que ainda não possuem exames salvos?")) return;
+
+    try {
+      setAplicandoLote(true);
+      let totalGravados = 0;
+
+      for (const g of dadosMatriz.grupos) {
+        if (!g.gesId || g.gesId === "sem_ges") continue;
+        const jaTem = examesSalvos.filter((e) => e.ghe_id === g.gesId);
+        if (jaTem.length > 0) continue; // Pula os que já têm customização
+
+        const mapaSugestoes = new Map<string, ExameCatalogoItem>();
+        for (const item of g.itens) {
+          for (const sug of item.examesSugeridos) {
+            if (!mapaSugestoes.has(sug.codigo)) {
+              mapaSugestoes.set(sug.codigo, sug);
+            }
+          }
+        }
+
+        const lista = Array.from(mapaSugestoes.values());
+        if (lista.length > 0) {
+          const inserts = lista.map((s) => ({
+            empresa_id: pcmso.empresa_id,
+            ghe_id: g.gesId,
+            codigo_exame: s.codigo,
+            nome_exame: s.nome,
+            tipo_exame: s.tipo,
+            obrigatorio: true,
+            aparece_aso: true,
+            admissional: s.admissional,
+            periodico: s.periodico,
+            retorno_trabalho: s.retornoTrabalho,
+            mudanca_risco: s.mudancaRisco,
+            mudanca_funcao: s.mudancaRisco,
+            demissional: s.demissional,
+            periodicidade_meses: s.periodicidadeMeses,
+            observacao: s.observacaoPadrao,
+          }));
+
+          await supabase.from("ghe_exames").insert(inserts);
+          totalGravados += lista.length;
+        }
+      }
+
+      toast.success(`Base normativa da NR-07 aplicada! ${totalGravados} exames cadastrados.`);
+      refetchExames();
+    } catch (e: any) {
+      toast.error(`Erro ao aplicar em lote: ${e.message}`);
+    } finally {
+      setAplicandoLote(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card className="border-t-4 border-t-amber-500 shadow-sm">
@@ -378,13 +529,24 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
               </CardTitle>
               <CardDescription className="mt-1">
                 Matriz de correspondência obrigatória entre os riscos identificados no PGR e a prescrição
-                de exames ocupacionais (Art. 7.5.6 e Anexos da NR-07), organizada por GES e Funções.
+                de exames ocupacionais (Art. 7.5.6 e Anexos da NR-07). Personalize e adicione exames por GES e função.
               </CardDescription>
             </div>
 
-            {dadosMatriz && dadosMatriz.grupos.length > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="relative w-full md:w-64">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAplicarSugestoesTodosGes}
+                disabled={aplicandoLote || !dadosMatriz?.grupos?.length}
+                className="text-xs gap-1.5 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-900 dark:text-amber-200"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                {aplicandoLote ? "Aplicando..." : "Aplicar Sugestões NR-07 em Todos"}
+              </Button>
+
+              {dadosMatriz && dadosMatriz.grupos.length > 0 && (
+                <div className="relative w-full md:w-56">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Filtrar GES, função, risco..."
@@ -393,12 +555,12 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
                     className="pl-8 h-9 text-xs"
                   />
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {dadosMatriz && (
-            <div className="flex items-center gap-4 mt-3 pt-3 border-t text-xs text-muted-foreground">
+            <div className="flex items-center gap-4 mt-3 pt-3 border-t text-xs text-muted-foreground flex-wrap">
               <span className="flex items-center gap-1.5">
                 <Layers className="h-3.5 w-3.5 text-primary" />
                 <strong>{dadosMatriz.grupos.length}</strong> Grupo(s) GES Mapeados
@@ -407,6 +569,11 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
               <span className="flex items-center gap-1.5">
                 <Activity className="h-3.5 w-3.5 text-amber-500" />
                 <strong>{dadosMatriz.totalRiscos}</strong> Risco(s) no Inventário
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1.5">
+                <FileCheck2 className="h-3.5 w-3.5 text-emerald-600" />
+                <strong>{examesSalvos.length}</strong> Exame(s) Customizado(s) no PCMSO
               </span>
               <span>•</span>
               <span className="flex items-center gap-1.5">
@@ -440,121 +607,293 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
               Nenhum resultado encontrado para a busca "{busca}".
             </div>
           ) : (
-            <div className="space-y-6">
-              {gruposFiltrados.map((g) => (
-                <div
-                  key={g.codigoFormatado}
-                  className="rounded-lg border bg-card shadow-sm overflow-hidden"
-                >
-                  {/* Cabeçalho do Grupo GES */}
-                  <div className="bg-muted/40 p-3.5 border-b flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <Badge className="bg-primary hover:bg-primary text-primary-foreground font-mono font-semibold text-xs px-2.5 py-1 tracking-wide">
-                        {g.codigoFormatado}
-                      </Badge>
-                      <div>
-                        <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                          {g.nome}
-                        </h4>
-                        {g.setor && g.setor !== g.nome && g.setor !== "—" && (
-                          <span className="text-xs text-muted-foreground">
-                            Setor: <strong className="text-foreground">{g.setor}</strong>
+            <div className="space-y-8">
+              {gruposFiltrados.map((g) => {
+                const examesDesteGes = examesSalvos.filter((e) => e.ghe_id === g.gesId);
+                const temExamesSalvos = examesDesteGes.length > 0;
+
+                // Sugestões combinadas dos riscos para caso ainda não tenha exames salvos
+                const mapaSugestoes = new Map<string, ExameCatalogoItem>();
+                for (const item of g.itens) {
+                  for (const sug of item.examesSugeridos) {
+                    if (!mapaSugestoes.has(sug.codigo)) {
+                      mapaSugestoes.set(sug.codigo, sug);
+                    }
+                  }
+                }
+                const sugestoesLista = Array.from(mapaSugestoes.values());
+
+                return (
+                  <div
+                    key={g.codigoFormatado}
+                    className="rounded-lg border bg-card shadow-sm overflow-hidden"
+                  >
+                    {/* Cabeçalho do Grupo GES */}
+                    <div className="bg-muted/40 p-3.5 border-b flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <Badge className="bg-primary hover:bg-primary text-primary-foreground font-mono font-semibold text-xs px-2.5 py-1 tracking-wide">
+                          {g.codigoFormatado}
+                        </Badge>
+                        <div>
+                          <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                            {g.nome}
+                          </h4>
+                          {g.setor && g.setor !== g.nome && g.setor !== "—" && (
+                            <span className="text-xs text-muted-foreground">
+                              Setor: <strong className="text-foreground">{g.setor}</strong>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Exibição das Funções / Cargos */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mr-1">
+                          <Users className="h-3.5 w-3.5 text-primary" />
+                          <span>Funções / Cargos:</span>
+                        </div>
+                        {g.funcoes.length > 0 ? (
+                          g.funcoes.map((fn, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="secondary"
+                              className="text-xs font-normal bg-background border border-border shadow-2xs"
+                            >
+                              {fn}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-xs text-amber-600 dark:text-amber-400 italic">
+                            (Não especificada no cadastro)
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Exibição Clara e Destacada das Funções / Cargos */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mr-1">
-                        <Users className="h-3.5 w-3.5 text-primary" />
-                        <span>Funções / Cargos:</span>
-                      </div>
-                      {g.funcoes.length > 0 ? (
-                        g.funcoes.map((fn, idx) => (
-                          <Badge
-                            key={idx}
-                            variant="secondary"
-                            className="text-xs font-normal bg-background border border-border shadow-2xs"
+                    {/* SEÇÃO 1: EXAMES OCUPACIONAIS PRESCRITOS PARA ESTE GES (INTERATIVO / EDITÁVEL) */}
+                    <div className="p-3.5 bg-slate-50/70 dark:bg-slate-900/30 border-b">
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/60">
+                        <div className="flex items-center gap-2">
+                          <Stethoscope className="h-4 w-4 text-emerald-600" />
+                          <span className="text-xs font-semibold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                            Exames Ocupacionais Prescritos (NR-07 / PCMSO Oficial)
+                          </span>
+                          {temExamesSalvos ? (
+                            <Badge variant="outline" className="text-[10px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-300">
+                              Personalizado ({examesDesteGes.length})
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-300">
+                              Sugestão Automática NR-07
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {!temExamesSalvos && sugestoesLista.length > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleGravarSugestoesParaGes(g)}
+                              className="h-7 text-xs text-primary gap-1"
+                            >
+                              <Sparkles className="h-3 w-3 text-amber-500" /> Gravar Sugestões
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            onClick={() => handleAbrirNovoExame(g)}
+                            className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                           >
-                            {fn}
-                          </Badge>
-                        ))
+                            <Plus className="h-3.5 w-3.5" /> Adicionar Exame
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Lista dos Exames do GES */}
+                      {temExamesSalvos ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
+                          {examesDesteGes.map((ex) => {
+                            const isAudio = ex.nome_exame.toLowerCase().includes("audiometria") || ex.codigo_exame === "0935";
+                            const isFono = ex.observacao?.toLowerCase().includes("fonoaudiól") || isAudio;
+
+                            return (
+                              <div
+                                key={ex.id}
+                                className="flex flex-col justify-between p-2.5 rounded-lg border bg-background shadow-2xs hover:border-slate-300 transition-colors"
+                              >
+                                <div>
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0">
+                                        {ex.codigo_exame || "0000"}
+                                      </Badge>
+                                      <span className="font-semibold text-xs text-foreground">
+                                        {ex.nome_exame}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                        onClick={() => handleAbrirEditarExame(g, ex)}
+                                        title="Editar este exame"
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                        onClick={() => handleExcluirExame(ex.id!, ex.nome_exame)}
+                                        title="Remover exame do GES"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  </div>
+
+                                  {/* Badges de periodicidade e ASO */}
+                                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-[10px] font-medium bg-slate-100 dark:bg-slate-800"
+                                    >
+                                      Periódico: {ex.periodico ? (ex.periodicidade_meses === 6 ? "Semestral" : ex.periodicidade_meses === 24 ? "Bienal" : "Anual") : "Não aplicável"}
+                                    </Badge>
+
+                                    {isFono && (
+                                      <Badge className="text-[10px] font-normal bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300 border-purple-200">
+                                        Fonoaudiólogo(a) / CRFa
+                                      </Badge>
+                                    )}
+
+                                    {ex.admissional && (
+                                      <span className="text-[10px] text-muted-foreground">ADM</span>
+                                    )}
+                                    {ex.retorno_trabalho && (
+                                      <span className="text-[10px] text-muted-foreground">• RT</span>
+                                    )}
+                                    {ex.mudanca_risco && (
+                                      <span className="text-[10px] text-muted-foreground">• MRO</span>
+                                    )}
+                                    {ex.demissional && (
+                                      <span className="text-[10px] text-muted-foreground">• DEM</span>
+                                    )}
+                                  </div>
+
+                                  {ex.observacao && (
+                                    <p className="text-[11px] text-muted-foreground mt-1.5 line-clamp-2 italic">
+                                      {ex.observacao}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       ) : (
-                        <span className="text-xs text-amber-600 dark:text-amber-400 italic">
-                          (Não especificada no cadastro)
-                        </span>
+                        <div className="space-y-2 pt-1">
+                          <p className="text-xs text-muted-foreground">
+                            Este GES ainda não possui exames gravados. Abaixo estão as <strong>sugestões automáticas da NR-07</strong> baseadas nos riscos do PGR:
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {sugestoesLista.map((sug, sIdx) => (
+                              <div
+                                key={sIdx}
+                                className="p-2.5 rounded-lg border border-dashed border-amber-300/80 bg-amber-50/50 dark:bg-amber-950/10 text-xs flex flex-col justify-between gap-1.5"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold text-foreground">
+                                    [{sug.codigo}] {sug.nome}
+                                  </span>
+                                  <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+                                    {sug.baseNormativa.split("(")[0]}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                  <span>{sug.periodicidadePadrao}</span>
+                                  <span className="text-[10px]">{sug.profissionalLabel}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
 
-                  {/* Tabela dos Riscos e Exames do GES */}
-                  <Table>
-                    <TableHeader className="bg-muted/20">
-                      <TableRow>
-                        <TableHead className="w-[30%]">Risco Ocupacional (PGR)</TableHead>
-                        <TableHead className="w-[25%]">Fonte Geradora</TableHead>
-                        <TableHead className="w-[100px] text-center">Grau</TableHead>
-                        <TableHead className="w-[35%]">Exames Prescritos (NR-07)</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {g.itens.map((r: any) => (
-                        <TableRow key={r.id}>
-                          <TableCell className="font-medium">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-foreground">{r.risco || "-"}</span>
-                              {r.grupo && (
-                                <span className="text-[11px] text-muted-foreground">
-                                  Grupo: {GRUPO_LABEL[r.grupo] || r.grupo}
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-foreground font-medium text-xs">
-                            {r.fonte || "-"}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {r.classificacao && (
-                              <Badge variant="outline" className={CLASSE_TEXT[r.classificacao as keyof typeof CLASSE_TEXT] || ""}>
-                                {r.classificacao.toUpperCase()}
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-1.5">
-                              {r.exames.map((ex: any, idx: number) => (
-                                <div
-                                  key={idx}
-                                  className={`px-2.5 py-1.5 rounded text-xs border ${
-                                    ex.obrigatorio && ex.nome.includes("Audiometria")
-                                      ? "bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-800"
-                                      : ex.obrigatorio && (ex.nome.includes("Espirometria") || ex.nome.includes("Tórax"))
-                                      ? "bg-purple-50 dark:bg-purple-950/20 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-800"
-                                      : "bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-200 border-blue-200 dark:border-blue-800/50"
-                                  }`}
-                                >
-                                  <div className="font-semibold flex items-center justify-between">
-                                    <span>{ex.nome}</span>
-                                    <span className="text-[10px] opacity-80 font-normal">{ex.base}</span>
-                                  </div>
-                                  <div className="opacity-75 text-[11px] mt-0.5">
-                                    {ex.periodicidade}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </TableCell>
+                    {/* SEÇÃO 2: TABELA DE RISCOS OCUPACIONAIS MAPEADOS NO PGR */}
+                    <Table>
+                      <TableHeader className="bg-muted/20">
+                        <TableRow>
+                          <TableHead className="w-[30%]">Risco Ocupacional (PGR)</TableHead>
+                          <TableHead className="w-[30%]">Fonte Geradora</TableHead>
+                          <TableHead className="w-[100px] text-center">Grau</TableHead>
+                          <TableHead className="w-[30%]">Exames Recomendados (NR-07)</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ))}
+                      </TableHeader>
+                      <TableBody>
+                        {g.itens.map((r: any) => (
+                          <TableRow key={r.id}>
+                            <TableCell className="font-medium">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-foreground">{r.risco || "-"}</span>
+                                {r.grupo && (
+                                  <span className="text-[11px] text-muted-foreground">
+                                    Grupo: {GRUPO_LABEL[r.grupo] || r.grupo}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-foreground font-medium text-xs">
+                              {r.fonte || "-"}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {r.classificacao && (
+                                <Badge variant="outline" className={CLASSE_TEXT[r.classificacao as keyof typeof CLASSE_TEXT] || ""}>
+                                  {r.classificacao.toUpperCase()}
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                {r.examesSugeridos.map((ex: any, idx: number) => (
+                                  <div
+                                    key={idx}
+                                    className="text-xs flex items-center justify-between py-0.5 border-b border-border/40 last:border-none"
+                                  >
+                                    <span className="font-medium text-foreground">{ex.nome}</span>
+                                    <span className="text-[10px] text-muted-foreground ml-2 shrink-0">{ex.baseNormativa.split("(")[0]}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Adicionar / Editar Exame */}
+      {gesSelecionadoParaExame && (
+        <PcmsoExameModal
+          open={modalAberto}
+          onOpenChange={setModalAberto}
+          empresaId={pcmso.empresa_id}
+          gheId={gesSelecionadoParaExame.gheId}
+          gesCodigo={gesSelecionadoParaExame.codigoFormatado}
+          gesNome={gesSelecionadoParaExame.nome}
+          exameEmEdicao={exameEmEdicao}
+          onSalvar={handleSalvarExame}
+        />
+      )}
     </div>
   );
 }

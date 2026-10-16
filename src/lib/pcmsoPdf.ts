@@ -1198,10 +1198,10 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   // =========================================================================
   // SEÇÃO 14: MÉDICOS EXAMINADORES
   // =========================================================================
-  desenharTituloSecao(b, "14", "Médicos Examinadores Autorizados");
+  desenharTituloSecao(b, "14", "Médicos Examinadores e Profissionais Habilitados");
   desenharParagrafo(
     b,
-    "Médicos e profissionais capacitados autorizados pelo Médico Coordenador a realizar os exames clínicos ocupacionais (ASO) no âmbito deste PCMSO:"
+    "Médicos examinadores, fonoaudiólogos e profissionais de saúde legalmente habilitados e autorizados pelo Médico Coordenador a realizar as avaliações clínicas e exames complementares ocupacionais (NR-07):"
   );
 
   ensureSpace(b, (ctx.medicosExaminadores.length + 1) * 6 + 6);
@@ -1211,8 +1211,8 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
   doc.setFontSize(7.5);
   doc.setTextColor(255, 255, 255);
   doc.text("NOME DO PROFISSIONAL", MARGEM + 3, b.y + 4.2);
-  doc.text("REGISTRO CRM", MARGEM + 110, b.y + 4.2);
-  doc.text("ESTADO / UF", DIREITA - 4, b.y + 4.2, { align: "right" });
+  doc.text("REGISTRO PROFISSIONAL", MARGEM + 110, b.y + 4.2);
+  doc.text("CONSELHO / UF", DIREITA - 4, b.y + 4.2, { align: "right" });
   b.y += 6;
 
   ctx.medicosExaminadores.forEach((med, idx) => {
@@ -1225,10 +1225,17 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
     doc.text(med.nome, MARGEM + 3, b.y + 4.2);
 
+    const ufUpper = (med.uf || "").toUpperCase();
+    const crmUpper = (med.crm || "").toUpperCase();
+    const isFono = ufUpper.includes("CRFA") || crmUpper.includes("CRFA") || ufUpper.includes("CRF");
+    const regTexto = isFono
+      ? (crmUpper.startsWith("CRFA") ? crmUpper : `CRFa ${med.crm}`)
+      : `CRM ${med.crm}`;
+
     doc.setFont("helvetica", "normal");
     doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    doc.text(`CRM ${med.crm}`, MARGEM + 110, b.y + 4.2);
-    doc.text(med.uf, DIREITA - 8, b.y + 4.2, { align: "right" });
+    doc.text(regTexto, MARGEM + 110, b.y + 4.2);
+    doc.text(med.uf || "CE", DIREITA - 8, b.y + 4.2, { align: "right" });
     b.y += 6;
   });
   b.y += 6;
