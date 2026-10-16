@@ -1,8 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { carregarLogoDataUrl } from "@/lib/logoParaPdf";
 import { carregarEmissor } from "@/lib/emissorDocumentos";
-/* Mesma régua do PGR e da tela: nível = P x S, e a faixa que ele cai. */
-import { classificarRisco, type PgrClasse } from "@/lib/pgrMatriz";
 
 export interface PcmsoCargoItem {
   id: string;
@@ -85,18 +83,6 @@ export interface PcmsoRiscoTabelaG91 {
   danos: string;
   meioPropagacao: string;
   formaExposicao: string;
-  /*
-   * Nível e classificação vêm do PGR — é o mesmo risco, avaliado uma vez só.
-   *
-   * O PCMSO promete, no próprio texto da seção 11, "a correlação entre os
-   * agentes agressivos inventariados no PGR e os exames exigidos pela NR-07".
-   * Sem o nível impresso, a correlação ficava só na frase: o médico via a
-   * lista de agentes sem saber quais eram moderados e quais intoleráveis.
-   *
-   * Vazio quando o item do inventário não foi avaliado. Não se inventa nível.
-   */
-  nivel?: number | null;
-  classificacao?: PgrClasse | null;
 }
 
 export interface PcmsoFichaExameG91 {
@@ -391,32 +377,18 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
         }
       }
 
-      if (!atividades) {
-        if (nomeNorm.includes("costur")) atividades = "Operar máquinas de costura, acabamento de peças, movimentação manual de tecidos.";
-        else if (nomeNorm.includes("cozinh")) atividades = "Realizar o corte, cozimento, fritura e preparo dos alimentos; higienizar utensílios e bancadas; operar fogões e fornos.";
-        else if (nomeNorm.includes("limpeza") || nomeNorm.includes("serviços gerais") || nomeNorm.includes("faxin")) atividades = "Esfregar e lavar pisos, recolher e descartar resíduos, aplicar produtos químicos de higienização, higienização de sanitários.";
-        else if (nomeNorm.includes("corte")) atividades = "Corte manual e em máquinas, organização de peças, transporte interno.";
-        else if (nomeNorm.includes("embal")) atividades = "Embalar produtos, organizar volumes, carregar e descarregar mercadorias.";
-        else if (nomeNorm.includes("venda") || nomeNorm.includes("loja") || nomeNorm.includes("comercial")) atividades = "Atendimento ao cliente, registro de vendas, controle de caixa, organização de produtos.";
-        else atividades = "Execução de atividades rotineiras e operacionais da função, controles administrativos e cumprimento de normas internas.";
-      }
+      /*
+       * Sem descrição cadastrada, a descrição fica VAZIA.
+       *
+       * Havia aqui um texto por palavra no nome do cargo: quem não cadastrasse
+       * a rotina da costureira recebia "Operar máquinas de costura, acabamento
+       * de peças, movimentação manual de tecidos" — uma descrição do trabalho
+       * de outra pessoa, impressa como se fosse o da empresa dela. E a
+       * descrição das atividades é o que fundamenta o enquadramento de risco.
+       *
+       * Vazio aparece como "Não informado" e mostra o que falta cadastrar.
+       */
 
-      // Exames complementares por cargo
-      const examesComp: PcmsoCargoItem["examesComplementares"] = [];
-      if (nomeNorm.includes("cozinh")) {
-        examesComp.push(
-          { nome: "Glicemia", codigoEsocial: "0658", periodicidade: "A cada 12 meses", fazerAdmissional: true, fazerPeriodico: true },
-          { nome: "Hemograma Completo", codigoEsocial: "0693", periodicidade: "A cada 12 meses", fazerAdmissional: true, fazerPeriodico: true }
-        );
-      } else if (nomeNorm.includes("limpeza") || nomeNorm.includes("serviços gerais") || nomeNorm.includes("faxin")) {
-        examesComp.push(
-          { nome: "Hemograma Completo", codigoEsocial: "0693", periodicidade: "A cada 12 meses", fazerAdmissional: true, fazerPeriodico: true }
-        );
-      } else if (nomeNorm.includes("corte") || nomeNorm.includes("ruido")) {
-        examesComp.push(
-          { nome: "Audiometria Tonal e Vocal", codigoEsocial: "0281", periodicidade: "A cada 12 meses (NR-07 Anexo II)", fazerAdmissional: true, fazerPeriodico: true }
-        );
-      }
 
       // Mapear riscos do inventário do PGR correspondentes à função
       /*
@@ -484,14 +456,6 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
             ? r.controles_existentes.filter(Boolean).join("; ") || "Treinamento e medidas administrativas"
             : (textoCurto(r.controles_existentes) || "Treinamento e medidas administrativas"),
           danos: textoCurto(r.lesoes) || "Possíveis danos à saúde e integridade física",
-          /*
-           * A classificação sai da MESMA regra do PGR e da tela — nunca de uma
-           * conta repetida aqui. Item sem avaliação fica sem nível.
-           */
-          nivel: r.probabilidade != null && r.severidade != null
-            ? Number(r.probabilidade) * Number(r.severidade)
-            : null,
-          classificacao: classificarRisco(r.severidade, r.probabilidade),
         };
         if (grupo.includes("acid") || grupo.includes("mecan")) riscosAcidentesRaw.push(obj);
         else if (grupo.includes("ergo")) riscosErgonomicosRaw.push(obj);
@@ -517,6 +481,39 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
        * que é o que a tabela já escreve quando a lista vem vazia. Se o risco
        * existe e não está no PGR, o lugar de corrigir é o inventário.
        */
+
+      /*
+       * Exame complementar sai do RISCO, não do nome do cargo.
+       *
+       * Antes era por palavra: "cozinh" ganhava Glicemia e Hemograma,
+       * "limpeza" ganhava Hemograma, "corte" ganhava Audiometria. Prescrever
+       * exame pelo texto do cargo não é critério médico — e o cargo CORTADOR
+       * recebia audiometria mesmo sem ruído nenhum no inventário, enquanto
+       * quem tem ruído e não se chama "corte" não recebia.
+       *
+       * Fica só a regra que a norma amarra ao risco: exposição a RUÍDO exige
+       * audiometria (NR-07, Anexo II). Ela sai do inventário do PGR, que é a
+       * fonte — mesma regra do resto do documento.
+       *
+       * Qualquer outro exame é decisão do médico coordenador. Se a consultoria
+       * quiser um protocolo fixo por função, o lugar dele é o cadastro, não o
+       * código: assim o médico vê, revisa e assina o que prescreveu.
+       */
+      const examesComp: PcmsoCargoItem["examesComplementares"] = [];
+      const temRuido = riscosDoCargo.some((it: any) => {
+        const texto = `${it.tipo_agente || ""} ${it.perigo_descricao || ""}`
+          .toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        return texto.includes("ruido");
+      });
+      if (temRuido) {
+        examesComp.push({
+          nome: "Audiometria Tonal e Vocal",
+          codigoEsocial: "0281",
+          periodicidade: "A cada 12 meses (NR-07, Anexo II)",
+          fazerAdmissional: true,
+          fazerPeriodico: true,
+        });
+      }
 
       return {
         id: funcoesDoGrupo[0].id,
@@ -729,11 +726,6 @@ export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPd
             agente: r.agente,
             fonte: r.fonte,
             danos: r.danos,
-            /* Os riscos vêm de origens com formatos diferentes (inventário do
-               PGR e a lista de reserva); nível e classificação só existem na
-               primeira, e a ausência é informação, não erro. */
-            nivel: (r as { nivel?: number | null }).nivel ?? null,
-            classificacao: (r as { classificacao?: PgrClasse | null }).classificacao ?? null,
             meioPropagacao: tipo === "riscosQuimicos" || tipo === "riscosBiologicos" ? "Ar / Contato dérmico" : "Não se aplica",
             formaExposicao: "Habitual / Intermitente",
           });

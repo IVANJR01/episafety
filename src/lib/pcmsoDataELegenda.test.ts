@@ -1,29 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { renderPcmsoPdf } from "./pcmsoPdf";
 import { fmtDate, fmtDT } from "./pdfTimbrado";
-import { CLASSE_HEX } from "./pgrMatriz";
 
 /**
- * O nível e a classificação do risco dentro do PCMSO.
+ * Dois defeitos que apareceram ao gerar o PCMSO para conferir.
  *
- * A seção 11 do documento promete, no próprio texto, "a correlação entre os
- * agentes agressivos inventariados no PGR e os exames exigidos pela NR-07".
- * Sem o nível impresso, a correlação ficava só na frase: o médico via a lista
- * de agentes sem saber quais eram moderados e quais intoleráveis.
- *
- * As cores vêm da fonte única (`pgrMatriz`), a mesma do PGR, da planilha e da
- * tela — o mesmo risco não pode sair de uma cor num documento e de outra no
- * documento irmão da mesma empresa.
+ * O arquivo nasceu maior: tinha também o nível e a classificação do risco na
+ * ficha de exame. Saíram a pedido — a classificação é assunto do PGR, que
+ * avalia e prioriza o risco; o PCMSO responde que exame acompanha aquela
+ * exposição, e as duas colunas só poluíam o documento.
  */
 
 function desenho(pdf: { output: (t: "arraybuffer") => ArrayBuffer }) {
   const bruto = Buffer.from(pdf.output("arraybuffer")).toString("latin1");
   const texto = [...bruto.matchAll(/\((?:\\.|[^\\)])*\) Tj/g)]
     .map((m) => m[0].slice(1, -4).replace(/\\([()\\])/g, "$1"));
-  /* Preenchimentos: "r g b rg" em 0..1, como o jsPDF grava. */
-  const cores = [...bruto.matchAll(/([\d.]+) ([\d.]+) ([\d.]+) rg/g)].map((m) =>
-    [m[1], m[2], m[3]].map((v) => Math.round(parseFloat(v) * 255)).join(","));
-  return { texto, cores, bruto };
+  return { texto, bruto };
 }
 
 const SEM = [{
@@ -58,45 +50,11 @@ function contexto(riscos: unknown[], cronograma: unknown[] = []) {
   } as never;
 }
 
-const MODERADO = {
+const RISCO = {
   agente: "Excesso de demandas", fonte: "Ritmo de produção",
   danos: "Transtorno mental", meioPropagacao: "Não se aplica",
-  formaExposicao: "Ocasional", nivel: 12, classificacao: "moderado",
+  formaExposicao: "Ocasional",
 };
-
-describe("nível e classificação do risco na ficha", () => {
-  it("imprime o nível e o nome da classificação", async () => {
-    const { texto } = desenho(await renderPcmsoPdf(contexto([MODERADO])));
-    const tudo = texto.join(" | ");
-    expect(tudo, "a coluna de nível não existe").toContain("NÍVEL");
-    expect(tudo).toContain("12");
-    expect(tudo).toContain("MODERADO");
-  }, 60_000);
-
-  it("usa a cor oficial da faixa, a mesma do PGR", async () => {
-    const { cores } = desenho(await renderPcmsoPdf(contexto([MODERADO])));
-    const amarelo = CLASSE_HEX.moderado.join(",");
-    expect(cores, `o MODERADO não saiu em ${amarelo}`).toContain(amarelo);
-  }, 60_000);
-
-  it("risco sem avaliação fica em branco — não inventa nível", async () => {
-    const semNivel = { ...MODERADO, nivel: undefined, classificacao: undefined };
-    const { texto, cores } = desenho(await renderPcmsoPdf(contexto([semNivel])));
-    const tudo = texto.join(" | ");
-    for (const classe of ["TRIVIAL", "TOLERÁVEL", "MODERADO", "SUBSTANCIAL", "INTOLERÁVEL"]) {
-      expect(tudo, `inventou a classificação ${classe}`).not.toContain(classe);
-    }
-    expect(cores, "pintou a célula de um risco que ninguém avaliou")
-      .not.toContain(CLASSE_HEX.moderado.join(","));
-  }, 60_000);
-
-  it("INTOLERÁVEL cabe inteiro na coluna, sem quebrar a palavra", async () => {
-    /* "INTOLERÁVE / L" em duas linhas é pior do que não escrever nada. */
-    const grave = { ...MODERADO, nivel: 20, classificacao: "intoleravel" };
-    const { texto } = desenho(await renderPcmsoPdf(contexto([grave])));
-    expect(texto, "a palavra foi quebrada no meio").toContain("INTOLERÁVEL");
-  }, 60_000);
-});
 
 describe("data inválida nunca vira texto de programador", () => {
   it("fmtDate e fmtDT devolvem travessão", () => {
@@ -112,7 +70,7 @@ describe("data inválida nunca vira texto de programador", () => {
   });
 
   it("o cronograma do PCMSO diz o prazo em palavras quando não há data", async () => {
-    const pdf = await renderPcmsoPdf(contexto([MODERADO], [
+    const pdf = await renderPcmsoPdf(contexto([RISCO], [
       { id: "a1", acao: "EXAMES PERIÓDICOS", responsavel: "Médico", data_planejada: "x", status: "Em andamento", observacoes: null },
     ]));
     const tudo = desenho(pdf).texto.join(" | ");
@@ -123,7 +81,7 @@ describe("data inválida nunca vira texto de programador", () => {
 
 describe("a legenda dos exames não passa da margem", () => {
   it("quebra em mais de uma linha em vez de sair cortada", async () => {
-    const { texto } = desenho(await renderPcmsoPdf(contexto([MODERADO])));
+    const { texto } = desenho(await renderPcmsoPdf(contexto([RISCO])));
     /* A legenda inteira, montada de volta a partir dos pedaços desenhados. */
     const pedacos = texto.filter((t) =>
       t.includes("Legenda:") || t.includes("mudança implicar") || t.includes("(*) exigido"));

@@ -124,6 +124,79 @@ describe("o PCMSO espelha o PGR", () => {
     expect(agentesDasFichas(ctx as never)).toEqual(["Movimentos repetitivos"]);
   });
 
+  it("não inventa a descrição das atividades de quem não cadastrou", async () => {
+    /*
+     * Havia um texto por palavra no nome do cargo: a costureira sem cadastro
+     * recebia "Operar máquinas de costura, acabamento de peças, movimentação
+     * manual de tecidos" — a rotina de outra empresa, e é a descrição das
+     * atividades que fundamenta o enquadramento de risco.
+     */
+    TABELAS["sst_funcoes"] = [
+      { id: "f1", nome: "COSTUREIRA", setor_id: SETOR_COSTURA, descricao_atividades: null },
+    ];
+    TABELAS["pgr_inventario_itens"] = [];
+
+    const ctx = await carregarPcmsoPdfContexto("p1");
+    const costureira = (ctx.cargos as { nome: string; atividades: string }[])
+      .find((c) => c.nome === "COSTUREIRA");
+    expect(costureira?.atividades || "", "inventou a rotina do cargo").toBe("");
+  });
+
+  it("a descrição cadastrada continua saindo", async () => {
+    TABELAS["sst_funcoes"] = [{
+      id: "f1", nome: "COSTUREIRA", setor_id: SETOR_COSTURA,
+      descricao_atividades: "Costura das peças do pedido, conferência e acabamento.",
+    }];
+    TABELAS["pgr_inventario_itens"] = [];
+
+    const ctx = await carregarPcmsoPdfContexto("p1");
+    const costureira = (ctx.cargos as { nome: string; atividades: string }[])
+      .find((c) => c.nome === "COSTUREIRA");
+    expect(costureira?.atividades).toContain("Costura das peças do pedido");
+  });
+
+  it("exame complementar sai do risco, não do nome do cargo", async () => {
+    /*
+     * "cozinh" ganhava Glicemia e Hemograma; "corte" ganhava Audiometria,
+     * mesmo sem ruído nenhum no inventário. Prescrever exame pelo texto do
+     * cargo não é critério médico.
+     */
+    /*
+     * "AUXILIAR DE CORTE" contém a palavra que a regra antiga procurava —
+     * "CORTADOR" não continha, e por isso escapava dela. O teste precisa do
+     * cargo que a regra pegava, senão passa sem provar nada.
+     */
+    TABELAS["sst_funcoes"] = [
+      { id: "f1", nome: "AUXILIAR DE CORTE", setor_id: SETOR_COSTURA },
+      { id: "f2", nome: "COZINHEIRA", setor_id: null },
+      { id: "f3", nome: "AUXILIAR DE LIMPEZA", setor_id: null },
+    ];
+    TABELAS["pgr_inventario_itens"] = [];
+
+    const ctx = await carregarPcmsoPdfContexto("p1");
+    const exames = (ctx.cargos as { examesComplementares: unknown[] }[])
+      .flatMap((c) => c.examesComplementares);
+    expect(exames, "prescreveu exame por palavra no nome do cargo").toEqual([]);
+  });
+
+  it("com ruído no inventário, a audiometria aparece — NR-07, Anexo II", async () => {
+    TABELAS["sst_funcoes"] = [
+      { id: "f1", nome: "OPERADOR DE PRENSA", setor_id: SETOR_COSTURA },
+    ];
+    TABELAS["pgr_inventario_itens"] = [{
+      id: "i1", grupo: "fisico", tipo_agente: "Ruído contínuo",
+      fonte_geradora: "Prensa", lesoes: "PAIR",
+      funcoes_snapshot: ["OPERADOR DE PRENSA"],
+      probabilidade: 4, severidade: 3, setor: "COSTURA",
+    }];
+
+    const ctx = await carregarPcmsoPdfContexto("p1");
+    const exames = (ctx.cargos as { examesComplementares: { nome: string }[] }[])
+      .flatMap((c) => c.examesComplementares);
+    expect(exames.map((e) => e.nome), "o ruído do PGR não gerou audiometria")
+      .toContain("Audiometria Tonal e Vocal");
+  });
+
   it("um cargo não herda os riscos de outro de nome parecido", async () => {
     /*
      * A comparação era por "contém": "AJUDANTE" casava com o item cujo

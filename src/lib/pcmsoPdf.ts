@@ -3,12 +3,6 @@ import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 import { capaTimbrada, rodapePaginas, fmtDate } from "@/lib/pdfTimbrado";
-/*
- * As cores e os rótulos da classificação saem da fonte única — a mesma que o
- * PGR, a planilha e a tela usam. Aproximar "quase igual" aqui faria o mesmo
- * risco sair de uma cor no PGR e de outra no PCMSO da mesma empresa.
- */
-import { CLASSE_HEX, CLASSE_TEXTO_HEX, CLASSE_LABEL as CLASSIF_LABEL, type PgrClasse } from "@/lib/pgrMatriz";
 import type {
   PcmsoPdfContext,
   PcmsoFichaExameG91,
@@ -242,15 +236,14 @@ function desenharTabelaRiscos5Colunas(
 ) {
   const doc = b.doc;
   /*
-   * Sete colunas, 180 mm. As duas últimas são o nível e a classificação do
-   * risco, trazidos do PGR: é a "correlação entre os agentes inventariados no
-   * PGR e os exames" que a seção 11 promete no próprio texto. Sem elas o
-   * médico via a lista de agentes sem saber quais eram moderados e quais
-   * intoleráveis.
+   * Cinco colunas, 180 mm.
+   *
+   * Nível e classificação do risco NÃO entram aqui. Chegaram a entrar, e o
+   * documento ficou poluído: a classificação é assunto do PGR, que avalia e
+   * prioriza o risco. O PCMSO responde outra pergunta — que exame médico
+   * acompanha aquela exposição.
    */
-  const colW = [30, 34, 34, 22, 22, 12, 26]; // Total = 180mm
-  /* A classificação precisa caber inteira: "INTOLERÁVEL" quebrado em
-     "INTOLERÁVE / L" é pior do que não escrever nada. */
+  const colW = [35, 40, 40, 32, 33]; // Total = 180mm
 
   ensureSpace(b, 14);
 
@@ -273,7 +266,7 @@ function desenharTabelaRiscos5Colunas(
    */
   const ROTULOS = [
     "AGENTE / PERIGO", "FONTE GERADORA", "POSSÍVEIS DANOS À SAÚDE",
-    "MEIOS DE PROPAGAÇÃO", "FORMA DE EXPOSIÇÃO", "NÍVEL", "CLASSIFIC.",
+    "MEIOS DE PROPAGAÇÃO", "FORMA DE EXPOSIÇÃO",
   ];
   const ALTURA_ROTULO = 2.6;
   doc.setFont("helvetica", "bold");
@@ -332,16 +325,7 @@ function desenharTabelaRiscos5Colunas(
     const l4 = doc.splitTextToSize(celula((r as { meioPropagacao?: unknown }).meioPropagacao), colW[3] - 4);
     const l5 = doc.splitTextToSize(celula((r as { formaExposicao?: unknown }).formaExposicao), colW[4] - 4);
 
-    /* Nível e classificação do PGR. Sem avaliação, as duas células ficam
-       vazias — o documento não afirma risco que ninguém avaliou. */
-    const classe = (r as { classificacao?: PgrClasse | null }).classificacao ?? null;
-    const nivelRisco = (r as { nivel?: number | null }).nivel ?? null;
-    const l6 = doc.splitTextToSize(nivelRisco != null ? String(nivelRisco) : "", colW[5] - 3);
-    const l7 = doc.splitTextToSize(
-      classe ? CLASSIF_LABEL[classe].toUpperCase() : "", colW[6] - 3,
-    );
-
-    const maxLinhas = Math.max(l1.length, l2.length, l3.length, l4.length, l5.length, l7.length);
+    const maxLinhas = Math.max(l1.length, l2.length, l3.length, l4.length, l5.length);
     const alturaLinha = Math.max(6, maxLinhas * 3.4 + 2.5);
 
     ensureSpace(b, alturaLinha);
@@ -372,31 +356,6 @@ function desenharTabelaRiscos5Colunas(
     doc.text(l4, xCol + 2, b.y + 3.8);
     xCol += colW[3];
     doc.text(l5, xCol + 2, b.y + 3.8);
-    xCol += colW[4];
-
-    /* Nível, centralizado e em negrito — é o número que se procura. */
-    doc.setFont("helvetica", "bold");
-    doc.text(l6, xCol + colW[5] / 2, b.y + 3.8, { align: "center" });
-    xCol += colW[5];
-
-    /*
-     * Classificação na cor oficial da faixa — as mesmas do PGR, da planilha e
-     * da tela, de `pgrMatriz`. Mesmo risco, mesma cor, em qualquer documento.
-     */
-    if (classe) {
-      const [cr, cg, cb] = CLASSE_HEX[classe];
-      const [tr, tg, tb] = CLASSE_TEXTO_HEX[classe];
-      doc.setFillColor(cr, cg, cb);
-      doc.rect(xCol, b.y, colW[6], alturaLinha, "F");
-      doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-      doc.rect(xCol, b.y, colW[6], alturaLinha, "S");
-      doc.setTextColor(tr, tg, tb);
-      doc.setFontSize(5.6);
-      doc.text(l7, xCol + colW[6] / 2, b.y + 3.8, { align: "center" });
-      doc.setFontSize(6.5);
-      doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    }
-    doc.setFont("helvetica", "normal");
 
     b.y += alturaLinha;
   });
