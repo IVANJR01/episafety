@@ -26,6 +26,7 @@ import {
   historicoVersoes, arquivarDocumento, definirEmRenovacao, prepararAbertura,
   PESO_SITUACAO, descricaoDaValidade, type SituacaoDocumento,
 } from "@/lib/arquivoDigital";
+import { idsDeAsoNasVersoes, rotulosDosAsos } from "@/lib/tipoExameAso";
 
 const TABELA_AUSENTE = new Set(["42P01", "PGRST205", "PGRST202"]);
 const ehTabelaAusente = (e: any) =>
@@ -98,6 +99,14 @@ export default function DossieColaborador() {
 
   const [histDe, setHistDe] = useState<LinhaDossie | null>(null);
   const [versoes, setVersoes] = useState<any[] | null>(null);
+  /**
+   * De que exame é cada versão do ASO — id do ASO -> "Admissional" etc.
+   *
+   * O ASO tem UM tipo de documento no catálogo, como o cliente pediu: o
+   * admissional, o periódico e o demissional são versões dele. Sem este
+   * rótulo, o histórico mostrava "v3, v2, v1" e não dizia qual era qual.
+   */
+  const [rotulosOrigem, setRotulosOrigem] = useState<Map<string, string>>(new Map());
 
   const [arquivarDe, setArquivarDe] = useState<LinhaDossie | null>(null);
   const [motivoArquivo, setMotivoArquivo] = useState("");
@@ -271,9 +280,21 @@ export default function DossieColaborador() {
   };
 
   const abrirHistorico = async (l: LinhaDossie) => {
-    setHistDe(l); setVersoes(null);
+    setHistDe(l); setVersoes(null); setRotulosOrigem(new Map());
     if (!l.doc) { setVersoes([]); return; }
-    setVersoes(await historicoVersoes(l.doc.id));
+    const lista = await historicoVersoes(l.doc.id);
+    setVersoes(lista);
+
+    /*
+     * Versão que nasceu de um ASO sabe de qual ASO veio. Daí sai o tipo de
+     * exame — é o que separa um admissional de um demissional dentro do
+     * mesmo documento.
+     */
+    const ids = idsDeAsoNasVersoes(lista);
+    if (ids.length === 0) return;
+    const { data } = await (supabase.from as any)("asos")
+      .select("id, tipo_exame").in("id", ids);
+    setRotulosOrigem(rotulosDosAsos(data || []));
   };
 
   const confirmarArquivamento = async () => {
@@ -729,7 +750,14 @@ export default function DossieColaborador() {
                 <SituacaoBadge situacao={v.situacao_versao === "atual" ? "vigente" : "substituido"}
                   className="shrink-0 text-[10px]" />
                 <div className="min-w-0 flex-1 text-xs">
-                  <div className="truncate font-medium">v{v.versao} · {v.nome_original || "documento"}</div>
+                  <div className="flex items-center gap-1.5">
+                    {rotulosOrigem.get(v.origem_id) && (
+                      <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
+                        {rotulosOrigem.get(v.origem_id)}
+                      </Badge>
+                    )}
+                    <span className="truncate font-medium">v{v.versao} · {v.nome_original || "documento"}</span>
+                  </div>
                   <div className="text-muted-foreground text-[11px]">
                     Emissão {dataBr(v.data_emissao)} · Validade {v.data_validade ? dataBr(v.data_validade) : "permanente"}
                   </div>

@@ -14,13 +14,12 @@ import { differenceInDays, parseISO, format } from "date-fns";
 import { gerarPdfAso } from "@/lib/asoPdf";
 import { usePermissions } from "@/hooks/usePermissions";
 import DocumentoEvidencia from "@/components/treinamentos/DocumentoEvidencia";
+import { ROTULO_EXAME_ASO, rotuloExameAso } from "@/lib/tipoExameAso";
 
 const NOME_TIPO_ASO = "ASO - Atestado de Saúde Ocupacional";
 
-const TIPO: Record<string, string> = {
-  admissional: "Admissional", periodico: "Periódico", retorno: "Retorno",
-  mudanca_risco: "Mudança de Risco", demissional: "Demissional",
-};
+/* O rótulo do exame mora em um lugar só — o dossiê mostra o mesmo. */
+const TIPO = ROTULO_EXAME_ASO;
 
 function statusValidade(dv?: string | null) {
   if (!dv) return { label: "—", cls: "bg-muted text-muted-foreground" };
@@ -101,7 +100,7 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
   const rotuloDoAso = useCallback((origemId: string | null) => {
     if (!origemId) return null;
     const aso = (asos as any[]).find((a) => a.id === origemId);
-    return aso ? (TIPO[aso.tipo_exame] || aso.tipo_exame) : null;
+    return aso ? rotuloExameAso(aso.tipo_exame) : null;
   }, [asos]);
 
   const rows = useMemo(() => {
