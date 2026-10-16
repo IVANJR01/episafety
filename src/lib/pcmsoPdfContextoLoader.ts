@@ -169,6 +169,14 @@ export interface PcmsoPdfContext {
   };
 }
 
+/**
+ * Texto de célula: sem quebra de linha e sem espaço sobrando. A quebra
+ * vinda do cadastro empurrava a linha da tabela para uma altura que o
+ * cálculo da página não previa.
+ */
+const textoCurto = (v: unknown): string =>
+  v === null || v === undefined ? "" : String(v).replace(/\s+/g, " ").trim();
+
 export async function carregarPcmsoPdfContexto(pcmsoId: string): Promise<PcmsoPdfContext> {
   // 1. Busca documento PCMSO
   const { data: pcmso, error: errPcmso } = await (supabase.from as any)("pcmso_documentos")
