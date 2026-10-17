@@ -166,3 +166,20 @@ export function funcoesSemRepetir<T extends FuncaoDoGes>(funcoes: T[]): T[] {
   }
   return saida;
 }
+
+/**
+ * O id que vai para a consulta, quando o valor pode não ser um id.
+ *
+ * O botão "Carregar dados do GES" estava escrito `onClick={carregarDoGhe}`,
+ * e o React entrega o EVENTO do clique como primeiro argumento. O evento
+ * ia parar no lugar do id: a consulta recebia "[object Object]" e o banco
+ * respondia "invalid input syntax for type uuid".
+ *
+ * O chamador foi corrigido; isto é a tranca na porta, porque o mesmo erro
+ * se escreve sozinho de novo em qualquer `onClick` futuro — e o preço é
+ * uma mensagem de banco na cara do usuário.
+ */
+export function idOuPadrao(valor: unknown, padrao?: string | null): string {
+  if (typeof valor === "string" && valor.trim()) return valor.trim();
+  return (typeof padrao === "string" && padrao.trim()) ? padrao.trim() : "";
+}

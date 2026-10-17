@@ -14,7 +14,7 @@ import { Save, ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   riscosDoInventarioParaOs, episDoInventario, medidasDoInventario,
-  setorDoInventario, rotuloDoGes, funcoesSemRepetir,
+  setorDoInventario, rotuloDoGes, funcoesSemRepetir, idOuPadrao,
 } from "@/lib/ordemServicoDoGes";
 import { loadGheFicha, riscosToSnapshot, GRUPO_RISCO_LABEL } from "@/lib/gesFicha";
 import { OsEscopo, OsRiscoSnapshot, OsEpiSnapshot, OrdemServicoSst } from "@/lib/osTypes";
@@ -159,7 +159,10 @@ export default function OrdemServicoNovo() {
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
 
-  const carregarDoGhe = async (gheId = form.ghe_id, funcaoId = form.funcao_id, escopo = form.escopo) => {
+  const carregarDoGhe = async (gheIdBruto: any = form.ghe_id, funcaoIdBruto: any = form.funcao_id, escopo = form.escopo) => {
+    /* Tranca contra `onClick={carregarDoGhe}` — ver idOuPadrao. */
+    const gheId = idOuPadrao(gheIdBruto, form.ghe_id);
+    const funcaoId = idOuPadrao(funcaoIdBruto, "");
     if (!gheId) return toast.error("Selecione um GES/GHE primeiro");
     try {
       const ficha = await loadGheFicha(gheId);
@@ -418,7 +421,14 @@ export default function OrdemServicoNovo() {
             <Input value={form.titulo} onChange={(e) => set("titulo", e.target.value)} placeholder="Ex.: OS — Eletricistas de Subestação" />
           </div>
           <div>
-            <Button variant="outline" size="sm" onClick={carregarDoGhe} disabled={!form.ghe_id}>
+            {/*
+              * `onClick={carregarDoGhe}` entregava o EVENTO do clique como
+              * primeiro argumento, e ele ia parar no lugar do id do GES:
+              * a consulta recebia "[object Object]" e o banco respondia
+              * "invalid input syntax for type uuid". O botão nunca
+              * funcionou; só carregava quem trocasse o GES no seletor.
+              */}
+            <Button variant="outline" size="sm" onClick={() => carregarDoGhe()} disabled={!form.ghe_id}>
               Carregar dados do GES
             </Button>
             <span className="text-xs text-muted-foreground ml-2">Popula riscos, atividades e medidas.</span>

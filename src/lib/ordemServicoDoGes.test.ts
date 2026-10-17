@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   riscosDoInventarioParaOs, episDoInventario, medidasDoInventario,
-  setorDoInventario, rotuloDoGes, funcoesSemRepetir,
+  setorDoInventario, rotuloDoGes, funcoesSemRepetir, idOuPadrao,
 } from "./ordemServicoDoGes";
 
 /**
@@ -131,5 +131,32 @@ describe("lista de funções do GES", () => {
 
   it("função sem nome não entra na lista", () => {
     expect(funcoesSemRepetir([{ id: "x", nome_funcao: "  " }]).length).toBe(0);
+  });
+});
+
+describe("id que chega torto na consulta", () => {
+  it("evento de clique não vira id", () => {
+    /*
+     * `onClick={carregarDoGhe}` entregava o evento no lugar do id do GES,
+     * e o usuário via "invalid input syntax for type uuid:
+     * '[object Object]'" vindo do banco.
+     */
+    const evento = { type: "click", target: {} };
+    expect(idOuPadrao(evento, "ges-1")).toBe("ges-1");
+  });
+
+  it("id de verdade passa", () => {
+    expect(idOuPadrao("ges-2", "ges-1")).toBe("ges-2");
+  });
+
+  it("vazio, nulo e espaço caem no padrão", () => {
+    expect(idOuPadrao("", "ges-1")).toBe("ges-1");
+    expect(idOuPadrao(null, "ges-1")).toBe("ges-1");
+    expect(idOuPadrao("   ", "ges-1")).toBe("ges-1");
+  });
+
+  it("sem padrão, devolve vazio — e quem chama decide avisar", () => {
+    expect(idOuPadrao(undefined, null)).toBe("");
+    expect(idOuPadrao({}, undefined)).toBe("");
   });
 });
