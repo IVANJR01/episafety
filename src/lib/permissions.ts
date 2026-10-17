@@ -19,11 +19,6 @@ export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> =
     { key: "aso:baixar", label: "Baixar ASOs liberados" },
     { key: "funcionarios:visualizar", label: "Visualizar funcionários vinculados" },
   ],
-  cat: [
-    { key: "enviar_esocial", label: "Preparar envio eSocial (CAT)" },
-    { key: "esocial", label: "Módulo eSocial S-2210 (gerar/validar/configurar)" },
-    { key: "cancelar", label: "Cancelar CAT" },
-  ],
   esocial: [
     { key: "s2240:visualizar", label: "S-2240 — Visualizar eventos e mapeamentos" },
     { key: "s2240:preparar", label: "S-2240 — Preparar evento / editar mapeamento" },
@@ -70,7 +65,6 @@ export const MODULOS = [
   { key: "dds", label: "Lista de Presença", path: "/dds" },
   { key: "inspecoes_se", label: "Inspeções SE", path: "/inspecoes-se" },
   { key: "treinamentos", label: "Gestão e Controle", path: "/treinamentos" },
-  { key: "cat", label: "CAT — Comunicação de Acidente", path: "/cat" },
   { key: "pgr", label: "PGR — Gerenciamento de Riscos", path: "/pgr" },
   { key: "ltcat", label: "LTCAT — Laudo Técnico Previdenciário", path: "/ltcat" },
   { key: "ppp", label: "PPP — Perfil Profissiográfico Previdenciário", path: "/ppp" },
@@ -109,7 +103,7 @@ export const GRUPOS_MODULOS: { titulo: string; modulos: string[] }[] = [
   },
   {
     titulo: "Documentos e programas de SST",
-    modulos: ["pgr", "ltcat", "ppp", "cat", "esocial", "arquivo_digital"],
+    modulos: ["pgr", "ltcat", "ppp", "esocial", "arquivo_digital"],
   },
   {
     titulo: "Saúde ocupacional",

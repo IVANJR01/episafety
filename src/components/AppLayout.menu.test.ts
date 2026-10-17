@@ -1,15 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 
 /**
- * A CAT não é item do menu "Gestão de ASO".
+ * A CAT saiu do sistema, a pedido do cliente.
  *
- * Ela não é controle médico de saúde: é a comunicação de um acidente à
- * Previdência, e estava pendurada no grupo de saúde ocupacional. Saiu a
- * pedido do cliente.
+ * Primeiro saiu do menu "Gestão de ASO" — ela não é controle médico de
+ * saúde, é a comunicação de um acidente à Previdência. Depois as telas
+ * foram removidas de vez. Conferido antes de apagar: zero CAT
+ * registrada no banco (`cat_comunicacoes`), então nada de cliente se
+ * perdeu.
  *
- * A tela continua existindo em /cat e os registros estão intactos — o
- * que saiu foi o atalho deste grupo. Por isso o teste olha o grupo, e
- * não a existência da rota.
+ * As tabelas do banco continuam lá, intocadas: apagar tabela não se
+ * desfaz, e elas não atrapalham ninguém.
  */
 
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({}) }));
@@ -27,5 +28,32 @@ describe("menu Gestão de ASO", () => {
   it("continua com os Exames Ocupacionais", () => {
     /* Tirar a CAT não pode levar o grupo inteiro junto. */
     expect(asoItems.map((i) => i.path)).toContain("/aso");
+  });
+});
+
+describe("a CAT não sobrou em canto nenhum do sistema", () => {
+  it("nenhum item de menu aponta para /cat", async () => {
+    const menu = await import("./AppLayout");
+    const todos = Object.values(menu)
+      .filter((v): v is { path: string }[] => Array.isArray(v))
+      .flat();
+    const sobrou = todos.filter((i) => i?.path === "/cat" || i?.path?.startsWith("/cat/"));
+    expect(sobrou.map((i) => i.path), "ficou um atalho para uma tela que não existe mais")
+      .toEqual([]);
+  });
+
+  it("a CAT não é mais um módulo de permissão", async () => {
+    /*
+     * Módulo de permissão sem tela vira caixa marcável que não libera
+     * nada — e quem configura o perfil acredita que liberou.
+     */
+    const { MODULOS } = await import("@/lib/permissions");
+    expect((MODULOS as any[]).map((m) => m.key)).not.toContain("cat");
+  });
+
+  it("o LTCAT, que tem 'cat' no nome, continua inteiro", async () => {
+    /* O nome parecido é o jeito mais fácil de levar junto o errado. */
+    const { MODULOS } = await import("@/lib/permissions");
+    expect((MODULOS as any[]).map((m) => m.key)).toContain("ltcat");
   });
 });

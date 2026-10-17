@@ -59,11 +59,6 @@ import Faturas from "@/pages/Faturas";
 import AsoModule from "@/pages/aso/AsoModule";
 import VerificarAso from "@/pages/VerificarAso";
 import AprovacaoPublica from "@/pages/AprovacaoPublica";
-import CatModule from "@/pages/cat/CatModule";
-import CatNovo from "@/pages/cat/CatNovo";
-import CatDetalhe from "@/pages/cat/CatDetalhe";
-import CatValidar from "@/pages/cat/CatValidar";
-import EsocialConfig from "@/pages/cat/EsocialConfig";
 import PgrModule from "@/pages/pgr/PgrModule";
 import PgrNovo from "@/pages/pgr/PgrNovo";
 import PgrWizard from "@/pages/pgr/PgrWizard";
@@ -162,7 +157,6 @@ function DashboardGuard() {
     { path: "/cadastro/empresas", key: "cadastro_empresas" },
     { path: "/cadastro/funcionarios", key: "cadastro_funcionarios" },
     { path: "/cadastro/usuarios", key: "cadastro_usuarios" },
-    { path: "/cat", key: "cat" },
     { path: "/pgr", key: "pgr" },
     { path: "/ltcat", key: "ltcat" },
     { path: "/ppp", key: "ppp" },
@@ -333,12 +327,6 @@ function ProtectedRoute() {
         <Route path="/comercial/orcamentos/:id" element={<OrcamentoEditor />} />
         <Route path="/comercial/clientes" element={<Clientes />} />
         <Route path="/comercial/catalogo" element={<Catalogo />} />
-        <Route path="/cat" element={<CatModule />} />
-        <Route path="/cat/novo" element={<CatNovo />} />
-        <Route path="/cat/:id" element={<CatDetalhe />} />
-        <Route path="/cat/:id/editar" element={<CatNovo />} />
-        <Route path="/cat/validar/:id" element={<CatValidar />} />
-        <Route path="/cat/esocial/config" element={<EsocialConfig />} />
         <Route path="/pgr" element={<PgrModule />} />
         <Route path="/pgr/dashboard" element={<PgrDashboard />} />
         

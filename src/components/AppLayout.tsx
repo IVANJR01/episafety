@@ -24,17 +24,17 @@ interface EmpresaSwitcherInfo {
   empresa_pai_id: string | null;
 }
 
-const mainNavItems: NavItem[] = [];
+export const mainNavItems: NavItem[] = [];
 
 // Bottom nav: key shortcuts for mobile
-const mobileBottomItems: NavItem[] = [
+export const mobileBottomItems: NavItem[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard, moduleKey: "dashboard" },
   { path: "/epis", label: "EPIs", icon: Package, moduleKey: "epis" },
   { path: "/entregas", label: "Entregas", icon: ClipboardList, moduleKey: "entregas" },
   { path: "/cadastro", label: "Cadastro", icon: Users, moduleKey: "cadastro_funcionarios" },
 ];
 
-const epiItems: NavItem[] = [
+export const epiItems: NavItem[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard, moduleKey: "dashboard" },
   { path: "/epis", label: "Cadastro de EPIs", icon: Package, moduleKey: "epis" },
   { path: "/epis/controle-contrato", label: "Estoque por Unidade", icon: Boxes, moduleKey: "estoque_contrato" },
@@ -56,22 +56,22 @@ export const asoItems: NavItem[] = [
 ];
 
 // Portal RH — acesso restrito do RH a ASOs liberados
-const portalRhItems: NavItem[] = [
+export const portalRhItems: NavItem[] = [
   { path: "/rh/asos", label: "Portal RH — ASO", icon: Briefcase, moduleKey: "portal_rh" },
 ];
 
 // Gestão Documental SST
-const gestaoDocItems: NavItem[] = [
+export const gestaoDocItems: NavItem[] = [
   { path: "/documentacao-sst", label: "Documentação SST", icon: BookOpen, moduleKey: "pgr" },
   { path: "/arquivo-digital", label: "Dossiê do Colaborador", icon: FolderOpen, moduleKey: "arquivo_digital" },
 ];
 
-const treinamentosItems: NavItem[] = [
+export const treinamentosItems: NavItem[] = [
   { path: "/dds", label: "Listas de Presença", icon: MessageSquare, moduleKey: "dds" },
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
 ];
 // Comercial — Orçamentos, Clientes, Catálogo
-const comercialItems: NavItem[] = [
+export const comercialItems: NavItem[] = [
   { path: "/comercial", label: "Dashboard Comercial", icon: LayoutDashboard, moduleKey: "comercial" },
   { path: "/comercial/orcamentos", label: "Orçamentos e Cotações", icon: FileText, moduleKey: "comercial" },
   { path: "/comercial/clientes", label: "Clientes", icon: Users, moduleKey: "comercial" },
@@ -79,22 +79,21 @@ const comercialItems: NavItem[] = [
 ];
 
 // eSocial técnico / stub
-const esocialItems: NavItem[] = [
-  { path: "/cat/esocial/config", label: "S-2210 — CAT (config)", icon: Settings, moduleKey: "cat" },
+export const esocialItems: NavItem[] = [
   { path: "/esocial/s2240/mapeamentos", label: "S-2240 — Mapeamentos", icon: Network, moduleKey: "esocial" },
   { path: "/esocial/s2240/dashboard", label: "S-2240 — Dashboard", icon: LayoutDashboard, moduleKey: "esocial" },
 ];
 
-const afterCadastroItems: NavItem[] = [];
+export const afterCadastroItems: NavItem[] = [];
 
-const inspecoesItems: NavItem[] = [
+export const inspecoesItems: NavItem[] = [
   { path: "/inspecoes-se/dashboard", label: "Dashboard", icon: LayoutDashboard, moduleKey: "inspecoes_se" },
   { path: "/inspecoes-se", label: "Listagem", icon: ClipboardList, moduleKey: "inspecoes_se" },
   { path: "/inspecoes-se/obras", label: "Cadastro de Local", icon: HardHat, moduleKey: "inspecoes_se" },
   { path: "/extintores", label: "Extintores (NR-23)", icon: Flame, moduleKey: "extintores" },
 ];
 
-const cadastroItems: NavItem[] = [
+export const cadastroItems: NavItem[] = [
   { path: "/cadastro", label: "Dashboard", icon: LayoutDashboard, moduleKey: "cadastro_funcionarios" },
   { path: "/cadastro/empresas", label: "Empresas / Unidades", icon: Building2, moduleKey: "cadastro_empresas" },
   { path: "/cadastro/funcionarios", label: "Funcionários", icon: Users, moduleKey: "cadastro_funcionarios" },
