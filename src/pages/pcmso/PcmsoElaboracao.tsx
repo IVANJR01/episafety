@@ -10,6 +10,7 @@ import {
   ArrowLeft, ArrowRight, FileText, Loader2, Menu, Activity, CalendarDays, CheckCircle, FileBarChart, AlertTriangle
 } from "lucide-react";
 import { PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus } from "@/lib/pgrTypes";
+import { toast } from "sonner";
 
 import PcmsoCapaTab from "@/components/pcmso/PcmsoCapaTab";
 import PcmsoCronogramaTab from "@/components/pcmso/PcmsoCronogramaTab";
@@ -88,6 +89,18 @@ export default function PcmsoElaboracao() {
     setParams(p, { replace: false });
     setMenuAberto(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  /** Sai da elaboração. Rascunho não sai calado: ainda falta ativar. */
+  const concluir = () => {
+    if (pcmso?.status === "rascunho") {
+      toast.warning("Este PCMSO ainda é um rascunho.", {
+        description: "Use 'Ativar Documento (Vigente)' acima para oficializá-lo. Sem isso ele não vale como documento emitido.",
+      });
+      return;
+    }
+    toast.success("Elaboração concluída.");
+    navigate("/pcmso/dashboard");
   };
 
   const { data: pcmso, isLoading } = useQuery({
@@ -234,7 +247,21 @@ export default function PcmsoElaboracao() {
                     Próxima Etapa <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700">
+                  /*
+                   * "Concluir" não fazia nada — o botão não tinha onClick
+                   * nenhum. Quem chegava ao fim da elaboração apertava e a
+                   * tela ficava parada.
+                   *
+                   * Concluir é sair da elaboração. Quem oficializa o
+                   * documento é o "Ativar Documento (Vigente)" da própria
+                   * etapa, e por isso o botão avisa em vez de levar embora
+                   * um PCMSO que ainda é rascunho.
+                   */
+                  <Button
+                    variant="default"
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    onClick={concluir}
+                  >
                     <CheckCircle className="mr-2 h-4 w-4" /> Concluir
                   </Button>
                 )}
