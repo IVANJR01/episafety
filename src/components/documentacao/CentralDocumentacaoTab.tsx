@@ -34,26 +34,48 @@ export function CentralDocumentacaoTab(_props: Props = {}) {
     enabled: !!empresaId,
     queryFn: async () => {
       /** Devolve null (e não 0) quando a consulta falha: "não sei" difere de "nenhum". */
-      const conta = async (tabela: string, extra?: [string, string]) => {
+      const conta = async (tabela: string, extra?: [string, string | string[]]) => {
         let q = (supabase.from as any)(tabela)
           .select("id", { count: "exact", head: true }).eq("empresa_id", empresaId);
-        if (extra) q = q.eq(extra[0], extra[1]);
+        if (extra) {
+          if (Array.isArray(extra[1])) {
+            q = q.in(extra[0], extra[1]);
+          } else {
+            q = q.eq(extra[0], extra[1]);
+          }
+        }
         const { count, error } = await q;
         return error ? null : (count ?? 0);
       };
-      const [pgr, pgrVigentes, aso, ltcat, ppp, os] = await Promise.all([
+      const [pgr, pgrVigentes, pcmso, pcmsoVigentes, aso, ltcat, ppp, os] = await Promise.all([
         conta("pgr_documentos"),
-        conta("pgr_documentos", ["status", "vigente"]),
+        conta("pgr_documentos", ["status", ["vigente", "ativo"]]),
+        conta("pcmso_documentos"),
+        conta("pcmso_documentos", ["status", ["vigente", "ativo"]]),
         conta("asos"),
         conta("ltcat_documentos"),
         conta("ppp_documentos"),
         conta("ordens_servico_sst"),
       ]);
-      return { pgr, pgrVigentes, aso, ltcat, ppp, os };
+      return { pgr, pgrVigentes, pcmso, pcmsoVigentes, aso, ltcat, ppp, os };
     },
   });
 
-  const DOCS = [
+  interface DocItem {
+    key: string;
+    nome: string;
+    norma: string;
+    descricao: string;
+    icone: any;
+    cor: string;
+    total?: number | null;
+    vigentes?: number | null;
+    rotulo?: string;
+    subInfo?: string;
+    abrir: () => void;
+  }
+
+  const DOCS: DocItem[] = [
     {
       key: "pgr", nome: "PGR", norma: "NR-01",
       descricao: "Programa de Gerenciamento de Riscos",
@@ -65,7 +87,8 @@ export function CentralDocumentacaoTab(_props: Props = {}) {
       key: "pcmso", nome: "PCMSO", norma: "NR-07",
       descricao: "Controle Médico de Saúde Ocupacional",
       icone: Stethoscope, cor: "text-blue-600 dark:text-blue-400",
-      total: c?.aso, rotulo: "ASO(s)",
+      total: c?.pcmso, vigentes: c?.pcmsoVigentes,
+      subInfo: c?.aso != null && c.aso > 0 ? `${c.aso} ASO(s) emitido(s)` : undefined,
       abrir: () => navigate("/pcmso/dashboard"),
     },
     {
@@ -159,6 +182,11 @@ export function CentralDocumentacaoTab(_props: Props = {}) {
                       <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mt-1.5">
                         {d.rotulo || "documento(s)"} {d.vigentes ? `(${d.vigentes} em vigor)` : ""}
                       </span>
+                      {d.subInfo && (
+                        <span className="text-[10px] text-muted-foreground/80 font-medium mt-0.5">
+                          {d.subInfo}
+                        </span>
+                      )}
                     </div>
                     
                     <Button 

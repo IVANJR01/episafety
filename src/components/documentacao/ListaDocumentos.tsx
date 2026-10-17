@@ -22,13 +22,14 @@ import { PGR_STATUS_COLOR, PGR_STATUS_LABEL, PgrStatus } from "@/lib/pgrTypes";
 const TIPOS = [
   { id: "todos", rotulo: "Todos os tipos" },
   { id: "pgr", rotulo: "PGR" },
+  { id: "pcmso", rotulo: "PCMSO" },
   { id: "ltcat", rotulo: "LTCAT" },
   { id: "ppp", rotulo: "PPP" },
 ];
 
 interface Documento {
   id: string;
-  tipo: "pgr" | "ltcat" | "ppp";
+  tipo: "pgr" | "pcmso" | "ltcat" | "ppp";
   nome: string;
   unidade: string;
   versao: string | number;
@@ -86,8 +87,11 @@ export function ListaDocumentos() {
         return error ? [] : (data || []);
       };
 
-      const [pgrs, ltcats, ppps] = await Promise.all([
-        buscar("pgr_documentos"), buscar("ltcat_documentos"), buscar("ppp_documentos"),
+      const [pgrs, pcmsos, ltcats, ppps] = await Promise.all([
+        buscar("pgr_documentos"),
+        buscar("pcmso_documentos"),
+        buscar("ltcat_documentos"),
+        buscar("ppp_documentos"),
       ]);
 
       // Contagens por PGR para estimar o progresso sem N consultas por linha.
@@ -118,7 +122,7 @@ export function ListaDocumentos() {
           return {
             id: p.id,
             tipo: "pgr" as const,
-            nome: `PGR ${p.data_vigencia_inicio?.slice(0, 4) || ""}`.trim(),
+            nome: `PGR ${p.data_vigencia_inicio?.slice(0, 4) || ""}`.trim() || "PGR",
             unidade: p.unidade_id || p.empresa_id,
             versao: p.versao,
             status: p.status,
@@ -126,6 +130,29 @@ export function ListaDocumentos() {
             responsavel: p.resp_tec_nome || null,
             progresso: Math.round((marcos.filter(Boolean).length / marcos.length) * 100),
             rota: `/pgr/${p.id}`,
+          };
+        }),
+        ...pcmsos.map((p: any) => {
+          const marcos = [
+            !!p.medico_nome || !!p.medico_coordenador_id,
+            !!p.pgr_base_id,
+            !!p.data_vigencia_inicio,
+            p.status === "vigente" || p.status === "ativo",
+          ];
+          const pct = p.status === "vigente" || p.status === "ativo"
+            ? 100
+            : Math.round((marcos.filter(Boolean).length / marcos.length) * 100);
+          return {
+            id: p.id,
+            tipo: "pcmso" as const,
+            nome: `PCMSO ${p.data_vigencia_inicio?.slice(0, 4) || p.created_at?.slice(0, 4) || ""}`.trim() || "PCMSO",
+            unidade: p.unidade_id || p.empresa_id,
+            versao: p.versao ?? 1,
+            status: p.status || "rascunho",
+            atualizado_em: p.updated_at || p.created_at,
+            responsavel: p.medico_nome || null,
+            progresso: pct,
+            rota: `/pcmso/elaborar/${p.id}`,
           };
         }),
         ...ltcats.map((l: any) => ({
@@ -260,8 +287,8 @@ export function ListaDocumentos() {
                     <Badge variant="outline" className="text-[11px] uppercase">{d.tipo}</Badge>
                     <Badge variant="outline" className="text-[11px] font-mono">v{d.versao}</Badge>
                     <Badge variant="outline"
-                      className={`text-[11px] ${PGR_STATUS_COLOR[d.status as PgrStatus] || ""}`}>
-                      {PGR_STATUS_LABEL[d.status as PgrStatus] || d.status}
+                      className={`text-[11px] ${PGR_STATUS_COLOR[d.status as PgrStatus] || (d.status === "ativo" ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "")}`}>
+                      {PGR_STATUS_LABEL[d.status as PgrStatus] || (d.status === "ativo" ? "Ativo" : d.status)}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-0.5">
@@ -299,7 +326,7 @@ export function ListaDocumentos() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        onClick={() => navigate(`${d.rota}${d.tipo === "pgr" ? "?etapa=emissao" : ""}`)}>
+                        onClick={() => navigate(`${d.rota}${d.tipo === "pgr" || d.tipo === "pcmso" ? "?etapa=emissao" : ""}`)}>
                         <Eye className="h-4 w-4 mr-2" /> Visualizar documento
                       </DropdownMenuItem>
                       {d.tipo === "pgr" && (
