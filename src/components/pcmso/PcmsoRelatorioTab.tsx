@@ -57,6 +57,7 @@ export default function PcmsoRelatorioTab({ pcmso }: PcmsoRelatorioTabProps) {
     enabled: !!pcmso.empresa_id,
     queryFn: async () => {
       try {
+        let listaAsos: any[] = [];
         const { data, error } = await supabase
           .from("asos")
           .select(`
@@ -74,15 +75,49 @@ export default function PcmsoRelatorioTab({ pcmso }: PcmsoRelatorioTabProps) {
 
         if (error) {
           console.warn("Consulta completa de ASOs falhou, tentando fallback simples:", error);
-          const { data: fallback, error: errFallback } = await supabase
+          const { data: fallback } = await supabase
             .from("asos")
             .select("id, tipo_exame, status_aptidao, status, data_emissao, funcionario_id, funcionarios:funcionario_id(setor, cargo)")
             .eq("empresa_id", pcmso.empresa_id)
             .neq("status", "cancelado");
-          if (errFallback) throw errFallback;
-          return fallback || [];
+          listaAsos = fallback || [];
+        } else {
+          listaAsos = data || [];
         }
-        return data || [];
+
+        // Consolida também registros da tabela de controle 'exames' (matriz clínica)
+        // para funcionários que ainda não foram convertidos formalmente em 'asos'
+        const { data: examesData } = await supabase
+          .from("exames")
+          .select("id, tipo, resultado, data, data_vencimento, funcionario_id, funcionarios:funcionario_id(nome, setor, cargo)")
+          .eq("empresa_id", pcmso.empresa_id);
+
+        if (examesData && examesData.length > 0) {
+          const idsJaEmAsos = new Set(listaAsos.map((a: any) => a.funcionario_id));
+          const novosExames = examesData.filter((e: any) => e.funcionario_id && !idsJaEmAsos.has(e.funcionario_id));
+          
+          novosExames.forEach((e: any) => {
+            const res = (e.resultado || "apto").toLowerCase();
+            const aptidao = res.includes("restri")
+              ? "apto_restricao"
+              : res.includes("inapto")
+              ? "inapto"
+              : "apto";
+
+            listaAsos.push({
+              id: e.id,
+              tipo_exame: e.tipo || "periodico",
+              status_aptidao: aptidao,
+              status: "emitido",
+              data_emissao: e.data,
+              funcionario_id: e.funcionario_id,
+              funcionarios: e.funcionarios,
+              aso_exames: [],
+            });
+          });
+        }
+
+        return listaAsos;
       } catch (e) {
         console.error("Erro ao carregar ASOs para o Relatório Analítico:", e);
         return [];
