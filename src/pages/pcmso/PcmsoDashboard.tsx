@@ -97,7 +97,7 @@ export default function PcmsoDashboard() {
 
   // Indicadores simples
   const total = pcmsos.length;
-  const vigentes = pcmsos.filter((p) => p.status === "vigente").length;
+  const vigentes = pcmsos.filter((p) => p.status === "vigente" || p.status === "ativo").length;
   const rascunhos = pcmsos.filter((p) => p.status === "rascunho").length;
 
   return (
