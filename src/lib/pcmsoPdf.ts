@@ -1293,48 +1293,258 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     },
   ];
 
-  cronogramaAcoes.forEach((acao) => {
-    ensureSpace(b, 26);
+  /**
+   * Desenha o Quadro Oficial do Cronograma Anual de Ações e Treinamentos (NR-07)
+   * Colunas: AÇÃO DE SAÚDE E METAS | RESPONSÁVEL | PREVISÃO | GRADE 12 MESES (JAN-DEZ) | STATUS
+   * Compacta e organiza de forma que todas as ações caibam em 1 página, reduzindo folhas do documento.
+   */
+  const desenharQuadroCronogramaAnual = (
+    acoes: any[],
+    anoRef: string
+  ) => {
+    const colW = [70, 24, 22, 50.4, 13.6]; // Total = 180mm (LARGURA_UTIL)
+    const numMeses = 12;
+    const largMes = colW[3] / numMeses; // 4.2mm por mês
+    const MESES_ROTULOS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
 
+    const desenharCabecalho = () => {
+      ensureSpace(b, 12);
+      const cabH = 9.0;
+
+      // Fundo do cabeçalho
+      doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+      doc.rect(MARGEM, b.y, LARGURA_UTIL, cabH, "F");
+
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(0.2);
+
+      // Divisórias verticais do cabeçalho
+      doc.line(MARGEM + colW[0], b.y, MARGEM + colW[0], b.y + cabH);
+      doc.line(MARGEM + colW[0] + colW[1], b.y, MARGEM + colW[0] + colW[1], b.y + cabH);
+      doc.line(MARGEM + colW[0] + colW[1] + colW[2], b.y, MARGEM + colW[0] + colW[1] + colW[2], b.y + cabH);
+      doc.line(MARGEM + colW[0] + colW[1] + colW[2] + colW[3], b.y, MARGEM + colW[0] + colW[1] + colW[2] + colW[3], b.y + cabH);
+
+      // Textos das colunas 1, 2, 3 e 5
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.5);
+      doc.setTextColor(255, 255, 255);
+      doc.text("AÇÃO DE SAÚDE / PROGRAMA PREVENTIVO (NR-07)", MARGEM + 3, b.y + 5.5);
+      doc.text("RESPONSÁVEL", MARGEM + colW[0] + colW[1] / 2, b.y + 5.5, { align: "center" });
+      doc.text("PREVISÃO", MARGEM + colW[0] + colW[1] + colW[2] / 2, b.y + 5.5, { align: "center" });
+      doc.text("STATUS", MARGEM + colW[0] + colW[1] + colW[2] + colW[3] + colW[4] / 2, b.y + 5.5, { align: "center" });
+
+      // Coluna 4: Grade Anual de Meses
+      const startXMeses = MARGEM + colW[0] + colW[1] + colW[2];
+      doc.setFontSize(5.5);
+      doc.setTextColor(COR_SECUNDARIA[0], COR_SECUNDARIA[1], COR_SECUNDARIA[2]);
+      doc.text(`CRONOGRAMA ANUAL (${anoRef})`, startXMeses + colW[3] / 2, b.y + 3.2, { align: "center" });
+
+      // Linha divisória horizontal sutil
+      doc.line(startXMeses, b.y + 4.2, startXMeses + colW[3], b.y + 4.2);
+
+      // Rótulos dos 12 meses
+      doc.setFontSize(4.6);
+      doc.setTextColor(255, 255, 255);
+      MESES_ROTULOS.forEach((mNome, i) => {
+        const cx = startXMeses + i * largMes;
+        if (i > 0) doc.line(cx, b.y + 4.2, cx, b.y + cabH);
+        doc.text(mNome, cx + largMes / 2, b.y + 7.4, { align: "center" });
+      });
+
+      b.y += cabH;
+    };
+
+    desenharCabecalho();
+
+    // Helper para identificar o(s) mês(es) da ação
+    const identificarMesesAcao = (acao: any): number[] => {
+      const meses: number[] = [];
+
+      // 1. Data planejada explícita (YYYY-MM-DD ou YYYY-MM)
+      if (acao.data_planejada) {
+        const match = String(acao.data_planejada).match(/\d{4}-(\d{2})/);
+        if (match) {
+          const m = parseInt(match[1], 10);
+          if (m >= 1 && m <= 12) meses.push(m);
+        }
+      }
+
+      // 2. Se não veio data, inferir pelo texto do título da ação (ex: "Janeiro Branco", "Outubro Rosa", etc.)
+      if (meses.length === 0 && acao.acao) {
+        const t = acao.acao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const MAPA: [string, number][] = [
+          ["janeiro", 1], ["fevereiro", 2], ["marco", 3], ["abril", 4],
+          ["maio", 5], ["junho", 6], ["julho", 7], ["agosto", 8],
+          ["setembro", 9], ["outubro", 10], ["novembro", 11], ["dezembro", 12],
+        ];
+        for (const [nome, num] of MAPA) {
+          if (t.includes(nome)) meses.push(num);
+        }
+      }
+
+      return meses;
+    };
+
+    acoes.forEach((acao, idx) => {
+      const tituloLimpo = (acao.acao || "")
+        .replace(/^AÇÃO:\s*/i, "")
+        .replace(/^ACAO:\s*/i, "")
+        .trim();
+
+      const obsTexto = (acao.observacoes || "Execução integral conforme cronograma pactuado.").trim();
+
+      const linhasTitulo = doc.splitTextToSize(tituloLimpo, colW[0] - 5);
+      const linhasObs = doc.splitTextToSize(obsTexto, colW[0] - 5);
+      const linhasResp = doc.splitTextToSize(acao.responsavel || "Direção da Empresa", colW[1] - 4);
+
+      const alturaConteudo = (linhasTitulo.length * 3.0) + (linhasObs.length * 2.4) + 3.2;
+      const alturaLinha = Math.max(8.5, alturaConteudo);
+
+      if (b.y + alturaLinha > ALTURA - 22) {
+        b.doc.addPage();
+        b.paginaAtual++;
+        b.y = 22;
+        desenharCabecalho();
+      }
+
+      // Fundo zebrado
+      doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
+      doc.setLineWidth(0.2);
+      doc.setFillColor(
+        idx % 2 === 0 ? 255 : COR_CINZA_CLARO[0],
+        idx % 2 === 0 ? 255 : COR_CINZA_CLARO[1],
+        idx % 2 === 0 ? 255 : COR_CINZA_CLARO[2]
+      );
+      doc.rect(MARGEM, b.y, LARGURA_UTIL, alturaLinha, "FD");
+
+      // Divisórias verticais
+      const xCol2 = MARGEM + colW[0];
+      const xCol3 = xCol2 + colW[1];
+      const xCol4 = xCol3 + colW[2];
+      const xCol5 = xCol4 + colW[3];
+
+      doc.line(xCol2, b.y, xCol2, b.y + alturaLinha);
+      doc.line(xCol3, b.y, xCol3, b.y + alturaLinha);
+      doc.line(xCol4, b.y, xCol4, b.y + alturaLinha);
+      doc.line(xCol5, b.y, xCol5, b.y + alturaLinha);
+
+      // Divisórias dos 12 meses
+      for (let m = 1; m < numMeses; m++) {
+        const cx = xCol4 + m * largMes;
+        doc.line(cx, b.y, cx, b.y + alturaLinha);
+      }
+
+      // Coluna 1: Título e Observações
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.4);
+      doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+      doc.text(linhasTitulo, MARGEM + 2.5, b.y + 3.2);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(5.2);
+      doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+      const yObs = b.y + 3.2 + (linhasTitulo.length * 3.0);
+      doc.text(linhasObs, MARGEM + 2.5, yObs);
+
+      // Coluna 2: Responsável
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(5.8);
+      doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
+      doc.text(linhasResp, xCol2 + 2, b.y + 4.2);
+
+      // Coluna 3: Previsão (Mês/Ano)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.0);
+      doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+      const prazoTexto = mesExtenso(acao.data_planejada) || "Durante o ano";
+      doc.text(prazoTexto, xCol3 + colW[2] / 2, b.y + alturaLinha / 2 + 1.2, { align: "center" });
+
+      // Coluna 4: Marcadores nos Meses
+      const mesesAtivos = identificarMesesAcao(acao);
+      const statusAcao = (acao.status || "Planejado").toLowerCase();
+
+      for (let m = 1; m <= numMeses; m++) {
+        const cx = xCol4 + (m - 1) * largMes;
+        const isAtivo = mesesAtivos.includes(m) || (mesesAtivos.length === 0 && m === 1);
+
+        if (isAtivo) {
+          const boxW = 3.2;
+          const boxH = Math.min(4.8, alturaLinha - 2.5);
+          const bx = cx + (largMes - boxW) / 2;
+          const by = b.y + (alturaLinha - boxH) / 2;
+
+          if (statusAcao.includes("conclu") || statusAcao.includes("realiz")) {
+            doc.setFillColor(COR_VERDE[0], COR_VERDE[1], COR_VERDE[2]);
+            doc.rect(bx, by, boxW, boxH, "F");
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(5.0);
+            doc.setTextColor(255, 255, 255);
+            doc.text("R", bx + boxW / 2, by + boxH / 2 + 1.2, { align: "center" });
+          } else if (statusAcao.includes("andamento")) {
+            doc.setFillColor(217, 119, 6); // Âmbar
+            doc.rect(bx, by, boxW, boxH, "F");
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(5.0);
+            doc.setTextColor(255, 255, 255);
+            doc.text("A", bx + boxW / 2, by + boxH / 2 + 1.2, { align: "center" });
+          } else {
+            // Planejado (default)
+            doc.setFillColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+            doc.rect(bx, by, boxW, boxH, "F");
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(5.0);
+            doc.setTextColor(255, 255, 255);
+            doc.text("P", bx + boxW / 2, by + boxH / 2 + 1.2, { align: "center" });
+          }
+        } else {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(5.0);
+          doc.setTextColor(180, 190, 205);
+          doc.text("·", cx + largMes / 2, b.y + alturaLinha / 2 + 1.0, { align: "center" });
+        }
+      }
+
+      // Coluna 5: Status
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(5.6);
+      if (statusAcao.includes("conclu") || statusAcao.includes("realiz")) {
+        doc.setTextColor(COR_VERDE[0], COR_VERDE[1], COR_VERDE[2]);
+        doc.text("Conc.", xCol5 + colW[4] / 2, b.y + alturaLinha / 2 + 1.2, { align: "center" });
+      } else if (statusAcao.includes("andamento")) {
+        doc.setTextColor(217, 119, 6);
+        doc.text("Andam.", xCol5 + colW[4] / 2, b.y + alturaLinha / 2 + 1.2, { align: "center" });
+      } else {
+        doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
+        doc.text("Plan.", xCol5 + colW[4] / 2, b.y + alturaLinha / 2 + 1.2, { align: "center" });
+      }
+
+      b.y += alturaLinha;
+    });
+
+    // Legenda Oficial do Quadro
+    ensureSpace(b, 7);
     doc.setDrawColor(COR_BORDA[0], COR_BORDA[1], COR_BORDA[2]);
-    doc.setFillColor(COR_CINZA_CLARO[0], COR_CINZA_CLARO[1], COR_CINZA_CLARO[2]);
-    doc.rect(MARGEM, b.y, LARGURA_UTIL, 6, "FD");
+    doc.setFillColor(COR_CINZA_TABELA[0], COR_CINZA_TABELA[1], COR_CINZA_TABELA[2]);
+    doc.rect(MARGEM, b.y, LARGURA_UTIL, 5.0, "FD");
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
+    doc.setFontSize(5.5);
     doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text(`AÇÃO: ${acao.acao.toUpperCase()}`, MARGEM + 3, b.y + 4.2);
-    doc.text(`Status: ${acao.status || "Planejado"}`, DIREITA - 3, b.y + 4.2, { align: "right" });
-    b.y += 6;
-
-    doc.setFillColor(255, 255, 255);
-    doc.rect(MARGEM, b.y, LARGURA_UTIL, 16, "FD");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7);
-    doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
-    doc.text("Responsável:", MARGEM + 3, b.y + 4.8);
-    doc.text("Previsão / Prazo:", MARGEM + 95, b.y + 4.8);
-    doc.text("Observações / Meta:", MARGEM + 3, b.y + 10.5);
+    doc.text("LEGENDA DO CRONOGRAMA:", MARGEM + 3, b.y + 3.4);
 
     doc.setFont("helvetica", "normal");
     doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-    doc.text(acao.responsavel || "Direção da Empresa", MARGEM + 24, b.y + 4.8);
-    /*
-     * Mês e ano, não dia.
-     *
-     * O cronograma planeja o ano — "campanha de vacinação em maio" —, e
-     * imprimir 20/05/2026 afirma um dia que ninguém combinou. Sem data
-     * cadastrada, o prazo sai em palavras.
-     */
-    const prazo = mesExtenso(acao.data_planejada);
-    doc.text(prazo || "Durante a vigência", MARGEM + 120, b.y + 4.8);
-    doc.text(acao.observacoes || "Execução integral conforme cronograma pactuado.", MARGEM + 32, b.y + 10.5, { maxWidth: LARGURA_UTIL - 36 });
+    doc.text(
+      "[ P ] Ação Planejada       [ A ] Em Andamento       [ R ] Realizada / Concluída       • Vigência Anual (NR-07)",
+      MARGEM + 38,
+      b.y + 3.4
+    );
 
-    b.y += 18;
-  });
+    b.y += 8;
+  };
 
-  b.y += 4;
+  desenharQuadroCronogramaAnual(cronogramaAcoes, anoCapa);
+
 
   // =========================================================================
   // SEÇÃO 14: TERMO DE ENCERRAMENTO E RESPONSABILIDADE (PADRÃO G91)

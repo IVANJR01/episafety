@@ -362,14 +362,15 @@ export default function PcmsoCronogramaTab({ pcmso }: PcmsoCronogramaTabProps) {
                   <TableHead className="font-semibold text-xs">Ação de Saúde</TableHead>
                   <TableHead className="font-semibold text-xs">Responsável</TableHead>
                   <TableHead className="font-semibold text-xs">Previsão</TableHead>
-                  <TableHead className="w-44 font-semibold text-xs">Status</TableHead>
+                  <TableHead className="font-semibold text-xs hidden md:table-cell text-center">Grade Anual (12 Meses)</TableHead>
+                  <TableHead className="w-40 font-semibold text-xs">Status</TableHead>
                   {!formDisabled && <TableHead className="w-24 text-right font-semibold text-xs">Ações</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={formDisabled ? 4 : 5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={formDisabled ? 5 : 6} className="text-center py-8 text-muted-foreground">
                       <div className="flex items-center justify-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin text-primary" />
                         Carregando cronograma...
@@ -378,7 +379,7 @@ export default function PcmsoCronogramaTab({ pcmso }: PcmsoCronogramaTabProps) {
                   </TableRow>
                 ) : acoes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={formDisabled ? 4 : 5} className="text-center py-10">
+                    <TableCell colSpan={formDisabled ? 5 : 6} className="text-center py-10">
                       <div className="max-w-md mx-auto space-y-3">
                         <div className="h-10 w-10 mx-auto rounded-full bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-600">
                           <CalendarDays className="h-5 w-5" />
@@ -416,10 +417,34 @@ export default function PcmsoCronogramaTab({ pcmso }: PcmsoCronogramaTabProps) {
                   </TableRow>
                 ) : (
                   acoes.map((a: any) => {
+                    const identificarMesAtivo = (numMes: number): boolean => {
+                      if (a.data_planejada) {
+                        const m = String(a.data_planejada).match(/\d{4}-(\d{2})/);
+                        if (m && parseInt(m[1], 10) === numMes) return true;
+                      }
+                      if (a.acao) {
+                        const t = a.acao.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        const MAPA: [string, number][] = [
+                          ["janeiro", 1], ["fevereiro", 2], ["marco", 3], ["abril", 4],
+                          ["maio", 5], ["junho", 6], ["julho", 7], ["agosto", 8],
+                          ["setembro", 9], ["outubro", 10], ["novembro", 11], ["dezembro", 12],
+                        ];
+                        for (const [nome, num] of MAPA) {
+                          if (t.includes(nome) && num === numMes) return true;
+                        }
+                      }
+                      return false;
+                    };
+
+                    const MESES_ROTULOS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+                    const MESES_NOMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
                     return (
                       <TableRow key={a.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
                         <TableCell className="font-medium">
-                          <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">{a.acao}</div>
+                          <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                            {a.acao.replace(/^AÇÃO:\s*/i, "").replace(/^ACAO:\s*/i, "")}
+                          </div>
                           {a.observacoes && (
                             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{a.observacoes}</p>
                           )}
@@ -429,13 +454,39 @@ export default function PcmsoCronogramaTab({ pcmso }: PcmsoCronogramaTabProps) {
                         </TableCell>
                         <TableCell className="text-xs whitespace-nowrap">
                           {mesCurto(a.data_planejada) ? (
-                            <Badge variant="outline" className="font-normal text-xs bg-slate-50">
+                            <Badge variant="outline" className="font-semibold text-xs bg-slate-50 text-slate-700">
                               {mesCurto(a.data_planejada)}
                             </Badge>
                           ) : (
                             <span className="text-muted-foreground italic text-xs">Durante a vigência</span>
                           )}
                         </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <div className="flex items-center justify-center gap-0.5">
+                            {MESES_ROTULOS.map((rotulo, idx) => {
+                              const mNum = idx + 1;
+                              const ativo = identificarMesAtivo(mNum);
+                              return (
+                                <div
+                                  key={idx}
+                                  title={`${MESES_NOMES[idx]}: ${ativo ? a.status || "Planejado" : "Sem atividade programada"}`}
+                                  className={`h-5 w-5 rounded text-[9px] font-bold flex items-center justify-center transition-all ${
+                                    ativo
+                                      ? a.status === "Concluído"
+                                        ? "bg-emerald-600 text-white shadow-2xs scale-105"
+                                        : a.status === "Em Andamento"
+                                        ? "bg-amber-500 text-white shadow-2xs scale-105"
+                                        : "bg-indigo-600 text-white shadow-2xs scale-105"
+                                      : "bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600"
+                                  }`}
+                                >
+                                  {rotulo}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </TableCell>
+
                         <TableCell>
                           <Select
                             value={a.status || "Planejado"}
