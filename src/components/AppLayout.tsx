@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, ShieldCheck, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText, Bell, Boxes, RefreshCw, FileWarning, Briefcase, Network, BookOpen, Flame, Zap } from "lucide-react";
+import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, ShieldCheck, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText, Bell, Boxes, RefreshCw, Briefcase, Network, BookOpen, Flame, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,10 +43,16 @@ const epiItems: NavItem[] = [
   { path: "/relatorios", label: "Relatórios", icon: BarChart3, moduleKey: "relatorios" },
 ];
 
-// Gestão de ASO — Saúde Ocupacional e Ocorrências
-const asoItems: NavItem[] = [
+/*
+ * Gestão de ASO — saúde ocupacional.
+ *
+ * A CAT saiu daqui a pedido do cliente. Ela não é controle médico de
+ * saúde: é a comunicação de um acidente à Previdência. A tela continua
+ * existindo em /cat, com os registros intactos — o que saiu foi o atalho
+ * deste grupo.
+ */
+export const asoItems: NavItem[] = [
   { path: "/aso", label: "Exames Ocupacionais", icon: Stethoscope, moduleKey: "aso" },
-  { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
 ];
 
 // Portal RH — acesso restrito do RH a ASOs liberados
