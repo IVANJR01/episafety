@@ -149,6 +149,12 @@ export interface SstGes {
    * em `trabalhadores`.
    */
   quantidade_trabalhadores?: number | null;
+  qtd_trabalhadores?: number | null;
+  trabalhadores_expostos?: number | null;
+  /**
+   * Quantidade de colaboradores ativos no cadastro vinculados a este GES.
+   */
+  trabalhadores_cadastrados?: number;
   validade_inicio: string;
   validade_fim?: string | null;
   responsavel_inspecao?: string | null;

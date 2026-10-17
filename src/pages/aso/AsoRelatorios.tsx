@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,13 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FileSpreadsheet, FileText, Download } from "lucide-react";
+import { FileSpreadsheet, FileText, Download, ClipboardList } from "lucide-react";
 import { differenceInDays, format, parseISO } from "date-fns";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 const RELATORIOS = [
   { v: "emitidos", l: "ASOs emitidos por período" },
+  { v: "analitico_nr07", l: "Relatório Analítico Anual (NR-07 - Item 7.6.2)" },
   { v: "vencidos", l: "ASOs vencidos" },
   { v: "vencendo", l: "ASOs vencendo em 30 dias" },
   { v: "por_tipo", l: "ASOs por tipo de exame" },
@@ -30,6 +32,7 @@ const TIPO: Record<string, string> = {
 };
 
 export default function AsoRelatorios() {
+  const navigate = useNavigate();
   const { empresaId } = useAuth();
   const [tipoRel, setTipoRel] = useState("emitidos");
   const [from, setFrom] = useState(format(new Date(Date.now() - 90 * 86400000), "yyyy-MM-dd"));
@@ -75,6 +78,29 @@ export default function AsoRelatorios() {
 
     if (tipoRel === "emitidos") {
       return ativos.filter((a: any) => a.data_emissao >= from && a.data_emissao <= to);
+    }
+    if (tipoRel === "analitico_nr07") {
+      const filtrados = ativos.filter((a: any) => (!from || a.data_emissao >= from) && (!to || a.data_emissao <= to));
+      const total = filtrados.length;
+      const aptos = filtrados.filter((a: any) => a.status_aptidao === "apto").length;
+      const restricoes = filtrados.filter((a: any) => a.status_aptidao === "apto_restricao").length;
+      const inaptos = filtrados.filter((a: any) => a.status_aptidao === "inapto").length;
+
+      const porTipo = new Map<string, number>();
+      filtrados.forEach((a: any) => porTipo.set(a.tipo_exame, (porTipo.get(a.tipo_exame) || 0) + 1));
+
+      return [
+        { categoria: "1. TOTAL", indicador: "Total de Atestados Emitidos", quantidade: total, taxa: "100%" },
+        { categoria: "2. RESULTADOS CLÍNICOS", indicador: "Aptos sem restrição", quantidade: aptos, taxa: total > 0 ? `${((aptos / total) * 100).toFixed(1)}%` : "0%" },
+        { categoria: "2. RESULTADOS CLÍNICOS", indicador: "Aptos com restrição", quantidade: restricoes, taxa: total > 0 ? `${((restricoes / total) * 100).toFixed(1)}%` : "0%" },
+        { categoria: "2. RESULTADOS CLÍNICOS", indicador: "Inaptos para a função", quantidade: inaptos, taxa: total > 0 ? `${((inaptos / total) * 100).toFixed(1)}%` : "0%" },
+        ...[...porTipo.entries()].map(([k, v]) => ({
+          categoria: "3. MODALIDADE DO EXAME",
+          indicador: TIPO[k] || k,
+          quantidade: v,
+          taxa: total > 0 ? `${((v / total) * 100).toFixed(1)}%` : "0%",
+        })),
+      ];
     }
     if (tipoRel === "vencidos") {
       return ativos.filter((a: any) => a.data_vencimento && differenceInDays(parseISO(a.data_vencimento), today) < 0);
@@ -166,13 +192,30 @@ export default function AsoRelatorios() {
               </SelectContent>
             </Select>
           </div>
-          {tipoRel === "emitidos" && (
+          {(tipoRel === "emitidos" || tipoRel === "analitico_nr07") && (
             <>
               <div><Label>De</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
               <div><Label>Até</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
             </>
           )}
         </div>
+
+        {tipoRel === "analitico_nr07" && (
+          <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-xs text-rose-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-2xs">
+            <div>
+              <p className="font-semibold flex items-center gap-1.5 text-sm">
+                <ClipboardList className="w-4 h-4 text-rose-600" />
+                Relatório Analítico Anual — Exigência da NR-07 (Subitem 7.6.2)
+              </p>
+              <p className="text-slate-600 mt-0.5">
+                Estes dados são compilados e analisados pelo Médico Coordenador no documento oficial do PCMSO na Central de Documentação.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => navigate("/pcmso/dashboard")} className="bg-white border-rose-300 text-rose-800 hover:bg-rose-100 shrink-0 text-xs gap-1">
+              <ClipboardList className="w-3.5 h-3.5" /> Abrir no PCMSO
+            </Button>
+          </div>
+        )}
 
         <div className="flex gap-2 flex-wrap">
           <Badge variant="outline">Resultados: {dados.length}</Badge>
@@ -186,6 +229,12 @@ export default function AsoRelatorios() {
         <div className="border rounded-lg max-h-[500px] overflow-auto">
           <Table>
             <TableHeader><TableRow>
+              {tipoRel === "analitico_nr07" && <>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Indicador Epidemiológico</TableHead>
+                <TableHead className="text-right">Quantidade</TableHead>
+                <TableHead className="text-right">Taxa (%)</TableHead>
+              </>}
               {tipoRel === "por_tipo" && <><TableHead>Tipo</TableHead><TableHead>Total</TableHead></>}
               {tipoRel === "por_setor" && <><TableHead>Setor</TableHead><TableHead>Total</TableHead></>}
               {tipoRel === "sem_aso" && <><TableHead>Funcionário</TableHead><TableHead>CPF</TableHead><TableHead>Cargo</TableHead><TableHead>Empresa</TableHead></>}
@@ -196,6 +245,14 @@ export default function AsoRelatorios() {
             </TableRow></TableHeader>
             <TableBody>
               {dados.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground">Sem dados.</TableCell></TableRow>}
+              {tipoRel === "analitico_nr07" && (dados as any[]).map((r, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-medium text-xs text-muted-foreground">{r.categoria}</TableCell>
+                  <TableCell className="font-semibold text-sm">{r.indicador}</TableCell>
+                  <TableCell className="text-right font-mono font-bold">{r.quantidade}</TableCell>
+                  <TableCell className="text-right font-mono text-emerald-700 font-semibold">{r.taxa}</TableCell>
+                </TableRow>
+              ))}
               {tipoRel === "por_tipo" && (dados as any[]).map((r, i) => <TableRow key={i}><TableCell>{r.tipo}</TableCell><TableCell>{r.total}</TableCell></TableRow>)}
               {tipoRel === "por_setor" && (dados as any[]).map((r, i) => <TableRow key={i}><TableCell>{r.setor}</TableCell><TableCell>{r.total}</TableCell></TableRow>)}
               {tipoRel === "sem_aso" && (dados as any[]).map((r) => (

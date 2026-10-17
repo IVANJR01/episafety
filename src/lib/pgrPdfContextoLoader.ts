@@ -66,14 +66,30 @@ export async function carregarPgrPdfContexto(pgr: PgrDocumento | any): Promise<P
     return error ? [] : (data || []);
   };
 
-  const [ambientes, processos, setores, gesCru, funcoes, atividades] = await Promise.all([
+  const [ambientes, processos, setores, gesCru, funcoes, atividades, funcionariosRes, gheGesCru] = await Promise.all([
     daEmpresa("sst_ambientes"),
     daEmpresa("sst_processos"),
     daEmpresa("sst_setores"),
     daEmpresa("sst_ges", "codigo"),
     daEmpresa("sst_funcoes"),
     daEmpresa("sst_atividades"),
+    (supabase.from as any)("funcionarios").select("id, ghe_id").eq("empresa_id", pgr.empresa_id).is("data_demissao", null),
+    daEmpresa("ghe_ges", "codigo"),
   ]);
+
+  const contagemPorGes = new Map<string, number>();
+  ((funcionariosRes as any)?.data || []).forEach((f: any) => {
+    if (f.ghe_id) {
+      contagemPorGes.set(f.ghe_id, (contagemPorGes.get(f.ghe_id) || 0) + 1);
+    }
+  });
+
+  const gheTrabalhadoresMap = new Map<string, number>();
+  ((gheGesCru as any[]) || []).forEach((g: any) => {
+    if (g.id && g.trabalhadores_expostos != null) {
+      gheTrabalhadoresMap.set(g.id, Number(g.trabalhadores_expostos));
+    }
+  });
 
   const [vincSetor, vincFuncao] = await Promise.all([
     (supabase.from as any)("ghe_setores").select("ghe_id, setor_id, nome").eq("empresa_id", pgr.empresa_id),
@@ -107,20 +123,29 @@ export async function carregarPgrPdfContexto(pgr: PgrDocumento | any): Promise<P
     funcoesPorGes.get(v.ghe_id)!.push({ nome: v.nome_funcao });
   });
 
-  const gesDetalhes = (gesCru as any[]).map((g: any) => ({
-    ...g,
-    qtd_trabalhadores: g.quantidade_trabalhadores ?? g.qtd_trabalhadores ?? null,
-    nome: nomeDoGrupo({
-      armazenado: g.nome,
-      codigo: g.codigo,
-      setores: setoresDoGrupo(setoresDaFuncaoPorGes.get(g.id), reservaPorGes.get(g.id)),
-    }),
-    criterio_agrupamento: criterioDoGrupo({
-      armazenado: g.criterio_agrupamento,
-      setorNome: setoresDoGrupo(setoresDaFuncaoPorGes.get(g.id), reservaPorGes.get(g.id)),
-      funcoes: funcoesPorGes.get(g.id),
-    }),
-  }));
+  const gesDetalhes = (gesCru as any[]).map((g: any) => {
+    const manual = g.trabalhadores ?? g.quantidade_trabalhadores ?? g.qtd_trabalhadores ?? gheTrabalhadoresMap.get(g.id);
+    const n = (manual !== undefined && manual !== null && manual !== "")
+      ? Number(manual)
+      : (contagemPorGes.get(g.id) ?? null);
+
+    return {
+      ...g,
+      trabalhadores: n,
+      quantidade_trabalhadores: n,
+      qtd_trabalhadores: n,
+      nome: nomeDoGrupo({
+        armazenado: g.nome,
+        codigo: g.codigo,
+        setores: setoresDoGrupo(setoresDaFuncaoPorGes.get(g.id), reservaPorGes.get(g.id)),
+      }),
+      criterio_agrupamento: criterioDoGrupo({
+        armazenado: g.criterio_agrupamento,
+        setorNome: setoresDoGrupo(setoresDaFuncaoPorGes.get(g.id), reservaPorGes.get(g.id)),
+        funcoes: funcoesPorGes.get(g.id),
+      }),
+    };
+  });
 
   const classePorItem = new Map<string, string | null>();
   (inv.data || []).forEach((i: any) => classePorItem.set(i.id, i.classificacao ?? null));

@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, FileText, Users, Stethoscope, Plus, ListChecks, Briefcase, Upload, Layers, BarChart3, Shield, MapPin, ClipboardList, Settings } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Stethoscope, Plus, ListChecks, Briefcase, Upload, Layers, BarChart3, Shield, MapPin, ClipboardList, Settings, UserCheck } from "lucide-react";
 import AsoDashboard from "./AsoDashboard";
 import AsoList from "./AsoList";
 import AsoMedicos from "./AsoMedicos";
@@ -18,6 +19,7 @@ import AsoDiagnostico from "@/components/aso/AsoDiagnostico";
 import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
 
 export default function AsoModule() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("dashboard");
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -36,7 +38,17 @@ export default function AsoModule() {
             Exames
           </h1>
           <p className="text-sm text-muted-foreground">Controle de exames ocupacionais, ASOs, vencimentos e renovações.</p>
+        </div>
 
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => navigate("/rh/asos")} className="text-xs gap-1.5 bg-white shadow-2xs">
+            <UserCheck className="w-4 h-4 text-indigo-600" />
+            Emitir ASO (Portal RH)
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate("/pcmso/dashboard")} className="text-xs gap-1.5 bg-white shadow-2xs">
+            <ClipboardList className="w-4 h-4 text-teal-600" />
+            Documentos PCMSO (NR-07)
+          </Button>
         </div>
       </div>
 

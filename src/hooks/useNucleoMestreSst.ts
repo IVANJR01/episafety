@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
@@ -285,6 +286,35 @@ export function useNucleoMestreSst() {
   }));
   const effectiveEstabelecimentos = unionById(estabelecimentos, legacyEmpresasAsSst);
 
+  // Contagem de colaboradores ativos por GES a partir do cadastro de funcionários
+  const { data: activeFuncionarios = [] } = useQuery({
+    queryKey: ["sst-funcionarios-ativos", activeEmpresaId],
+    enabled: !!activeEmpresaId,
+    queryFn: async () => {
+      if (!activeEmpresaId) return [];
+      const { data, error } = await supabase
+        .from("funcionarios")
+        .select("id, nome, cargo, setor, ghe_id")
+        .eq("empresa_id", activeEmpresaId)
+        .is("data_demissao", null);
+      if (error) {
+        console.error("Error fetching active funcionarios for SST GES count:", error);
+        return [];
+      }
+      return data || [];
+    },
+  });
+
+  const contagemTrabalhadoresPorGes = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const f of activeFuncionarios as any[]) {
+      if (f.ghe_id) {
+        mapa.set(f.ghe_id, (mapa.get(f.ghe_id) || 0) + 1);
+      }
+    }
+    return mapa;
+  }, [activeFuncionarios]);
+
   const legacyGesAsSst = legacyGhe.map((g: any) => ({
     id: g.id,
     empresa_id: g.empresa_id,
@@ -293,8 +323,26 @@ export function useNucleoMestreSst() {
     descricao: g.descricao || g.descricao_ambiente || "GES importado da base legada",
     criterio_agrupamento: g.processo ? `Processo: ${g.processo}` : "Importado automaticamente do cadastro de GES existente",
     validade_inicio: g.created_at ? g.created_at.substring(0, 10) : new Date().toISOString().substring(0, 10),
+    trabalhadores: g.trabalhadores_expostos ?? g.trabalhadores ?? g.quantidade_trabalhadores ?? null,
+    trabalhadores_expostos: g.trabalhadores_expostos ?? null,
   }));
-  const effectiveGesList = unionById(gesList, legacyGesAsSst);
+  const uniaoGes = unionById(gesList, legacyGesAsSst);
+  const effectiveGesList = useMemo(() => {
+    return uniaoGes.map((g: any) => {
+      const doCadastro = contagemTrabalhadoresPorGes.get(g.id);
+      const manual = g.trabalhadores ?? g.quantidade_trabalhadores ?? g.trabalhadores_expostos ?? g.qtd_trabalhadores;
+      const numTrabalhadores = (manual !== undefined && manual !== null && manual !== "")
+        ? Number(manual)
+        : (doCadastro !== undefined ? doCadastro : null);
+      return {
+        ...g,
+        trabalhadores: numTrabalhadores,
+        quantidade_trabalhadores: numTrabalhadores,
+        qtd_trabalhadores: numTrabalhadores,
+        trabalhadores_cadastrados: doCadastro ?? 0,
+      };
+    });
+  }, [uniaoGes, contagemTrabalhadoresPorGes]);
 
   const legacySetoresAsSst = legacySetores.map((s: any) => ({
     id: s.id,

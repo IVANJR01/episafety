@@ -13,7 +13,8 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
-import { Eye, FileDown, Printer, Search, LogOut, FileText, X, FilePlus2, AlertTriangle, ChevronsUpDown, Check } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Eye, FileDown, Printer, Search, LogOut, FileText, X, FilePlus2, AlertTriangle, ChevronsUpDown, Check, Stethoscope, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { differenceInDays, parseISO, format, addYears, addDays } from "date-fns";
 import { gerarPdfAso, gerarPdfAsoBlob } from "@/lib/asoPdf";
@@ -87,6 +88,7 @@ async function logAcao(opts: { empresa_id: string; aso_id: string; funcionario_i
 export default function PortalRH() {
   const { user, signOut, empresaScopeIds, isSuperAdmin } = useAuth() as any;
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<"emitir" | "historico">("emitir");
 
   // -------- EMITIR --------
@@ -480,7 +482,17 @@ export default function PortalRH() {
               </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={signOut} className="gap-1"><LogOut className="h-4 w-4" />Sair</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate("/aso")} className="hidden sm:inline-flex text-xs gap-1.5 bg-white shadow-2xs">
+              <Stethoscope className="h-3.5 w-3.5 text-teal-600" />
+              Painel de Exames
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate("/pcmso/dashboard")} className="hidden sm:inline-flex text-xs gap-1.5 bg-white shadow-2xs">
+              <ClipboardList className="h-3.5 w-3.5 text-indigo-600" />
+              PCMSO (NR-07)
+            </Button>
+            <Button variant="outline" size="sm" onClick={signOut} className="gap-1"><LogOut className="h-4 w-4" />Sair</Button>
+          </div>
         </div>
       </header>
 

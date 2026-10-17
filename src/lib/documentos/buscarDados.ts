@@ -29,14 +29,24 @@ interface DadosDoGes {
 }
 
 async function dadosDeGes(empresaId: string): Promise<Record<string, DadosDoGes>> {
-  const [novo, legado] = await Promise.all([
+  const [novo, legado, funcs] = await Promise.all([
     (supabase.from as any)("sst_ges").select("*").eq("empresa_id", empresaId),
     (supabase.from as any)("ghe_ges").select("*").eq("empresa_id", empresaId),
+    (supabase.from as any)("funcionarios").select("id, ghe_id").eq("empresa_id", empresaId).is("data_demissao", null),
   ]);
+  const contagemPorGes: Record<string, number> = {};
+  for (const f of funcs.data || []) {
+    if (f.ghe_id) {
+      contagemPorGes[f.ghe_id] = (contagemPorGes[f.ghe_id] || 0) + 1;
+    }
+  }
   const mapa: Record<string, DadosDoGes> = {};
   const guardar = (g: any) => {
     if (!g?.id) return;
-    const n = g.trabalhadores ?? g.quantidade_trabalhadores;
+    const manual = g.trabalhadores ?? g.quantidade_trabalhadores ?? g.trabalhadores_expostos ?? g.qtd_trabalhadores;
+    const n = (manual !== undefined && manual !== null && manual !== "")
+      ? Number(manual)
+      : (contagemPorGes[g.id] ?? null);
     mapa[g.id] = {
       codigo: g.codigo || "",
       trabalhadores: n === undefined || n === null ? null : Number(n),
