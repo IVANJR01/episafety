@@ -7,9 +7,12 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, FileText, Activity, Trash2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ArrowLeft, Plus, FileText, Activity, Trash2, Users, Settings } from "lucide-react";
 import { PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus } from "@/lib/pgrTypes";
 import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
+import AsoMedicos from "@/pages/aso/AsoMedicos";
+import AsoCatalogo from "@/pages/aso/AsoCatalogo";
 import { toast } from "sonner";
 
 // Definindo a interface base (parecida com a do PGR)
@@ -112,7 +115,7 @@ export default function PcmsoDashboard() {
             <h1 className="text-2xl font-bold">Documentos PCMSO</h1>
           </div>
           <p className="text-muted-foreground ml-10">
-            Gerador do Programa de Controle Médico de Saúde Ocupacional (NR-07).
+            Programa de Controle Médico de Saúde Ocupacional (NR-07).
           </p>
         </div>
 
@@ -123,82 +126,109 @@ export default function PcmsoDashboard() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Documentos</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{total}</div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vigentes</CardTitle>
-            <Activity className="h-4 w-4 text-emerald-600" />
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold text-emerald-600">{vigentes}</div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rascunhos</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{rascunhos}</div></CardContent>
-        </Card>
-      </div>
+      <Tabs defaultValue="documentos" className="w-full space-y-4">
+        <TabsList className="bg-slate-100 p-1 border">
+          <TabsTrigger value="documentos" className="gap-1.5 text-xs">
+            <FileText className="h-3.5 w-3.5" />
+            Documentos PCMSO
+          </TabsTrigger>
+          <TabsTrigger value="medicos" className="gap-1.5 text-xs">
+            <Users className="h-3.5 w-3.5" />
+            Médicos do Trabalho
+          </TabsTrigger>
+          <TabsTrigger value="exames" className="gap-1.5 text-xs">
+            <Settings className="h-3.5 w-3.5" />
+            Catálogo & Config. Exames
+          </TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico de Documentos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {pcmsos.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhum documento PCMSO encontrado.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {pcmsos.map((p) => (
-                <div key={p.id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">Versão {p.versao}</span>
-                      <Badge variant="outline" className={PGR_STATUS_COLOR[p.status] || ""}>
-                        {PGR_STATUS_LABEL[p.status] || p.status}
-                      </Badge>
-                      {p.created_at && (
-                        <span className="text-xs text-muted-foreground">
-                          • Criado em {new Date(p.created_at).toLocaleDateString()} às {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {p.medico_nome ? `Coord: ${p.medico_nome}` : "Sem médico definido"}
-                      {p.data_vigencia_inicio ? ` • Vigência: ${new Date(p.data_vigencia_inicio).toLocaleDateString()} a ${p.data_vigencia_fim ? new Date(p.data_vigencia_fim).toLocaleDateString() : '?'}` : ""}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {p.status === "rascunho" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:bg-destructive/10 h-8 w-8"
-                        title="Excluir este rascunho"
-                        onClick={(e) => excluirRascunho(p.id, e)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button variant="outline" onClick={() => navigate(`/pcmso/elaborar/${p.id}`)}>
-                      {p.status === "rascunho" ? "Continuar" : "Visualizar"}
-                    </Button>
-                  </div>
+        <TabsContent value="documentos" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total de Documentos</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-bold">{total}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Vigentes</CardTitle>
+                <Activity className="h-4 w-4 text-emerald-600" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-bold text-emerald-600">{vigentes}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Rascunhos</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-bold">{rascunhos}</div></CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Histórico de Documentos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pcmsos.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhum documento PCMSO encontrado.
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              ) : (
+                <div className="space-y-4">
+                  {pcmsos.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">Versão {p.versao}</span>
+                          <Badge variant="outline" className={PGR_STATUS_COLOR[p.status] || ""}>
+                            {PGR_STATUS_LABEL[p.status] || p.status}
+                          </Badge>
+                          {p.created_at && (
+                            <span className="text-xs text-muted-foreground">
+                              • Criado em {new Date(p.created_at).toLocaleDateString()} às {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {p.medico_nome ? `Coord: ${p.medico_nome}` : "Sem médico definido"}
+                          {p.data_vigencia_inicio ? ` • Vigência: ${new Date(p.data_vigencia_inicio).toLocaleDateString()} a ${p.data_vigencia_fim ? new Date(p.data_vigencia_fim).toLocaleDateString() : '?'}` : ""}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {p.status === "rascunho" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:bg-destructive/10 h-8 w-8"
+                            title="Excluir este rascunho"
+                            onClick={(e) => excluirRascunho(p.id, e)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button variant="outline" onClick={() => navigate(`/pcmso/elaborar/${p.id}`)}>
+                          {p.status === "rascunho" ? "Continuar" : "Visualizar"}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="medicos" className="mt-2">
+          <AsoMedicos />
+        </TabsContent>
+
+        <TabsContent value="exames" className="mt-2">
+          <AsoCatalogo />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

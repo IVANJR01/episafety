@@ -34,6 +34,12 @@ export default function AsoMedicos() {
     },
   });
 
+  const openNew = () => {
+    setEditing(null);
+    setForm({ nome: "", crm: "", uf_crm: "CE", cpf: "", email: "", telefone: "", responsavel_pcmso: false, ativo: true });
+    setOpen(true);
+  };
+
   const openEdit = (m: any) => {
     setEditing(m);
     setForm({ ...m });
@@ -66,20 +72,14 @@ export default function AsoMedicos() {
       <CardContent className="p-4 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
           <div>
-            <h3 className="font-semibold text-slate-800">Médicos do Trabalho</h3>
+            <h3 className="font-semibold text-slate-800">Médicos do Trabalho (NR-07)</h3>
             <p className="text-xs text-muted-foreground">
-              Profissionais credenciados e vinculados ao PCMSO (NR-07) da empresa.
+              Cadastro e credenciamento de médicos examinadores e coordenador do PCMSO.
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/pcmso/dashboard")}
-            className="text-xs gap-1.5 bg-white shadow-2xs h-8 text-slate-600 self-start sm:self-auto"
-          >
-            <ClipboardList className="w-3.5 h-3.5 text-teal-600" />
-            Gerenciar no PCMSO
-            <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground" />
+          <Button onClick={openNew} className="bg-slate-900 hover:bg-slate-800 text-white text-xs gap-1.5 h-8">
+            <Plus className="h-3.5 w-3.5" />
+            Novo médico
           </Button>
         </div>
         <div className="rounded-lg border overflow-x-auto">
@@ -109,7 +109,7 @@ export default function AsoMedicos() {
 
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent>
-            <DialogHeader><DialogTitle>Editar dados do médico</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editing ? "Editar médico" : "Cadastrar novo médico"}</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>CRM *</Label>
