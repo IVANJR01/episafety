@@ -255,7 +255,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
     updateMutation.mutate(obj);
   };
 
-  const formDisabled = !perms.canEdit || pcmso.status !== "rascunho";
+  const formDisabled = !perms.canEdit || pcmso.status === "arquivado" || pcmso.status === "substituido";
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -557,7 +557,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
         </CardContent>
       </Card>
 
-      {pcmso.status === "rascunho" && (
+      {!formDisabled && (
         <div className="flex justify-end pt-4 border-t">
           <Button 
             size="lg" 
@@ -570,7 +570,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            Salvar Dados Iniciais
+            {pcmso.status === "rascunho" ? "Salvar Dados Iniciais" : "Salvar Alterações"}
           </Button>
         </div>
       )}
