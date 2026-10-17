@@ -38,9 +38,9 @@ import { Layers, Plus, Edit2, Trash2, ListTree, Users } from "lucide-react";
  * coluna de sst_ges. Ler os dois evita que um cadastro feito ontem apareça
  * vazio hoje.
  */
-function nTrabalhadores(ges?: { trabalhadores?: number | null; quantidade_trabalhadores?: number | null } | null): number | null {
-  const v = ges?.trabalhadores ?? ges?.quantidade_trabalhadores;
-  return v === undefined || v === null ? null : Number(v);
+function nTrabalhadores(ges?: any): number | null {
+  const v = ges?.trabalhadores ?? ges?.quantidade_trabalhadores ?? ges?.trabalhadores_expostos ?? ges?.qtd_trabalhadores;
+  return v === undefined || v === null || v === "" ? null : Number(v);
 }
 
 export function GesExposicoesTab() {
@@ -225,10 +225,14 @@ export function GesExposicoesTab() {
                       já estiver gravado continua aparecendo; o que se grava
                       daqui para a frente é `trabalhadores`.
                     */}
-                    {nTrabalhadores(ges) != null ? (
-                      <Badge variant="secondary" className="gap-1">
-                        <Users className="w-3 h-3" aria-hidden />
+                    {nTrabalhadores(ges) != null && nTrabalhadores(ges)! > 0 ? (
+                      <Badge variant="secondary" className="gap-1 bg-emerald-50 text-emerald-800 border-emerald-200">
+                        <Users className="w-3 h-3 text-emerald-600" aria-hidden />
                         {nTrabalhadores(ges)} {nTrabalhadores(ges) === 1 ? "trabalhador" : "trabalhadores"}
+                      </Badge>
+                    ) : nTrabalhadores(ges) === 0 ? (
+                      <Badge variant="outline" className="text-slate-500 border-slate-300">
+                        0 trabalhadores
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="text-amber-700 border-amber-300">
@@ -384,7 +388,14 @@ export function GesExposicoesTab() {
               do que não dizer nada.
             */}
             <div>
-              <Label htmlFor="ges-trabalhadores">Nº de trabalhadores expostos</Label>
+              <div className="flex justify-between items-center mb-1">
+                <Label htmlFor="ges-trabalhadores">Nº de trabalhadores expostos</Label>
+                {gesFormData.id && (gesFormData as any).trabalhadores_cadastrados != null && (
+                  <span className="text-xs text-muted-foreground">
+                    {(gesFormData as any).trabalhadores_cadastrados} ativo(s) no cadastro
+                  </span>
+                )}
+              </div>
               <Input
                 id="ges-trabalhadores"
                 type="number"
@@ -398,11 +409,15 @@ export function GesExposicoesTab() {
                     ? null
                     : Math.max(0, Math.trunc(Number(e.target.value))),
                 })}
-                placeholder="Ex: 7"
+                placeholder={
+                  (gesFormData as any)?.trabalhadores_cadastrados != null
+                    ? String((gesFormData as any).trabalhadores_cadastrados)
+                    : "Ex: 7"
+                }
               />
               <p className="text-xs text-slate-500 mt-1">
-                Quantos trabalhadores pertencem a este grupo. Sai no cabeçalho do grupo
-                no PGR; em branco, o documento diz "não informado".
+                Quantos trabalhadores pertencem a este grupo. Se deixado em branco, o sistema
+                utiliza automaticamente a contagem de colaboradores ativos vinculados a este GES no cadastro.
               </p>
             </div>
             {/*
