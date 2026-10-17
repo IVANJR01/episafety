@@ -14,7 +14,7 @@ import { Save, ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   riscosDoInventarioParaOs, episDoInventario, medidasDoInventario,
-  setorDoInventario, rotuloDoGes, funcoesSemRepetir, idOuPadrao,
+  setorDoInventario, rotuloDoGes, funcoesSemRepetir, idOuPadrao, selecaoPeloFuncionario,
 } from "@/lib/ordemServicoDoGes";
 import { loadGheFicha, riscosToSnapshot, GRUPO_RISCO_LABEL } from "@/lib/gesFicha";
 import { OsEscopo, OsRiscoSnapshot, OsEpiSnapshot, OrdemServicoSst } from "@/lib/osTypes";
@@ -125,7 +125,7 @@ export default function OrdemServicoNovo() {
     (async () => {
       const { data } = await (supabase as any)
         .from("funcionarios")
-        .select("id, nome, matricula, empresa_id")
+        .select("id, nome, matricula, empresa_id, cargo, setor, ghe_id")
         .eq("empresa_id", form.empresa_id)
         .is("data_demissao", null)
         .order("nome");
@@ -158,6 +158,45 @@ export default function OrdemServicoNovo() {
   }, [id]);
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
+
+  /**
+   * Escolher o funcionário já traz o GES e a função do cadastro dele.
+   *
+   * Antes a OS pedia tudo de novo: o funcionário era só um nome a mais no
+   * formulário, e quem preenchia tinha de lembrar em que GES e em que
+   * função aquela pessoa está — informação que já está no cadastro dela.
+   * Errar aí emite OS com os riscos de outro grupo.
+   */
+  const escolherFuncionario = async (valor: string) => {
+    const id = valor === "__none__" ? "" : valor;
+    set("funcionario_id", id);
+    if (!id) return;
+
+    const pessoa: any = funcionarios.find((f: any) => f.id === id);
+    if (!pessoa?.ghe_id) {
+      const { aviso } = selecaoPeloFuncionario(pessoa, []);
+      if (aviso) toast.warning(aviso.titulo, { description: aviso.detalhe });
+      return;
+    }
+
+    /*
+     * As funções do GES ainda não estão em memória — a lista só é
+     * carregada depois que o GES muda. Por isso a busca é aqui.
+     */
+    const { data } = await (supabase as any)
+      .from("ghe_funcoes")
+      .select("id, nome_funcao, ghe_id, funcao_id")
+      .eq("ghe_id", pessoa.ghe_id)
+      .order("nome_funcao");
+    const lista = funcoesSemRepetir((data || []) as any) as any[];
+    setFuncoes(lista as any);
+
+    const { gheId, funcaoId, aviso } = selecaoPeloFuncionario(pessoa, lista);
+    if (aviso) toast.warning(aviso.titulo, { description: aviso.detalhe });
+
+    setForm((f: any) => ({ ...f, ghe_id: gheId, funcao_id: funcaoId }));
+    carregarDoGhe(gheId, funcaoId, form.escopo);
+  };
 
   const carregarDoGhe = async (gheIdBruto: any = form.ghe_id, funcaoIdBruto: any = form.funcao_id, escopo = form.escopo) => {
     /* Tranca contra `onClick={carregarDoGhe}` — ver idOuPadrao. */
@@ -407,7 +446,7 @@ export default function OrdemServicoNovo() {
             </div>
             <div>
               <Label>Funcionário</Label>
-              <Select value={form.funcionario_id || "__none__"} onValueChange={(v) => set("funcionario_id", v === "__none__" ? "" : v)}>
+              <Select value={form.funcionario_id || "__none__"} onValueChange={escolherFuncionario}>
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">— nenhum —</SelectItem>

@@ -183,3 +183,79 @@ export function idOuPadrao(valor: unknown, padrao?: string | null): string {
   if (typeof valor === "string" && valor.trim()) return valor.trim();
   return (typeof padrao === "string" && padrao.trim()) ? padrao.trim() : "";
 }
+
+/**
+ * A função do GES que corresponde ao cargo cadastrado no funcionário.
+ *
+ * O cadastro do funcionário guarda o cargo como texto — "Costureiro(a)" —
+ * e o GES guarda a lista de funções com a grafia dele — "COSTUREIRO(A)".
+ * A comparação ignora caixa, acento e pontuação, senão a função certa
+ * passa batida e a OS sai sem função.
+ */
+export function funcaoDoCargo<T extends FuncaoDoGes>(
+  cargo: string | null | undefined, funcoes: T[],
+): T | null {
+  const alvo = chaveDoCargo(cargo);
+  if (!alvo) return null;
+  return (funcoes || []).find((f) => chaveDoCargo(f.nome_funcao) === alvo) || null;
+}
+
+/** Nome de cargo reduzido ao que importa para comparar. */
+export function chaveDoCargo(nome?: string | null): string {
+  return (nome || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+export interface SelecaoPeloFuncionario {
+  gheId: string;
+  funcaoId: string;
+  /** Null quando não há nada a avisar. */
+  aviso: null | { titulo: string; detalhe: string };
+}
+
+/**
+ * O que escolher o funcionário preenche na OS.
+ *
+ * O cadastro do funcionário já diz o GES e o cargo dele; a OS pedia os
+ * dois de novo. Quem preenchia tinha de lembrar em que grupo aquela
+ * pessoa está, e errar aí emite OS com os riscos de outro GES.
+ *
+ * O que não dá para resolver sozinho vira aviso, nunca palpite.
+ */
+export function selecaoPeloFuncionario<T extends FuncaoDoGes>(
+  pessoa: { nome?: string | null; cargo?: string | null; ghe_id?: string | null } | null,
+  funcoesDoGes: T[],
+): SelecaoPeloFuncionario {
+  if (!pessoa) return { gheId: "", funcaoId: "", aviso: null };
+
+  if (!pessoa.ghe_id) {
+    return {
+      gheId: "", funcaoId: "",
+      aviso: {
+        titulo: `${pessoa.nome || "Este funcionário"} está sem GES no cadastro.`,
+        detalhe: "Informe o GHS/GES no cadastro do funcionário para a OS trazer os riscos certos.",
+      },
+    };
+  }
+
+  const funcao = funcaoDoCargo(pessoa.cargo, funcoesDoGes);
+  if (!funcao && (pessoa.cargo || "").trim()) {
+    /*
+     * Cargo que não consta no GES não vira "a função mais parecida": isso
+     * poria o trabalhador numa OS com os riscos de outra função.
+     */
+    return {
+      gheId: pessoa.ghe_id, funcaoId: "",
+      aviso: {
+        titulo: `O cargo "${pessoa.cargo}" não consta nas funções deste GES.`,
+        detalhe: "A OS sai pelo GES; escolha a função na mão se precisar dela.",
+      },
+    };
+  }
+
+  return { gheId: pessoa.ghe_id, funcaoId: funcao?.id || "", aviso: null };
+}

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   riscosDoInventarioParaOs, episDoInventario, medidasDoInventario,
   setorDoInventario, rotuloDoGes, funcoesSemRepetir, idOuPadrao,
+  funcaoDoCargo, chaveDoCargo, selecaoPeloFuncionario,
 } from "./ordemServicoDoGes";
 
 /**
@@ -158,5 +159,84 @@ describe("id que chega torto na consulta", () => {
   it("sem padrão, devolve vazio — e quem chama decide avisar", () => {
     expect(idOuPadrao(undefined, null)).toBe("");
     expect(idOuPadrao({}, undefined)).toBe("");
+  });
+});
+
+describe("a função do GES que casa com o cargo do funcionário", () => {
+  const FUNCOES_GES = [
+    { id: "a", nome_funcao: "COSTUREIRO(A)" },
+    { id: "b", nome_funcao: "AUXILIAR DE PRODUÇÃO" },
+    { id: "c", nome_funcao: "Vendedora" },
+  ];
+
+  it("acha o cargo apesar da grafia diferente", () => {
+    /* O cadastro escreve "Costureiro(a)"; o GES, "COSTUREIRO(A)". */
+    expect(funcaoDoCargo("Costureiro(a)", FUNCOES_GES)?.id).toBe("a");
+  });
+
+  it("acento não atrapalha", () => {
+    expect(funcaoDoCargo("AUXILIAR DE PRODUCAO", FUNCOES_GES)?.id).toBe("b");
+    expect(funcaoDoCargo("Auxiliar de Produção", FUNCOES_GES)?.id).toBe("b");
+  });
+
+  it("cargo que o GES não tem não casa com outro qualquer", () => {
+    /* Pegar "a primeira parecida" poria o trabalhador na OS errada. */
+    expect(funcaoDoCargo("MECÂNICO", FUNCOES_GES)).toBeNull();
+  });
+
+  it("sem cargo cadastrado, não escolhe função", () => {
+    expect(funcaoDoCargo("", FUNCOES_GES)).toBeNull();
+    expect(funcaoDoCargo(null, FUNCOES_GES)).toBeNull();
+  });
+
+  it("chaveDoCargo normaliza caixa, acento e pontuação", () => {
+    expect(chaveDoCargo("Costureiro(a)")).toBe("costureiro a");
+    expect(chaveDoCargo("COSTUREIRO(A)")).toBe("costureiro a");
+  });
+});
+
+describe("escolher o funcionário preenche GES e função", () => {
+  const FUNCOES_GES = [
+    { id: "a", nome_funcao: "COSTUREIRO(A)" },
+    { id: "b", nome_funcao: "AUXILIAR DE PRODUÇÃO" },
+  ];
+  const AMANDA = { nome: "AMANDA MARTINS ALVES", cargo: "Costureiro(a)", ghe_id: "ges-07" };
+
+  it("traz o GES e a função do cadastro", () => {
+    /*
+     * O cadastro da AMANDA diz GHS/GES 07 — COSTURA e cargo
+     * "Costureiro(a)". A OS pedia os dois de novo, e errar aí emite
+     * documento com os riscos de outro grupo.
+     */
+    const r = selecaoPeloFuncionario(AMANDA, FUNCOES_GES);
+    expect(r.gheId).toBe("ges-07");
+    expect(r.funcaoId).toBe("a");
+    expect(r.aviso).toBeNull();
+  });
+
+  it("funcionário sem GES no cadastro: avisa e não escolhe nada", () => {
+    const r = selecaoPeloFuncionario({ nome: "FULANO", cargo: "Costureiro(a)", ghe_id: null }, FUNCOES_GES);
+    expect(r.gheId).toBe("");
+    expect(r.aviso?.titulo).toContain("sem GES");
+  });
+
+  it("cargo que não consta no GES não vira 'a função mais parecida'", () => {
+    /* Isso poria o trabalhador numa OS com os riscos de outra função. */
+    const r = selecaoPeloFuncionario({ ...AMANDA, cargo: "MECÂNICO" }, FUNCOES_GES);
+    expect(r.gheId).toBe("ges-07");
+    expect(r.funcaoId, "escolheu uma função que não é a do cargo").toBe("");
+    expect(r.aviso?.titulo).toContain("não consta");
+  });
+
+  it("funcionário com GES e sem cargo entra pelo GES, calado", () => {
+    const r = selecaoPeloFuncionario({ ...AMANDA, cargo: null }, FUNCOES_GES);
+    expect(r.gheId).toBe("ges-07");
+    expect(r.funcaoId).toBe("");
+    expect(r.aviso).toBeNull();
+  });
+
+  it("sem funcionário, não mexe em nada", () => {
+    const r = selecaoPeloFuncionario(null, FUNCOES_GES);
+    expect(r).toEqual({ gheId: "", funcaoId: "", aviso: null });
   });
 });
