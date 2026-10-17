@@ -90,6 +90,7 @@ export default function PortalRH() {
   const [tab, setTab] = useState<"emitir" | "historico">("emitir");
 
   // -------- EMITIR --------
+  const [popoverColabOpen, setPopoverColabOpen] = useState(false);
   const [funcSearch, setFuncSearch] = useState("");
   const [funcionarioId, setFuncionarioId] = useState<string>("");
   const [tipoExame, setTipoExame] = useState<string>("admissional");
@@ -277,6 +278,25 @@ export default function PortalRH() {
     funcSel?.ghe_id
     || gesEscolhido
     || (gesDerivado?.tipo === "resolvido" ? gesDerivado.ges.ghe_id : null);
+
+  const { data: todosGhes = [] } = useQuery({
+    queryKey: ["rh-todos-ghes", empresaScopeIds.join(",")],
+    enabled: (empresaScopeIds?.length ?? 0) > 0,
+    queryFn: async () => {
+      let q = supabase.from("ghe_ges").select("id, codigo, nome, setor, empresa_id");
+      const ids = empresaScopeIds || [];
+      if (ids.length > 0) q = q.in("empresa_id", ids);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  const gheEfetivoInfo = useMemo(() => {
+    if (funcSel?.ghe_ges) return funcSel.ghe_ges;
+    if (gheEfetivo) return todosGhes.find((g: any) => g.id === gheEfetivo) || null;
+    return null;
+  }, [funcSel, gheEfetivo, todosGhes]);
 
   // Carrega riscos/exames do GES
   useEffect(() => {
@@ -492,7 +512,7 @@ export default function PortalRH() {
                   <CardContent className="p-4 space-y-3">
                     <div>
                       <Label>Colaborador *</Label>
-                      <Popover>
+                      <Popover open={popoverColabOpen} onOpenChange={setPopoverColabOpen}>
                         <PopoverTrigger asChild>
                           <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
                             {funcSel ? `${funcSel.nome}${funcSel.cpf ? ` — ${funcSel.cpf}` : ""}` : "Selecione ou busque por nome, CPF ou matrícula…"}
@@ -509,7 +529,10 @@ export default function PortalRH() {
                                   <CommandItem
                                     key={f.id}
                                     value={`${f.nome} ${f.cpf || ""} ${f.matricula || ""}`}
-                                    onSelect={() => setFuncionarioId(f.id)}
+                                    onSelect={() => {
+                                      setFuncionarioId(f.id);
+                                      setPopoverColabOpen(false);
+                                    }}
                                   >
                                     <Check className={`mr-2 h-4 w-4 ${funcionarioId === f.id ? "opacity-100" : "opacity-0"}`} />
                                     {f.nome}{f.cpf ? ` — ${f.cpf}` : ""}{f.matricula ? ` (${f.matricula})` : ""}
@@ -536,10 +559,10 @@ export default function PortalRH() {
                         <div><b>Função:</b> {funcSel.cargo || "—"}</div>
                         <div><b>Setor:</b> {funcSel.setor || "—"}</div>
                         <div><b>Admissão:</b> {funcSel.data_admissao || "—"}</div>
-                        {funcSel.ghe_ges ? (
+                        {gheEfetivoInfo ? (
                           <div className="mt-1 p-2 rounded bg-primary/10 border border-primary/20">
-                            <b>GES:</b> {funcSel.ghe_ges.codigo} — {funcSel.ghe_ges.nome}
-                            {funcSel.ghe_ges.setor && <span className="text-muted-foreground"> ({funcSel.ghe_ges.setor})</span>}
+                            <b>GES:</b> {gheEfetivoInfo.codigo} — {gheEfetivoInfo.nome}
+                            {gheEfetivoInfo.setor && <span className="text-muted-foreground"> ({gheEfetivoInfo.setor})</span>}
                           </div>
                         ) : (
                           <div className="mt-1 p-2 rounded bg-destructive/10 border border-destructive/20 text-destructive flex gap-2 items-start">

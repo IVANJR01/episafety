@@ -34,7 +34,6 @@ export type ResultadoGes =
   | { tipo: "ambiguo"; candidatos: FuncaoDeGes[] }
   | { tipo: "sem_correspondencia" };
 
-/** Minúsculas, sem acento, sem espaço sobrando. "AJUDANTE  DE CONFECÇÃO" → "ajudante de confeccao". */
 export function normalizar(s?: string | null): string {
   return (s || "")
     .normalize("NFD")
@@ -42,6 +41,18 @@ export function normalizar(s?: string | null): string {
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Remove sufixos como (a), /a, os, as, e preposições para facilitar match de sinônimos/gêneros */
+export function canonizarCargo(s?: string | null): string {
+  let t = normalizar(s);
+  t = t.replace(/\([a-z0-9/]+\)/g, ""); // remove (a), (o), etc.
+  t = t.replace(/\b(de|do|da|dos|das|e)\b/g, " "); // remove preposições
+  t = t.replace(/vendendor/g, "vendedor"); // corrige erro de digitação comum
+  t = t.replace(/costureir[ao]/g, "costureiro");
+  t = t.replace(/vendedor[a]?/g, "vendedor");
+  t = t.replace(/\s+/g, " ").trim();
+  return t;
 }
 
 export function resolverGesPorFuncao(
@@ -52,7 +63,20 @@ export function resolverGesPorFuncao(
   const alvo = normalizar(cargo);
   if (!alvo) return { tipo: "sem_correspondencia" };
 
-  const porFuncao = funcoesDeGes.filter((f) => normalizar(f.nome_funcao) === alvo);
+  let porFuncao = funcoesDeGes.filter((f) => normalizar(f.nome_funcao) === alvo);
+
+  if (porFuncao.length === 0) {
+    const alvoCanonico = canonizarCargo(cargo);
+    porFuncao = funcoesDeGes.filter((f) => canonizarCargo(f.nome_funcao) === alvoCanonico);
+  }
+
+  if (porFuncao.length === 0) {
+    const alvoSetor = normalizar(setor);
+    if (alvoSetor) {
+      porFuncao = funcoesDeGes.filter((f) => normalizar(f.setor) === alvoSetor);
+    }
+  }
+
   if (porFuncao.length === 0) return { tipo: "sem_correspondencia" };
 
   // Um GES só (ainda que declarado em linhas repetidas) já resolve.
