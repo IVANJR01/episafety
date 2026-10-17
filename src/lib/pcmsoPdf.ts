@@ -1302,7 +1302,7 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
     acoes: any[],
     anoRef: string
   ) => {
-    const colW = [70, 24, 22, 50.4, 13.6]; // Total = 180mm (LARGURA_UTIL)
+    const colW = [74, 22, 20, 50.4, 13.6]; // Total = 180mm (LARGURA_UTIL)
     const numMeses = 12;
     const largMes = colW[3] / numMeses; // 4.2mm por mês
     const MESES_ROTULOS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
@@ -1393,11 +1393,20 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
 
       const obsTexto = (acao.observacoes || "Execução integral conforme cronograma pactuado.").trim();
 
-      const linhasTitulo = doc.splitTextToSize(tituloLimpo, colW[0] - 5);
-      const linhasObs = doc.splitTextToSize(obsTexto, colW[0] - 5);
+      // Configurar a fonte exata ANTES do cálculo de quebra de linhas para evitar overflow
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.0);
+      const linhasTitulo = doc.splitTextToSize(tituloLimpo, colW[0] - 6);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(5.0);
+      const linhasObs = doc.splitTextToSize(obsTexto, colW[0] - 6);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(5.5);
       const linhasResp = doc.splitTextToSize(acao.responsavel || "Direção da Empresa", colW[1] - 4);
 
-      const alturaConteudo = (linhasTitulo.length * 3.0) + (linhasObs.length * 2.4) + 3.2;
+      const alturaConteudo = (linhasTitulo.length * 2.7) + (linhasObs.length * 2.2) + 3.2;
       const alturaLinha = Math.max(8.5, alturaConteudo);
 
       if (b.y + alturaLinha > ALTURA - 22) {
@@ -1436,28 +1445,29 @@ export async function renderPcmsoPdf(ctx: PcmsoPdfContext, opts?: { qrUrl?: stri
 
       // Coluna 1: Título e Observações
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.4);
+      doc.setFontSize(6.0);
       doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
       doc.text(linhasTitulo, MARGEM + 2.5, b.y + 3.2);
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(5.2);
+      doc.setFontSize(5.0);
       doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-      const yObs = b.y + 3.2 + (linhasTitulo.length * 3.0);
+      const yObs = b.y + 3.2 + (linhasTitulo.length * 2.7);
       doc.text(linhasObs, MARGEM + 2.5, yObs);
 
       // Coluna 2: Responsável
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(5.8);
+      doc.setFontSize(5.5);
       doc.setTextColor(COR_TEXTO[0], COR_TEXTO[1], COR_TEXTO[2]);
-      doc.text(linhasResp, xCol2 + 2, b.y + 4.2);
+      doc.text(linhasResp, xCol2 + 2, b.y + 4.0);
 
       // Coluna 3: Previsão (Mês/Ano)
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.0);
+      doc.setFontSize(5.8);
       doc.setTextColor(COR_PRIMARIA[0], COR_PRIMARIA[1], COR_PRIMARIA[2]);
       const prazoTexto = mesExtenso(acao.data_planejada) || "Durante o ano";
       doc.text(prazoTexto, xCol3 + colW[2] / 2, b.y + alturaLinha / 2 + 1.2, { align: "center" });
+
 
       // Coluna 4: Marcadores nos Meses
       const mesesAtivos = identificarMesesAcao(acao);
