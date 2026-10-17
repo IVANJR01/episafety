@@ -259,3 +259,38 @@ export function selecaoPeloFuncionario<T extends FuncaoDoGes>(
 
   return { gheId: pessoa.ghe_id, funcaoId: funcao?.id || "", aviso: null };
 }
+
+export interface FuncionarioDaLista {
+  id: string;
+  nome?: string | null;
+  cargo?: string | null;
+  ghe_id?: string | null;
+}
+
+/**
+ * Quem aparece na lista de funcionários da OS.
+ *
+ * A lista trazia os 397 funcionários da empresa, mesmo com o GES
+ * ESCRITÓRIO e a função Assistente Administrativo já escolhidos. Quem
+ * emite tinha de rolar o nome do escritório no meio dos da costura, e
+ * nada impedia de pendurar na OS do escritório alguém que trabalha no
+ * corte — com os riscos errados.
+ *
+ * Escolhido o GES, só quem está nele; escolhida a função, só quem tem
+ * aquele cargo. Sem GES escolhido, a lista é a da empresa inteira, como
+ * antes.
+ */
+export function funcionariosDoGes<T extends FuncionarioDaLista>(
+  funcionarios: T[],
+  filtro: { gheId?: string | null; cargoDaFuncao?: string | null },
+): T[] {
+  const gheId = (filtro?.gheId || "").trim();
+  if (!gheId) return funcionarios || [];
+
+  const cargo = chaveDoCargo(filtro?.cargoDaFuncao);
+  return (funcionarios || []).filter((f) => {
+    if (f.ghe_id !== gheId) return false;
+    if (!cargo) return true;
+    return chaveDoCargo(f.cargo) === cargo;
+  });
+}

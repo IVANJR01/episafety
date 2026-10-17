@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   riscosDoInventarioParaOs, episDoInventario, medidasDoInventario,
   setorDoInventario, rotuloDoGes, funcoesSemRepetir, idOuPadrao,
-  funcaoDoCargo, chaveDoCargo, selecaoPeloFuncionario,
+  funcaoDoCargo, chaveDoCargo, selecaoPeloFuncionario, funcionariosDoGes,
 } from "./ordemServicoDoGes";
 
 /**
@@ -238,5 +238,45 @@ describe("escolher o funcionário preenche GES e função", () => {
   it("sem funcionário, não mexe em nada", () => {
     const r = selecaoPeloFuncionario(null, FUNCOES_GES);
     expect(r).toEqual({ gheId: "", funcaoId: "", aviso: null });
+  });
+});
+
+describe("quem aparece na lista de funcionários da OS", () => {
+  const PESSOAS = [
+    { id: "1", nome: "ELIANE", cargo: "Assistente Administrativo", ghe_id: "ges-02" },
+    { id: "2", nome: "GILVAN", cargo: "Auxiliar Financeiro", ghe_id: "ges-02" },
+    { id: "3", nome: "AMANDA", cargo: "Costureiro(a)", ghe_id: "ges-07" },
+    { id: "4", nome: "SEM GES", cargo: "Costureiro(a)", ghe_id: null },
+  ];
+
+  it("escolhido o GES, só quem está nele", () => {
+    /*
+     * A lista trazia os 397 da empresa mesmo com o ESCRITÓRIO escolhido:
+     * dava para pendurar na OS do escritório alguém da costura, com os
+     * riscos errados.
+     */
+    const r = funcionariosDoGes(PESSOAS, { gheId: "ges-02" });
+    expect(r.map((p) => p.nome)).toEqual(["ELIANE", "GILVAN"]);
+  });
+
+  it("escolhida a função, só quem tem aquele cargo", () => {
+    const r = funcionariosDoGes(PESSOAS, {
+      gheId: "ges-02", cargoDaFuncao: "ASSISTENTE ADMINISTRATIVO",
+    });
+    expect(r.map((p) => p.nome)).toEqual(["ELIANE"]);
+  });
+
+  it("quem não tem GES no cadastro não entra na lista de um GES", () => {
+    const r = funcionariosDoGes(PESSOAS, { gheId: "ges-07" });
+    expect(r.map((p) => p.nome), "entrou quem não está no grupo").toEqual(["AMANDA"]);
+  });
+
+  it("sem GES escolhido, a lista é a da empresa inteira", () => {
+    expect(funcionariosDoGes(PESSOAS, {}).length).toBe(4);
+    expect(funcionariosDoGes(PESSOAS, { gheId: "" }).length).toBe(4);
+  });
+
+  it("GES sem ninguém devolve lista vazia, e não a empresa toda", () => {
+    expect(funcionariosDoGes(PESSOAS, { gheId: "ges-99" })).toEqual([]);
   });
 });

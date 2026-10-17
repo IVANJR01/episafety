@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import {
   riscosDoInventarioParaOs, episDoInventario, medidasDoInventario,
   setorDoInventario, rotuloDoGes, funcoesSemRepetir, idOuPadrao, selecaoPeloFuncionario,
+  funcionariosDoGes,
 } from "@/lib/ordemServicoDoGes";
 import { loadGheFicha, riscosToSnapshot, GRUPO_RISCO_LABEL } from "@/lib/gesFicha";
 import { OsEscopo, OsRiscoSnapshot, OsEpiSnapshot, OrdemServicoSst } from "@/lib/osTypes";
@@ -156,6 +157,21 @@ export default function OrdemServicoNovo() {
       setLoading(false);
     })();
   }, [id]);
+
+  /*
+   * A lista de funcionários acompanha o GES e a função escolhidos.
+   *
+   * Vinham os 397 da empresa mesmo com o GES ESCRITÓRIO selecionado, e
+   * nada impedia de pendurar na OS do escritório alguém da costura — com
+   * os riscos errados.
+   */
+  const funcionariosVisiveis = useMemo(() => {
+    const funcao = funcoes.find((f: any) => f.id === form.funcao_id);
+    return funcionariosDoGes(funcionarios as any, {
+      gheId: form.ghe_id,
+      cargoDaFuncao: funcao?.nome_funcao,
+    });
+  }, [funcionarios, funcoes, form.ghe_id, form.funcao_id]);
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
 
@@ -450,7 +466,15 @@ export default function OrdemServicoNovo() {
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">— nenhum —</SelectItem>
-                  {funcionarios.map((f) => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
+                  {funcionariosVisiveis.length === 0 && form.ghe_id && (
+                    <div className="px-2 py-3 text-xs text-muted-foreground">
+                      Nenhum funcionário cadastrado neste GES
+                      {form.funcao_id ? " e função." : "."}
+                    </div>
+                  )}
+                  {funcionariosVisiveis.map((f: any) => (
+                    <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
