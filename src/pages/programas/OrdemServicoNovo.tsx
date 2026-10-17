@@ -12,6 +12,10 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Badge } from "@/components/ui/badge";
 import { Save, ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  riscosDoInventarioParaOs, episDoInventario, medidasDoInventario,
+  setorDoInventario, rotuloDoGes, funcoesSemRepetir,
+} from "@/lib/ordemServicoDoGes";
 import { loadGheFicha, riscosToSnapshot, GRUPO_RISCO_LABEL } from "@/lib/gesFicha";
 import { OsEscopo, OsRiscoSnapshot, OsEpiSnapshot, OrdemServicoSst } from "@/lib/osTypes";
 
@@ -27,6 +31,8 @@ export default function OrdemServicoNovo() {
   const [empresas, setEmpresas] = useState<{ id: string; nome: string }[]>([]);
   const [ghes, setGhes] = useState<{ id: string; codigo: string; nome: string; empresa_id: string }[]>([]);
   const [funcoes, setFuncoes] = useState<{ id: string; nome_funcao: string; ghe_id: string }[]>([]);
+  /** ghe_id -> setor, do inventário do PGR. Ver rotuloDoGes. */
+  const [setorPorGes, setSetorPorGes] = useState<Record<string, string>>({});
   const [funcionarios, setFuncionarios] = useState<{ id: string; nome: string; matricula: string | null; empresa_id: string }[]>([]);
 
   const [form, setForm] = useState<any>({
@@ -69,6 +75,23 @@ export default function OrdemServicoNovo() {
         .eq("status", "ativo")
         .order("codigo");
       setGhes((data || []) as any);
+
+      /*
+       * O setor de cada GES, do inventário do PGR. Alguns GES têm nome que
+       * só repete o código ("01"), e é o setor que diz de que grupo se
+       * trata — é assim que a Matriz de Saúde do PCMSO os identifica.
+       */
+      const { data: inv } = await (supabase as any)
+        .from("pgr_inventario_itens")
+        .select("ghe_id, setor")
+        .eq("empresa_id", form.empresa_id)
+        .not("ghe_id", "is", null);
+      const mapa: Record<string, string> = {};
+      for (const it of (inv || []) as any[]) {
+        const setor = (it.setor || "").trim();
+        if (it.ghe_id && setor && !mapa[it.ghe_id]) mapa[it.ghe_id] = setor;
+      }
+      setSetorPorGes(mapa);
     })();
   }, [form.empresa_id]);
 
@@ -86,7 +109,13 @@ export default function OrdemServicoNovo() {
         .order("nome_funcao");
       
       if (error) console.error("Erro ao buscar ghe_funcoes:", error);
-      setFuncoes((data || []) as any);
+      /*
+       * Sem nomes repetidos. O GES 01 tem dez vínculos de função e oito
+       * nomes: "Ajudante de Confecção" e "Analista de PCP" apareciam duas
+       * vezes cada, e não havia como saber qual escolher — as duas levam
+       * ao mesmo lugar.
+       */
+      setFuncoes(funcoesSemRepetir((data || []) as any) as any);
     })();
   }, [form.ghe_id]);
 
@@ -134,7 +163,31 @@ export default function OrdemServicoNovo() {
     if (!gheId) return toast.error("Selecione um GES/GHE primeiro");
     try {
       const ficha = await loadGheFicha(gheId);
-      const riscos = riscosToSnapshot(ficha.riscos);
+      let riscos: any[] = riscosToSnapshot(ficha.riscos);
+      let episDoGes: string[] = [];
+      let medidasDoGes = "";
+      let setorDoGes = "";
+
+      /*
+       * A tela promete "riscos, EPIs e medidas são reaproveitados", e lia
+       * `ghe_riscos` — que tem ZERO linhas em todo o banco. Os riscos
+       * estão no inventário do PGR, de onde o PGR e o PCMSO leem; por isso
+       * a OS saía com "Riscos identificados (0)".
+       *
+       * OS em branco não é detalhe de tela: a NR-01 exige que ela informe
+       * ao trabalhador os riscos da função (1.4.1 "b" e 1.4.2).
+       */
+      if (riscos.length === 0) {
+        const { data: inv } = await (supabase as any)
+          .from("pgr_inventario_itens")
+          .select("grupo, tipo_agente, perigo_descricao, fonte_geradora, tipo_exposicao, lesoes, limite_tolerancia, epi, controles_existentes, medidas_existentes, setor")
+          .eq("ghe_id", gheId);
+        const itens = (inv || []) as any[];
+        riscos = riscosDoInventarioParaOs(itens) as any;
+        episDoGes = episDoInventario(itens);
+        medidasDoGes = medidasDoInventario(itens);
+        setorDoGes = setorDoInventario(itens);
+      }
       
       const fnSelecionada = escopo === "funcao" && funcaoId 
         ? funcoes.find((f: any) => f.id === funcaoId) 
@@ -155,23 +208,33 @@ export default function OrdemServicoNovo() {
       const atividades = atividadesFuncao || ficha.cabecalho.descricao_atividades || form.atividades;
       const medidas = [ficha.cabecalho.medidas_controle_existentes, ficha.cabecalho.medidas_controle_recomendadas]
         .filter(Boolean)
-        .join("\n");
+        .join("\n") || medidasDoGes;
       const proibicoesBase = form.proibicoes ||
         "É proibido executar a atividade sem os EPIs indicados, sem treinamento, sob efeito de álcool ou substâncias entorpecentes, ou fora dos procedimentos operacionais estabelecidos.";
       const procedBase = form.procedimentos_acidente ||
         "Em caso de acidente: interromper a atividade, prestar primeiros socorros, acionar o supervisor imediato e o SESMT, isolar o local e comunicar formalmente para abertura de CAT.";
       setForm((f: any) => ({
         ...f,
-        titulo: f.titulo || `Ordem de Serviço — ${ficha.cabecalho.codigo} ${ficha.cabecalho.nome}`,
+        titulo: f.titulo || `Ordem de Serviço — ${rotuloDoGes(ficha.cabecalho as any, setorDoGes)}`,
         atividades,
         riscos_snapshot: riscos,
+        /* O snapshot da OS guarda nome e CA; o inventário só tem o nome. */
+        epis_snapshot: f.epis_snapshot?.length
+          ? f.epis_snapshot
+          : episDoGes.map((nome) => ({ nome, ca: null })),
         medidas_preventivas: f.medidas_preventivas || medidas,
         proibicoes: proibicoesBase,
         procedimentos_acidente: procedBase,
         responsabilidades: f.responsabilidades ||
           "Cumprir integralmente as medidas de segurança; usar corretamente os EPIs fornecidos; comunicar imediatamente ao superior qualquer condição insegura; não realizar atividade para a qual não tenha sido treinado.",
       }));
-      toast.success(`Dados carregados do GES (${riscos.length} riscos)`);
+      if (riscos.length === 0) {
+        toast.warning("Este GES não tem risco no inventário do PGR.", {
+          description: "Cadastre os riscos no PGR — a Ordem de Serviço precisa informá-los ao trabalhador (NR-01, 1.4.1 'b').",
+        });
+      } else {
+        toast.success(`Dados carregados do GES (${riscos.length} riscos)`);
+      }
     } catch (e: any) {
       toast.error(e.message || "Falha ao carregar GES");
     }
@@ -312,7 +375,16 @@ export default function OrdemServicoNovo() {
               }}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
-                  {ghes.map((g) => <SelectItem key={g.id} value={g.id}>{g.codigo} — {g.nome}</SelectItem>)}
+                  {/*
+                    * O GES 01 desta empresa tem código "01" e nome "01", e a
+                    * lista mostrava "01 — 01". Quando o nome não acrescenta
+                    * nada, vale o setor que o inventário do PGR registra.
+                    */}
+                  {ghes.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {rotuloDoGes(g, setorPorGes[g.id])}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
