@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Pencil, FileDown, Trash2, Search } from "lucide-react";
+import { Pencil, FileDown, Trash2, Search, Sparkles, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { gerarPdfAso } from "@/lib/asoPdf";
@@ -125,6 +125,91 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
     return <Card><CardContent className="p-6 text-sm text-muted-foreground">Selecione uma empresa no cabeçalho para listar os ASOs.</CardContent></Card>;
   }
 
+  const { data: examesPendentes = [], isFetching: buscandoExamesPendentes } = useQuery({
+    queryKey: ["exames-para-sincronizar", empresaId, asos.length],
+    enabled: !!empresaId && !isLoading,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("exames")
+        .select("id, funcionario_id, tipo, data, data_vencimento, resultado, medico, observacao, funcionarios:funcionario_id(nome, cpf)")
+        .eq("empresa_id", empresaId!);
+      if (error || !data) return [];
+
+      const funcIdsComAso = new Set(asos.map((a: any) => a.funcionario_id));
+      return data.filter((e: any) => e.funcionario_id && !funcIdsComAso.has(e.funcionario_id));
+    },
+  });
+
+  const [sincronizando, setSincronizando] = useState(false);
+
+  const sincronizarDaMatriz = async () => {
+    if (!empresaId || examesPendentes.length === 0) return;
+    setSincronizando(true);
+    try {
+      let inseridos = 0;
+      for (const ex of examesPendentes) {
+        let numeroAso = "";
+        try {
+          const { data: num } = await supabase.rpc("gerar_numero_aso", { _empresa_id: empresaId });
+          numeroAso = num || `ASO-${new Date().getFullYear()}-${String(inseridos + 2).padStart(4, "0")}`;
+        } catch {
+          numeroAso = `ASO-${new Date().getFullYear()}-${String(inseridos + 2).padStart(4, "0")}`;
+        }
+
+        const res = (ex.resultado || "apto").toLowerCase();
+        const aptidao = res.includes("restri")
+          ? "apto_restricao"
+          : res.includes("inapto")
+          ? "inapto"
+          : "apto";
+
+        const payload: any = {
+          empresa_id: empresaId,
+          funcionario_id: ex.funcionario_id,
+          tipo_exame: ex.tipo || "periodico",
+          data_emissao: ex.data || new Date().toISOString().split("T")[0],
+          data_vencimento: ex.data_vencimento || null,
+          validade_tipo: "1ano",
+          status_aptidao: aptidao,
+          apto_cargo: aptidao === "apto",
+          inapto_cargo: aptidao === "inapto",
+          apto_restricao: aptidao === "apto_restricao",
+          nr35_nao_aplica: true,
+          numero_aso: numeroAso,
+          status: "emitido",
+          liberado_portal_rh: true,
+          observacoes: ex.observacao || "Importado da Matriz de Exames Ocupacionais.",
+          exames_snapshot: [{ nome_exame: "ASO - Avaliação Clínica Ocupacional" }],
+          created_by: user?.id || null,
+        };
+
+        const { data: asoCriado, error: errInsert } = await supabase.from("asos").insert(payload).select().single();
+        if (!errInsert && asoCriado) {
+          inseridos++;
+          // Cria também na tabela aso_exames para enriquecer o prontuário
+          await supabase.from("aso_exames").insert({
+            aso_id: asoCriado.id,
+            nome_exame: "ASO - Avaliação Clínica Ocupacional",
+            realizado: true,
+            data_realizacao: ex.data,
+            resultado: ex.resultado || "Normal / Apto",
+            empresa_id: empresaId,
+          });
+        }
+      }
+
+      toast.success(`${inseridos} ASO(s) sincronizado(s) com sucesso a partir da Matriz de Exames!`);
+      qc.invalidateQueries({ queryKey: ["asos-list"] });
+      qc.invalidateQueries({ queryKey: ["aso-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["exames-para-sincronizar"] });
+      qc.invalidateQueries({ queryKey: ["pcmso-relatorio-asos"] });
+    } catch (e: any) {
+      toast.error(`Erro ao sincronizar: ${e.message}`);
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
   const remove = async (id: string) => {
     if (!confirm("Cancelar este ASO? Ele permanecerá no histórico como cancelado.")) return;
     const { error } = await supabase.from("asos").update({ status: "cancelado" }).eq("id", id);
@@ -143,9 +228,34 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
   };
 
   return (
-    <Card>
-      <CardContent className="p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-4">
+      {/* Banner de Sincronização inteligente com a Matriz de Exames */}
+      {examesPendentes.length > 0 && canEdit && (
+        <div className="p-4 bg-linear-to-r from-sky-50 via-blue-50/40 to-indigo-50 border border-sky-200 rounded-xl shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sky-950">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1.5 font-bold text-sm text-sky-900">
+              <Sparkles className="w-4 h-4 text-sky-600 shrink-0" />
+              Sincronização com a Matriz de Exames
+            </div>
+            <p className="text-xs text-sky-700 max-w-2xl leading-relaxed">
+              Foram identificados <b>{examesPendentes.length} exames ocupacionais válidos</b> na aba Matriz de Exames que ainda não constam como ASO formal nesta lista. Clique no botão ao lado para gerar automaticamente os números e prontuários oficiais de ASO.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            onClick={sincronizarDaMatriz}
+            disabled={sincronizando}
+            className="bg-sky-600 hover:bg-sky-700 text-white text-xs gap-1.5 shrink-0 shadow-2xs h-9 px-3.5 font-medium"
+          >
+            {sincronizando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            Sincronizar {examesPendentes.length} Exames para ASOs
+          </Button>
+        </div>
+      )}
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Buscar por nº, nome, CPF ou empresa…" className="pl-8" />
@@ -235,6 +345,7 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
           </Table>
         </div>
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }
