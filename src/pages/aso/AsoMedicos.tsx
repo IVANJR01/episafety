@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,11 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, ClipboardList, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 import { buscarProfissionalPorCrm } from "@/lib/consultaCrm";
 
 export default function AsoMedicos() {
+  const navigate = useNavigate();
   const { empresaId } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -32,11 +34,6 @@ export default function AsoMedicos() {
     },
   });
 
-  const openNew = () => {
-    setEditing(null);
-    setForm({ nome: "", crm: "", uf_crm: "", cpf: "", email: "", telefone: "", responsavel_pcmso: false, ativo: true });
-    setOpen(true);
-  };
   const openEdit = (m: any) => {
     setEditing(m);
     setForm({ ...m });
@@ -67,9 +64,23 @@ export default function AsoMedicos() {
   return (
     <Card>
       <CardContent className="p-4 space-y-3">
-        <div className="flex justify-between items-center">
-          <h3 className="font-semibold">Médicos do Trabalho</h3>
-          <Button onClick={openNew}><Plus className="h-4 w-4 mr-1" />Novo médico</Button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+          <div>
+            <h3 className="font-semibold text-slate-800">Médicos do Trabalho</h3>
+            <p className="text-xs text-muted-foreground">
+              Profissionais credenciados e vinculados ao PCMSO (NR-07) da empresa.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/pcmso/dashboard")}
+            className="text-xs gap-1.5 bg-white shadow-2xs h-8 text-slate-600 self-start sm:self-auto"
+          >
+            <ClipboardList className="w-3.5 h-3.5 text-teal-600" />
+            Gerenciar no PCMSO
+            <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground" />
+          </Button>
         </div>
         <div className="rounded-lg border overflow-x-auto">
           <Table>
@@ -98,7 +109,7 @@ export default function AsoMedicos() {
 
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent>
-            <DialogHeader><DialogTitle>{editing ? "Editar médico" : "Novo médico"}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Editar dados do médico</DialogTitle></DialogHeader>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>CRM *</Label>
