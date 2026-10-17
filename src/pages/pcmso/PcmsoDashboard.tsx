@@ -7,7 +7,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, FileText, Activity, Trash2, Stethoscope, UserCheck } from "lucide-react";
+import { ArrowLeft, Plus, FileText, Activity, Trash2 } from "lucide-react";
 import { PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus } from "@/lib/pgrTypes";
 import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
 import { toast } from "sonner";
@@ -121,31 +121,6 @@ export default function PcmsoDashboard() {
             {loadingNovo ? "Criando..." : <><Plus className="mr-2 h-4 w-4" /> Novo PCMSO</>}
           </Button>
         )}
-      </div>
-
-      {/* Barra de Integração com Gestão de Exames e Portal RH */}
-      <div className="bg-gradient-to-r from-teal-50/80 via-indigo-50/60 to-emerald-50/80 border border-teal-200/70 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-            <Stethoscope className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-slate-900 text-sm">Integração da Saúde Ocupacional (NR-07)</h3>
-            <p className="text-xs text-slate-600">
-              O PCMSO define os exames por GES. Os ASOs emitidos no dia a dia alimentam automaticamente o Relatório Analítico anual.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => navigate("/aso")} className="bg-white hover:bg-slate-50 border-slate-300 text-slate-800 text-xs gap-1.5 shadow-2xs">
-            <Stethoscope className="w-3.5 h-3.5 text-teal-600" />
-            Painel de Exames & Vencimentos
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate("/rh/asos")} className="bg-white hover:bg-slate-50 border-slate-300 text-slate-800 text-xs gap-1.5 shadow-2xs">
-            <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
-            Emitir ASO (Portal RH)
-          </Button>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
