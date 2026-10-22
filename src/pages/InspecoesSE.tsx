@@ -2153,10 +2153,23 @@ export default function InspecoesSE() {
                     )}
                   </div>
 
-                  <input ref={antesRef} type="file" accept="image/*" capture="environment" className="hidden"
-                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
-                  <input ref={antesGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
-                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
+                  <input
+                    id="foto-antes-camera"
+                    ref={antesRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/*;capture=camera"
+                    capture="environment"
+                    className="sr-only"
+                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }}
+                  />
+                  <input
+                    id="foto-antes-galeria"
+                    ref={antesGalleryRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    className="sr-only"
+                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }}
+                  />
 
                   {(fotoAntesPreview || existingFotoAntes || existingFotoAntesPath) ? (
                     <div className="relative mt-1 group">
@@ -2176,28 +2189,22 @@ export default function InspecoesSE() {
                     </div>
                   ) : (
                     <div className={cn("grid grid-cols-2 gap-2 mt-1", errors.foto_antes && "p-1 rounded-md border border-destructive")}>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-12 flex items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 px-2"
-                        onClick={() => antesRef.current?.click()}
-                        title="Tirar foto usando a Câmera ou aplicativo instalado (ex: Conota)"
+                      <label
+                        htmlFor="foto-antes-camera"
+                        className="h-12 flex items-center justify-center gap-2 rounded-md border border-input bg-background px-2 text-xs font-semibold shadow-xs hover:border-primary/50 hover:bg-primary/5 cursor-pointer active:scale-[0.98] transition-all select-none text-foreground"
+                        title="Tirar foto usando a Câmera ou aplicativo de câmera instalado"
                       >
-                        <Camera className="w-4 h-4 text-primary" />
-                        <span className="text-xs font-semibold">Câmera</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-12 flex items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 px-2"
-                        onClick={() => antesGalleryRef.current?.click()}
+                        <Camera className="w-4 h-4 text-primary shrink-0" />
+                        <span>Câmera</span>
+                      </label>
+                      <label
+                        htmlFor="foto-antes-galeria"
+                        className="h-12 flex items-center justify-center gap-2 rounded-md border border-input bg-background px-2 text-xs font-semibold shadow-xs hover:border-primary/50 hover:bg-primary/5 cursor-pointer active:scale-[0.98] transition-all select-none text-foreground"
                         title="Escolher foto existente da galeria"
                       >
-                        <ImageIcon className="w-4 h-4 text-primary" />
-                        <span className="text-xs font-semibold">Galeria</span>
-                      </Button>
+                        <ImageIcon className="w-4 h-4 text-primary shrink-0" />
+                        <span>Galeria</span>
+                      </label>
                     </div>
                   )}
                   {errors.foto_antes && <p className="text-xs text-destructive mt-1.5">{errors.foto_antes}</p>}
@@ -2373,10 +2380,23 @@ export default function InspecoesSE() {
                           <Label className="text-xs font-semibold text-emerald-900 dark:text-emerald-300 block mb-1">
                             Foto Depois (Solução)
                           </Label>
-                          <input ref={depoisRef} type="file" accept="image/*" capture="environment" className="hidden"
-                            onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
-                          <input ref={depoisGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
-                            onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
+                          <input
+                            id="foto-depois-camera"
+                            ref={depoisRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/*;capture=camera"
+                            capture="environment"
+                            className="sr-only"
+                            onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }}
+                          />
+                          <input
+                            id="foto-depois-galeria"
+                            ref={depoisGalleryRef}
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                            className="sr-only"
+                            onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }}
+                          />
 
                           {(fotoDepoisPreview || existingFotoDepois || existingFotoDepoisPath) ? (
                             <div className="relative mt-1">
@@ -2396,26 +2416,22 @@ export default function InspecoesSE() {
                             </div>
                           ) : (
                             <div className="grid grid-cols-2 gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-9 text-xs font-semibold gap-1.5 bg-background hover:border-primary/50"
-                                onClick={() => depoisRef.current?.click()}
-                                title="Tirar foto usando a Câmera ou aplicativo instalado (ex: Conota)"
+                              <label
+                                htmlFor="foto-depois-camera"
+                                className="h-9 flex items-center justify-center gap-1.5 rounded-md border border-input bg-background px-2 text-xs font-semibold shadow-xs hover:border-primary/50 hover:bg-primary/5 cursor-pointer active:scale-[0.98] transition-all select-none text-foreground"
+                                title="Tirar foto usando a Câmera ou aplicativo de câmera instalado"
                               >
-                                <Camera className="w-3.5 h-3.5 text-primary" /> Câmera
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-9 text-xs font-semibold gap-1.5 bg-background hover:border-primary/50"
-                                onClick={() => depoisGalleryRef.current?.click()}
+                                <Camera className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span>Câmera</span>
+                              </label>
+                              <label
+                                htmlFor="foto-depois-galeria"
+                                className="h-9 flex items-center justify-center gap-1.5 rounded-md border border-input bg-background px-2 text-xs font-semibold shadow-xs hover:border-primary/50 hover:bg-primary/5 cursor-pointer active:scale-[0.98] transition-all select-none text-foreground"
                                 title="Escolher foto existente da galeria"
                               >
-                                <ImageIcon className="w-3.5 h-3.5 text-primary" /> Galeria
-                              </Button>
+                                <ImageIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span>Galeria</span>
+                              </label>
                             </div>
                           )}
                         </div>
