@@ -160,6 +160,7 @@ export default function InspecoesSE() {
   const antesAppRef = useRef<HTMLInputElement>(null);
   const depoisAppRef = useRef<HTMLInputElement>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [conotaModal, setConotaModal] = useState<"antes" | "depois" | null>(null);
   const [mostrarDetalhesNorma, setMostrarDetalhesNorma] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const pdfImageCacheRef = useRef<Map<string, string | null>>(new Map());
@@ -354,6 +355,16 @@ export default function InspecoesSE() {
     }
     setAiLoading(false);
   }
+
+  const abrirConota = (tipo: "antes" | "depois") => {
+    const isAndroid = /android/i.test(navigator.userAgent);
+    if (isAndroid) {
+      // Intent nativa do Android para acionar o Conota Camera (com.gps.survey.cam)
+      const conotaIntent = "intent:#Intent;package=com.gps.survey.cam;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.gps.survey.cam;end";
+      window.location.href = conotaIntent;
+    }
+    setConotaModal(tipo);
+  };
 
   /**
    * Contexto do último registro lançado: data, obra e local.
@@ -2190,11 +2201,11 @@ export default function InspecoesSE() {
                         variant="outline"
                         size="sm"
                         className="h-14 flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 px-1 border-primary/30 bg-primary/5"
-                        onClick={() => antesAppRef.current?.click()}
-                        title="Abrir Conota Camera ou outro app de fotos com GPS"
+                        onClick={() => abrirConota("antes")}
+                        title="Abrir Conota Camera para tirar foto com carimbo de GPS e data/hora"
                       >
                         <Smartphone className="w-4 h-4 text-primary" />
-                        <span className="text-[11px] font-semibold leading-tight text-center">Conota / App</span>
+                        <span className="text-[11px] font-semibold leading-tight text-center">Abrir Conota</span>
                       </Button>
                       <Button
                         type="button"
@@ -2422,10 +2433,10 @@ export default function InspecoesSE() {
                                 variant="outline"
                                 size="sm"
                                 className="flex-1 h-9 text-xs gap-1 bg-background border-primary/30"
-                                onClick={() => depoisAppRef.current?.click()}
-                                title="Conota ou outro aplicativo"
+                                onClick={() => abrirConota("depois")}
+                                title="Abrir Conota Camera"
                               >
-                                <Smartphone className="w-3.5 h-3.5" /> Conota / App
+                                <Smartphone className="w-3.5 h-3.5" /> Abrir Conota
                               </Button>
                               <Button
                                 type="button"
@@ -2460,6 +2471,43 @@ export default function InspecoesSE() {
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvando...</>
               ) : "Salvar Inspeção"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Instruções Conota Camera */}
+      <Dialog open={conotaModal !== null} onOpenChange={(o) => { if (!o) setConotaModal(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Smartphone className="w-5 h-5 text-primary" /> Conota Camera (GPS)
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2 text-sm">
+            <p className="text-muted-foreground">
+              O aplicativo <strong>Conota Camera</strong> foi acionado no seu celular para registrar a foto com coordenadas GPS, data e hora.
+            </p>
+            <div className="bg-primary/5 border border-primary/20 p-3 rounded-lg text-xs space-y-1.5 text-foreground">
+              <p className="font-semibold text-primary">Como anexar ao retornar:</p>
+              <p>1. Tire a foto no Conota e salve.</p>
+              <p>2. Ao voltar para esta tela, clique no botão abaixo para anexar a foto carimbada que está no topo da sua galeria.</p>
+            </div>
+            <Button
+              className="w-full h-11 gap-2 font-semibold shadow-xs"
+              onClick={() => {
+                const target = conotaModal;
+                setConotaModal(null);
+                setTimeout(() => {
+                  if (target === "antes") antesGalleryRef.current?.click();
+                  else depoisGalleryRef.current?.click();
+                }, 100);
+              }}
+            >
+              <ImageIcon className="w-4 h-4" /> Anexar Foto da Galeria
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" className="w-full" onClick={() => setConotaModal(null)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
