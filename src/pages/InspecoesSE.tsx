@@ -2153,7 +2153,7 @@ export default function InspecoesSE() {
                     )}
                   </div>
 
-                  <input ref={antesRef} type="file" accept="image/*" className="hidden"
+                  <input ref={antesRef} type="file" accept="image/*" capture="environment" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                   <input ref={antesGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
@@ -2373,7 +2373,7 @@ export default function InspecoesSE() {
                           <Label className="text-xs font-semibold text-emerald-900 dark:text-emerald-300 block mb-1">
                             Foto Depois (Solução)
                           </Label>
-                          <input ref={depoisRef} type="file" accept="image/*" className="hidden"
+                          <input ref={depoisRef} type="file" accept="image/*" capture="environment" className="hidden"
                             onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
                           <input ref={depoisGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                             onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
