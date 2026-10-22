@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2, ImageIcon, CalendarIcon, Upload, ChevronDown, ChevronUp, AlertTriangle, ShieldCheck, MapPin, CheckCircle2, Smartphone } from "lucide-react";
+import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2, ImageIcon, CalendarIcon, Upload, ChevronDown, ChevronUp, AlertTriangle, ShieldCheck, MapPin, CheckCircle2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -157,10 +157,7 @@ export default function InspecoesSE() {
   const depoisRef = useRef<HTMLInputElement>(null);
   const antesGalleryRef = useRef<HTMLInputElement>(null);
   const depoisGalleryRef = useRef<HTMLInputElement>(null);
-  const antesAppRef = useRef<HTMLInputElement>(null);
-  const depoisAppRef = useRef<HTMLInputElement>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [conotaModal, setConotaModal] = useState<"antes" | "depois" | null>(null);
   const [mostrarDetalhesNorma, setMostrarDetalhesNorma] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const pdfImageCacheRef = useRef<Map<string, string | null>>(new Map());
@@ -356,15 +353,6 @@ export default function InspecoesSE() {
     setAiLoading(false);
   }
 
-  const abrirConota = (tipo: "antes" | "depois") => {
-    const isAndroid = /android/i.test(navigator.userAgent);
-    if (isAndroid) {
-      // Intent nativa do Android para acionar o Conota Camera (com.gps.survey.cam)
-      const conotaIntent = "intent:#Intent;package=com.gps.survey.cam;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.gps.survey.cam;end";
-      window.location.href = conotaIntent;
-    }
-    setConotaModal(tipo);
-  };
 
   /**
    * Contexto do último registro lançado: data, obra e local.
@@ -2165,9 +2153,7 @@ export default function InspecoesSE() {
                     )}
                   </div>
 
-                  <input ref={antesRef} type="file" accept="image/*" capture="environment" className="hidden"
-                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
-                  <input ref={antesAppRef} type="file" accept="image/*" className="hidden"
+                  <input ref={antesRef} type="file" accept="image/*" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                   <input ref={antesGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
@@ -2189,39 +2175,28 @@ export default function InspecoesSE() {
                       </button>
                     </div>
                   ) : (
-                    <div className={cn("grid grid-cols-3 gap-1.5 mt-1", errors.foto_antes && "p-1 rounded-md border border-destructive")}>
+                    <div className={cn("grid grid-cols-2 gap-2 mt-1", errors.foto_antes && "p-1 rounded-md border border-destructive")}>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-14 flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 px-1"
+                        className="h-12 flex items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 px-2"
                         onClick={() => antesRef.current?.click()}
-                        title="Abrir câmera padrão do celular"
+                        title="Tirar foto usando a Câmera ou aplicativo instalado (ex: Conota)"
                       >
                         <Camera className="w-4 h-4 text-primary" />
-                        <span className="text-[11px] font-semibold leading-tight text-center">Câmera</span>
+                        <span className="text-xs font-semibold">Câmera</span>
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-14 flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 px-1 border-primary/30 bg-primary/5"
-                        onClick={() => abrirConota("antes")}
-                        title="Abrir Conota Camera para tirar foto com carimbo de GPS e data/hora"
-                      >
-                        <Smartphone className="w-4 h-4 text-primary" />
-                        <span className="text-[11px] font-semibold leading-tight text-center">Abrir Conota</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-14 flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 px-1"
+                        className="h-12 flex items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 px-2"
                         onClick={() => antesGalleryRef.current?.click()}
-                        title="Escolher foto da galeria"
+                        title="Escolher foto existente da galeria"
                       >
                         <ImageIcon className="w-4 h-4 text-primary" />
-                        <span className="text-[11px] font-semibold leading-tight text-center">Galeria</span>
+                        <span className="text-xs font-semibold">Galeria</span>
                       </Button>
                     </div>
                   )}
@@ -2398,9 +2373,7 @@ export default function InspecoesSE() {
                           <Label className="text-xs font-semibold text-emerald-900 dark:text-emerald-300 block mb-1">
                             Foto Depois (Solução)
                           </Label>
-                          <input ref={depoisRef} type="file" accept="image/*" capture="environment" className="hidden"
-                            onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
-                          <input ref={depoisAppRef} type="file" accept="image/*" className="hidden"
+                          <input ref={depoisRef} type="file" accept="image/*" className="hidden"
                             onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
                           <input ref={depoisGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                             onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
@@ -2422,36 +2395,26 @@ export default function InspecoesSE() {
                               </button>
                             </div>
                           ) : (
-                            <div className="flex gap-1.5">
+                            <div className="grid grid-cols-2 gap-2">
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 h-9 text-xs gap-1 bg-background"
+                                className="h-9 text-xs font-semibold gap-1.5 bg-background hover:border-primary/50"
                                 onClick={() => depoisRef.current?.click()}
-                                title="Câmera do celular"
+                                title="Tirar foto usando a Câmera ou aplicativo instalado (ex: Conota)"
                               >
-                                <Camera className="w-3.5 h-3.5" /> Câmera
+                                <Camera className="w-3.5 h-3.5 text-primary" /> Câmera
                               </Button>
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 h-9 text-xs gap-1 bg-background border-primary/30"
-                                onClick={() => abrirConota("depois")}
-                                title="Abrir Conota Camera"
-                              >
-                                <Smartphone className="w-3.5 h-3.5" /> Abrir Conota
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 h-9 text-xs gap-1 bg-background"
+                                className="h-9 text-xs font-semibold gap-1.5 bg-background hover:border-primary/50"
                                 onClick={() => depoisGalleryRef.current?.click()}
-                                title="Galeria de fotos"
+                                title="Escolher foto existente da galeria"
                               >
-                                <ImageIcon className="w-3.5 h-3.5" /> Galeria
+                                <ImageIcon className="w-3.5 h-3.5 text-primary" /> Galeria
                               </Button>
                             </div>
                           )}
@@ -2485,42 +2448,6 @@ export default function InspecoesSE() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Instruções Conota Camera */}
-      <Dialog open={conotaModal !== null} onOpenChange={(o) => { if (!o) setConotaModal(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-bold">
-              <Smartphone className="w-5 h-5 text-primary" /> Conota Camera (GPS)
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2 text-sm">
-            <p className="text-muted-foreground">
-              O aplicativo <strong>Conota Camera</strong> foi acionado no seu celular para registrar a foto com coordenadas GPS, data e hora.
-            </p>
-            <div className="bg-primary/5 border border-primary/20 p-3 rounded-lg text-xs space-y-1.5 text-foreground">
-              <p className="font-semibold text-primary">Como anexar ao retornar:</p>
-              <p>1. Tire a foto no Conota e salve.</p>
-              <p>2. Ao voltar para esta tela, clique no botão abaixo para anexar a foto carimbada que está no topo da sua galeria.</p>
-            </div>
-            <Button
-              className="w-full h-11 gap-2 font-semibold shadow-xs"
-              onClick={() => {
-                const target = conotaModal;
-                setConotaModal(null);
-                setTimeout(() => {
-                  if (target === "antes") antesGalleryRef.current?.click();
-                  else depoisGalleryRef.current?.click();
-                }, 100);
-              }}
-            >
-              <ImageIcon className="w-4 h-4" /> Anexar Foto da Galeria
-            </Button>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" className="w-full" onClick={() => setConotaModal(null)}>Fechar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Modal de Exportação de PDF com filtro por intervalo de datas */}
       <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
