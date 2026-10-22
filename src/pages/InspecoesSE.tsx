@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2, ImageIcon, CalendarIcon, Upload, ChevronDown, ChevronUp, AlertTriangle, ShieldCheck, MapPin, CheckCircle2 } from "lucide-react";
+import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2, ImageIcon, CalendarIcon, Upload, ChevronDown, ChevronUp, AlertTriangle, ShieldCheck, MapPin, CheckCircle2, Smartphone } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -2173,26 +2173,39 @@ export default function InspecoesSE() {
                       </button>
                     </div>
                   ) : (
-                    <div className={cn("grid grid-cols-2 gap-2 mt-1", errors.foto_antes && "p-1 rounded-md border border-destructive")}>
+                    <div className={cn("grid grid-cols-3 gap-1.5 mt-1", errors.foto_antes && "p-1 rounded-md border border-destructive")}>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-14 flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5"
+                        className="h-14 flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 px-1"
                         onClick={() => antesRef.current?.click()}
+                        title="Abrir câmera padrão do celular"
                       >
                         <Camera className="w-4 h-4 text-primary" />
-                        <span className="text-xs font-semibold">Câmera</span>
+                        <span className="text-[11px] font-semibold leading-tight text-center">Câmera</span>
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-14 flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5"
+                        className="h-14 flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 px-1 border-primary/30 bg-primary/5"
+                        onClick={() => antesAppRef.current?.click()}
+                        title="Abrir Conota Camera ou outro app de fotos com GPS"
+                      >
+                        <Smartphone className="w-4 h-4 text-primary" />
+                        <span className="text-[11px] font-semibold leading-tight text-center">Conota / App</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-14 flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 px-1"
                         onClick={() => antesGalleryRef.current?.click()}
+                        title="Escolher foto da galeria"
                       >
                         <ImageIcon className="w-4 h-4 text-primary" />
-                        <span className="text-xs font-semibold">Galeria</span>
+                        <span className="text-[11px] font-semibold leading-tight text-center">Galeria</span>
                       </Button>
                     </div>
                   )}
@@ -2393,13 +2406,14 @@ export default function InspecoesSE() {
                               </button>
                             </div>
                           ) : (
-                            <div className="flex gap-2">
+                            <div className="flex gap-1.5">
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
                                 className="flex-1 h-9 text-xs gap-1 bg-background"
                                 onClick={() => depoisRef.current?.click()}
+                                title="Câmera do celular"
                               >
                                 <Camera className="w-3.5 h-3.5" /> Câmera
                               </Button>
@@ -2407,8 +2421,19 @@ export default function InspecoesSE() {
                                 type="button"
                                 variant="outline"
                                 size="sm"
+                                className="flex-1 h-9 text-xs gap-1 bg-background border-primary/30"
+                                onClick={() => depoisAppRef.current?.click()}
+                                title="Conota ou outro aplicativo"
+                              >
+                                <Smartphone className="w-3.5 h-3.5" /> Conota / App
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
                                 className="flex-1 h-9 text-xs gap-1 bg-background"
                                 onClick={() => depoisGalleryRef.current?.click()}
+                                title="Galeria de fotos"
                               >
                                 <ImageIcon className="w-3.5 h-3.5" /> Galeria
                               </Button>
