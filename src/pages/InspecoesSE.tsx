@@ -2024,14 +2024,19 @@ export default function InspecoesSE() {
           "sm:w-[calc(100vw-2rem)] sm:max-w-3xl",
           "lg:max-w-4xl xl:max-w-5xl",
         ].join(" ")}>
-          <DialogHeader className="px-5 sm:px-6 py-4 border-b flex-shrink-0 bg-muted/20">
+          <DialogHeader
+            className="px-4 sm:px-6 pb-3 sm:py-4 border-b flex-shrink-0 bg-muted/20 pr-12 sm:pr-6"
+            style={{
+              paddingTop: "max(1.25rem, calc(env(safe-area-inset-top, 0px) + 0.85rem))",
+            }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <DialogTitle className="text-base sm:text-lg font-bold flex items-center gap-2 text-foreground">
-                  <ClipboardCheck className="w-5 h-5 text-primary" />
-                  {editingId ? "Editar Registro de Inspeção" : "Novo Registro de Conformidade"}
+                  <ClipboardCheck className="w-5 h-5 text-primary shrink-0" />
+                  <span>{editingId ? "Editar Registro de Inspeção" : "Novo Registro de Conformidade"}</span>
                 </DialogTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                   Preencha os dados essenciais e utilize a IA para classificar a norma e sugerir a ação
                 </p>
               </div>
@@ -2462,7 +2467,12 @@ export default function InspecoesSE() {
             <div className="h-2" />
           </div>
 
-          <DialogFooter className="gap-2 flex-shrink-0 bg-muted/20 px-4 sm:px-6 py-3 border-t flex flex-row justify-end" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+          <DialogFooter
+            className="gap-2 flex-shrink-0 bg-muted/20 px-4 sm:px-6 py-3 border-t flex flex-row justify-end"
+            style={{
+              paddingBottom: "max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))",
+            }}
+          >
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving} className="flex-1 sm:flex-none h-10 px-5">
               Cancelar
             </Button>
