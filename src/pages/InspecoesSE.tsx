@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2, ImageIcon, CalendarIcon, Upload } from "lucide-react";
+import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2, ImageIcon, CalendarIcon, Upload, ChevronDown, ChevronUp, AlertTriangle, ShieldCheck, MapPin, CheckCircle2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -159,8 +159,8 @@ export default function InspecoesSE() {
   const depoisGalleryRef = useRef<HTMLInputElement>(null);
   const antesAppRef = useRef<HTMLInputElement>(null);
   const depoisAppRef = useRef<HTMLInputElement>(null);
-  const [cameraChooserFor, setCameraChooserFor] = useState<"antes" | "depois" | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [mostrarDetalhesNorma, setMostrarDetalhesNorma] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const pdfImageCacheRef = useRef<Map<string, string | null>>(new Map());
 
@@ -341,6 +341,9 @@ export default function InspecoesSE() {
           // inspeção é justamente ele que sustenta a autuação.
           trecho_norma: data.trecho_norma || p.trecho_norma,
         }));
+        if (data.trecho_norma) {
+          setMostrarDetalhesNorma(true);
+        }
         toast({
           title: "Sugestão aplicada",
           description: "Confira a referência, o trecho da norma e a ação antes de salvar.",
@@ -385,6 +388,7 @@ export default function InspecoesSE() {
       if (anterior) setForm({ ...emptyForm, ...anterior });
     } else setForm(form); // keep draft
     clearPhotoPreviews();
+    setMostrarDetalhesNorma(false);
     originalFotoAntesPathRef.current = null;
     originalFotoDepoisPathRef.current = null;
     setDialogOpen(true);
@@ -418,6 +422,7 @@ export default function InspecoesSE() {
     setFotoAntesPreview(null);
     setFotoDepoisFile(null);
     setFotoDepoisPreview(null);
+    setMostrarDetalhesNorma(!!item.trecho_norma);
     setDialogOpen(true);
   }
 
@@ -1706,18 +1711,18 @@ export default function InspecoesSE() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-lg border bg-card p-4 text-center">
-          <p className="text-2xl font-bold">{items.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">Total de Registros</p>
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="rounded-xl border bg-card p-4 text-center shadow-xs">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{items.length}</p>
+          <p className="text-xs font-medium text-muted-foreground mt-1">Total de Registros</p>
         </div>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-center">
-          <p className="text-2xl font-bold text-amber-700">{pendentes}</p>
-          <p className="text-xs text-amber-600 mt-1">Pendentes</p>
+        <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 dark:bg-amber-950/20 dark:border-amber-900/50 p-4 text-center shadow-xs">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-amber-600 dark:text-amber-400">{pendentes}</p>
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-300 mt-1">Pendentes</p>
         </div>
-        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
-          <p className="text-2xl font-bold text-green-700">{solucionados}</p>
-          <p className="text-xs text-green-600 mt-1">Solucionados</p>
+        <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/70 dark:bg-emerald-950/20 dark:border-emerald-900/50 p-4 text-center shadow-xs">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">{solucionados}</p>
+          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300 mt-1">Solucionados</p>
         </div>
       </div>
 
@@ -2004,301 +2009,430 @@ export default function InspecoesSE() {
         <DialogContent className={[
           "p-0 gap-0 flex flex-col overflow-hidden",
           "w-full h-[100dvh] rounded-none",
-          "sm:h-auto sm:max-h-[92vh] sm:rounded-lg",
-          "sm:w-[calc(100vw-3rem)] sm:max-w-2xl",
-          "lg:max-w-4xl xl:max-w-[1100px]",
+          "sm:h-auto sm:max-h-[92vh] sm:rounded-xl",
+          "sm:w-[calc(100vw-2rem)] sm:max-w-3xl",
+          "lg:max-w-4xl xl:max-w-5xl",
         ].join(" ")}>
-          <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 border-b flex-shrink-0">
-            <DialogTitle className="text-base sm:text-lg">{editingId ? "Editar Registro" : "Novo Registro de Conformidade"}</DialogTitle>
+          <DialogHeader className="px-5 sm:px-6 py-4 border-b flex-shrink-0 bg-muted/20">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-base sm:text-lg font-bold flex items-center gap-2 text-foreground">
+                  <ClipboardCheck className="w-5 h-5 text-primary" />
+                  {editingId ? "Editar Registro de Inspeção" : "Novo Registro de Conformidade"}
+                </DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Preencha os dados essenciais e utilize a IA para classificar a norma e sugerir a ação
+                </p>
+              </div>
+              <div className="hidden sm:flex items-center gap-2">
+                <StatusBadge tone={form.status === "SOLUCIONADO" ? "success" : form.status === "EM ANDAMENTO" ? "warning" : "pending"} size="sm">
+                  {form.status === "SOLUCIONADO" ? "Solucionado" : form.status === "EM ANDAMENTO" ? "Em Andamento" : "Pendente"}
+                </StatusBadge>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="space-y-5 overflow-y-auto flex-1 px-4 sm:px-6 py-4" style={{ WebkitOverflowScrolling: "touch" as any }}>
-            {/* Seção: Localização */}
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Localização</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-4 overflow-y-auto flex-1 px-4 sm:px-6 py-4" style={{ WebkitOverflowScrolling: "touch" as any }}>
+            
+            {/* LINHA 1: LOCALIZAÇÃO ESSENCIAL (Data e Obra) */}
+            <div className="bg-card border rounded-lg p-3.5 shadow-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div data-error={!!errors.data_inspecao}>
-                  <Label className="font-semibold">Data da Inspeção *</Label>
-                  <Input type="date" value={form.data_inspecao} onChange={e => { setForm(p => ({ ...p, data_inspecao: e.target.value })); setErrors(prev => ({ ...prev, data_inspecao: "" })); }} className={cn("min-h-[44px]", errors.data_inspecao && "border-destructive")} />
+                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
+                    <CalendarIcon className="w-3.5 h-3.5 text-primary" /> Data da Inspeção *
+                  </Label>
+                  <Input
+                    type="date"
+                    value={form.data_inspecao}
+                    onChange={e => {
+                      setForm(p => ({ ...p, data_inspecao: e.target.value }));
+                      setErrors(prev => ({ ...prev, data_inspecao: "" }));
+                    }}
+                    className={cn("h-10 text-sm", errors.data_inspecao && "border-destructive")}
+                  />
                   {errors.data_inspecao && <p className="text-xs text-destructive mt-1">{errors.data_inspecao}</p>}
                 </div>
+
                 <div data-error={!!errors.obra_id}>
-                  <Label className="font-semibold">Obra *</Label>
+                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-primary" /> Obra / Local *
+                  </Label>
                   <ObraCombobox
                     obras={obras}
                     valor={form.obra_id}
                     invalido={!!errors.obra_id}
-                    onSelecionar={id => { setForm(p => ({ ...p, obra_id: id })); setErrors(prev => ({ ...prev, obra_id: "" })); }}
+                    onSelecionar={id => {
+                      setForm(p => ({ ...p, obra_id: id }));
+                      setErrors(prev => ({ ...prev, obra_id: "" }));
+                    }}
                     onCriar={criarObraRapida}
                   />
                   {errors.obra_id && <p className="text-xs text-destructive mt-1">{errors.obra_id}</p>}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Obra que falta? Digite o nome e crie sem sair daqui — cidade e UF você
-                    completa depois em <strong>Cadastro de Local</strong>.
-                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Seção: Detalhamento */}
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Detalhamento</p>
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* GRID PRINCIPAL: DIAGNÓSTICO (ESQUERDA) + CLASSIFICAÇÃO/AÇÃO (DIREITA) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              
+              {/* COLUNA ESQUERDA: SITUAÇÃO DETECTADA (IA) + FOTO ANTES */}
+              <div className="space-y-4 flex flex-col">
+                
+                {/* CARD SITUAÇÃO DETECTADA & BOTÃO IA */}
+                <div data-error={!!errors.situacao_detectada} className="bg-card border-2 border-primary/25 rounded-xl p-4 shadow-xs relative flex flex-col justify-between">
                   <div>
-                    <Label className="font-semibold">Gravidade *</Label>
-                    <Select value={form.gravidade} onValueChange={v => setForm(p => ({ ...p, gravidade: v }))}>
-                      <SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {GRAVIDADE_OPTIONS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="font-semibold">Referência Normativa</Label>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Situação Detectada *
+                      </Label>
+                      <span className="text-[11px] text-muted-foreground font-medium">Obrigatório</span>
+                    </div>
+
                     <Textarea
-                      placeholder={"Ex: NR-18 — Item 18.6.10 — Quadros de distribuição devem possuir partes vivas inacessíveis...\nNR-18 — Item 18.6.12(c) — Dispositivos de manobra devem possuir condições para bloqueio e sinalização."}
-                      value={form.referencia_normativa}
-                      onChange={e => setForm(p => ({ ...p, referencia_normativa: e.target.value }))}
-                      className="min-h-[96px] w-full resize-y text-sm"
+                      placeholder="Descreva o que foi observado no local (ex: Quadro elétrico com partes vivas expostas sem isolamento...)"
+                      value={form.situacao_detectada}
+                      onChange={e => {
+                        setForm(p => ({ ...p, situacao_detectada: e.target.value }));
+                        setErrors(prev => ({ ...prev, situacao_detectada: "" }));
+                      }}
                       rows={4}
-                      title={form.referencia_normativa}
+                      className={cn(
+                        "resize-none text-sm min-h-[96px] bg-background focus-visible:ring-primary/30",
+                        errors.situacao_detectada && "border-destructive"
+                      )}
                     />
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      Formato: <strong>NR-XX — Item X.X.X — Descrição curta</strong>. Múltiplas referências: uma por linha (norma principal primeiro).
-                    </p>
+                    {errors.situacao_detectada && <p className="text-xs text-destructive mt-1">{errors.situacao_detectada}</p>}
                   </div>
-                  <div className="md:col-span-2">
-                    <Label className="font-semibold">O que a norma exige</Label>
-                    <Textarea
-                      placeholder="Trecho resumido do requisito da norma citada acima."
-                      value={form.trecho_norma}
-                      onChange={e => setForm(p => ({ ...p, trecho_norma: e.target.value }))}
-                      className="min-h-[72px] w-full resize-y text-sm"
-                      rows={3}
-                      title={form.trecho_norma}
-                    />
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      Preenchido pela sugestão de IA. Confira antes de emitir — quem responde pelo laudo é o responsável técnico.
+
+                  {/* BOTÃO DA IA EM DESTAQUE MÁXIMO (NÃO PODE SAIR) */}
+                  <div className="mt-3 pt-3 border-t border-border/60">
+                    <Button
+                      type="button"
+                      className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm transition-all gap-2"
+                      onClick={() => {
+                        if (form.situacao_detectada.trim().length < 5) {
+                          toast({ title: "Descreva a situação detectada antes de usar a IA.", variant: "destructive" });
+                          return;
+                        }
+                        askAI();
+                      }}
+                      disabled={aiLoading}
+                    >
+                      {aiLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-primary-foreground" />
+                          <span>Analisando com IA...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 text-amber-300" />
+                          <span>Sugerir NR, Gravidade e Ação (IA)</span>
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground text-center mt-1.5">
+                      Preenche automaticamente a <strong>NR</strong>, <strong>Gravidade</strong> e <strong>Ação Corretiva</strong>.
                     </p>
                   </div>
                 </div>
 
-                <div data-error={!!errors.situacao_detectada}>
-                  <Label className="font-semibold">Situação Detectada *</Label>
-                  <Textarea placeholder="Descreva a não conformidade ou irregularidade..." value={form.situacao_detectada} onChange={e => { setForm(p => ({ ...p, situacao_detectada: e.target.value })); setErrors(prev => ({ ...prev, situacao_detectada: "" })); }} rows={4} className={cn("resize-y min-h-[96px]", errors.situacao_detectada && "border-destructive")} />
-                  {errors.situacao_detectada && <p className="text-xs text-destructive mt-1">{errors.situacao_detectada}</p>}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 gap-1.5"
-                    onClick={() => {
-                      if (form.situacao_detectada.trim().length < 5) {
-                        toast({ title: "Descreva a situação detectada antes de usar a IA.", variant: "destructive" });
-                        return;
-                      }
-                      askAI();
-                    }}
-                    disabled={aiLoading}
-                  >
-                    {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                    {aiLoading ? "Analisando..." : "Sugerir NR, Gravidade e Ação (IA)"}
-                  </Button>
-                </div>
-              </div>
-            </div>
+                {/* CARD FOTO ANTES (EVIDÊNCIA OBRIGATÓRIA) */}
+                <div data-error={!!errors.foto_antes} className="bg-card border rounded-lg p-3.5 shadow-xs flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 text-primary" /> Foto Antes (Evidência) *
+                    </Label>
+                    {(fotoAntesPreview || existingFotoAntes || existingFotoAntesPath) && (
+                      <span className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Foto anexada
+                      </span>
+                    )}
+                  </div>
 
-            {/* Seção: Evidências */}
-            <div data-error={!!errors.foto_antes}>
-              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Evidências Fotográficas</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="font-semibold">Foto ANTES *</Label>
                   <input ref={antesRef} type="file" accept="image/*" capture="environment" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                   <input ref={antesAppRef} type="file" accept="image/*" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                   <input ref={antesGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
+
                   {(fotoAntesPreview || existingFotoAntes || existingFotoAntesPath) ? (
-                    <div className="relative mt-1">
+                    <div className="relative mt-1 group">
                       {fotoAntesPreview ? (
-                        <img src={fotoAntesPreview} alt="Antes" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                        <img src={fotoAntesPreview} alt="Antes" className="w-full h-44 object-contain bg-muted/20 rounded-md border" />
                       ) : (
-                        <InspecaoImage path={existingFotoAntesPath} legacyUrl={existingFotoAntes} alt="Antes" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                        <InspecaoImage path={existingFotoAntesPath} legacyUrl={existingFotoAntes} alt="Antes" className="w-full h-44 object-contain bg-muted/20 rounded-md border" />
                       )}
                       <button
                         type="button"
                         aria-label="Remover foto antes"
-                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1"
+                        className="absolute top-2 right-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full p-1.5 shadow-md transition-colors"
                         onClick={() => { setFotoAntesFile(null); setFotoAntesPreview(null); setExistingFotoAntes(null); setExistingFotoAntesPath(null); }}
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
                   ) : (
-                    <div className={cn("flex flex-col gap-1.5 mt-1 p-2 rounded-md", errors.foto_antes && "border border-destructive")}>
-                      <Button variant="outline" size="sm" className="w-full min-h-[44px]" onClick={() => setCameraChooserFor("antes")}>
-                        <Camera className="w-4 h-4 mr-1" /> Câmera
-                      </Button>
-                      <Button variant="outline" size="sm" className="w-full min-h-[44px] text-primary border-primary/30" onClick={() => antesGalleryRef.current?.click()}>
-                        <ImageIcon className="w-4 h-4 mr-1" /> Galeria
-                      </Button>
-                    </div>
-                  )}
-                  {errors.foto_antes && <p className="text-xs text-destructive mt-1">{errors.foto_antes}</p>}
-                </div>
-                <div>
-                  <Label className="font-semibold">Foto DEPOIS</Label>
-                  <input ref={depoisRef} type="file" accept="image/*" capture="environment" className="hidden"
-                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
-                  <input ref={depoisAppRef} type="file" accept="image/*" className="hidden"
-                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
-                  <input ref={depoisGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
-                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
-                  {(fotoDepoisPreview || existingFotoDepois || existingFotoDepoisPath) ? (
-                    <div className="relative mt-1">
-                      {fotoDepoisPreview ? (
-                        <img src={fotoDepoisPreview} alt="Depois" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
-                      ) : (
-                        <InspecaoImage path={existingFotoDepoisPath} legacyUrl={existingFotoDepois} alt="Depois" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
-                      )}
-                      <button
+                    <div className={cn("grid grid-cols-2 gap-2 mt-1", errors.foto_antes && "p-1 rounded-md border border-destructive")}>
+                      <Button
                         type="button"
-                        aria-label="Remover foto depois"
-                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1"
-                        onClick={() => { setFotoDepoisFile(null); setFotoDepoisPreview(null); setExistingFotoDepois(null); setExistingFotoDepoisPath(null); }}
+                        variant="outline"
+                        size="sm"
+                        className="h-14 flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5"
+                        onClick={() => antesRef.current?.click()}
                       >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-1.5 mt-1">
-                      <Button variant="outline" size="sm" className="w-full min-h-[44px]"
-                        onClick={() => setCameraChooserFor("depois")}
-                        disabled={form.status !== "SOLUCIONADO"}>
-                        <Camera className="w-4 h-4 mr-1" /> {form.status !== "SOLUCIONADO" ? "Após solução" : "Câmera"}
+                        <Camera className="w-4 h-4 text-primary" />
+                        <span className="text-xs font-semibold">Câmera</span>
                       </Button>
-                      <Button variant="outline" size="sm" className="w-full min-h-[44px] text-primary border-primary/30"
-                        onClick={() => depoisGalleryRef.current?.click()}
-                        disabled={form.status !== "SOLUCIONADO"}>
-                        <ImageIcon className="w-4 h-4 mr-1" /> Galeria
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-14 flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5"
+                        onClick={() => antesGalleryRef.current?.click()}
+                      >
+                        <ImageIcon className="w-4 h-4 text-primary" />
+                        <span className="text-xs font-semibold">Galeria</span>
                       </Button>
                     </div>
                   )}
+                  {errors.foto_antes && <p className="text-xs text-destructive mt-1.5">{errors.foto_antes}</p>}
                 </div>
+
               </div>
-            </div>
 
-            {/* Dialog: escolha de câmera */}
-            <Dialog open={cameraChooserFor !== null} onOpenChange={(o) => { if (!o) setCameraChooserFor(null); }}>
-              <DialogContent className="sm:max-w-sm">
-                <DialogHeader>
-                  <DialogTitle>Como deseja tirar a foto?</DialogTitle>
-                </DialogHeader>
-                <div className="flex flex-col gap-2 mt-2">
-                  <Button
-                    variant="default"
-                    className="w-full min-h-[48px] justify-start"
-                    onClick={() => {
-                      const target = cameraChooserFor;
-                      setCameraChooserFor(null);
-                      setTimeout(() => (target === "antes" ? antesRef : depoisRef).current?.click(), 50);
-                    }}
-                  >
-                    <Camera className="w-4 h-4 mr-2" /> Câmera do celular
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full min-h-[48px] justify-start"
-                    onClick={() => {
-                      const target = cameraChooserFor;
-                      setCameraChooserFor(null);
-                      setTimeout(() => (target === "antes" ? antesAppRef : depoisAppRef).current?.click(), 50);
-                    }}
-                  >
-                    <ImageIcon className="w-4 h-4 mr-2" /> Escolher aplicativo de câmera
-                  </Button>
-                  <p className="text-xs text-muted-foreground px-1">
-                    Caso seu aplicativo de câmera (ex.: Conota) não apareça, tire a foto pelo aplicativo e depois envie pela Galeria.
-                  </p>
-                </div>
-                <DialogFooter>
-                  <Button variant="ghost" className="w-full" onClick={() => setCameraChooserFor(null)}>Cancelar</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+              {/* COLUNA DIREITA: ENQUADRAMENTO + AÇÃO CORRETIVA + STATUS */}
+              <div className="space-y-4">
+                
+                {/* CARD CLASSIFICAÇÃO & AÇÃO */}
+                <div className="bg-card border rounded-lg p-3.5 shadow-xs space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-primary" /> Enquadramento & Correção
+                    </span>
+                    {form.referencia_normativa && (
+                      <span className="text-[11px] text-primary font-medium flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> Sugerido pela IA
+                      </span>
+                    )}
+                  </div>
 
-            {/* Seção: Ação Corretiva */}
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Ação Corretiva</p>
-              <div className="space-y-3">
-                <div data-error={!!errors.acao_corretiva}>
-                  <Label className="font-semibold">O Que Fazer *</Label>
-                  <Textarea placeholder="Descreva a ação corretiva necessária..." value={form.acao_corretiva} onChange={e => { setForm(p => ({ ...p, acao_corretiva: e.target.value })); setErrors(prev => ({ ...prev, acao_corretiva: "" })); }} rows={2} className={cn("resize-y min-h-[72px]", errors.acao_corretiva && "border-destructive")} />
-                  {errors.acao_corretiva && <p className="text-xs text-destructive mt-1">{errors.acao_corretiva}</p>}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <div>
-                    <Label className="font-semibold">Responsável</Label>
-                    <Input placeholder="Nome ou setor (opcional)" value={form.responsavel} onChange={e => setForm(p => ({ ...p, responsavel: e.target.value }))} className="min-h-[44px]" />
-                    <p className="text-xs text-muted-foreground mt-1">Campo opcional.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                        Gravidade *
+                      </Label>
+                      <Select value={form.gravidade} onValueChange={v => setForm(p => ({ ...p, gravidade: v }))}>
+                        <SelectTrigger className="h-10 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {GRAVIDADE_OPTIONS.map(g => (
+                            <SelectItem key={g} value={g}>
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  "w-2 h-2 rounded-full",
+                                  g === "LEVE" && "bg-blue-500",
+                                  g === "MODERADO" && "bg-amber-500",
+                                  g === "GRAVE" && "bg-orange-500",
+                                  g === "RISCO CRÍTICO" && "bg-red-500"
+                                )} />
+                                {g}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                        Referência Normativa (NR)
+                      </Label>
+                      <Input
+                        placeholder="Ex: NR-18 — Item 18.6.10"
+                        value={form.referencia_normativa}
+                        onChange={e => setForm(p => ({ ...p, referencia_normativa: e.target.value }))}
+                        className="h-10 text-sm"
+                        title={form.referencia_normativa}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label className="font-semibold">Status</Label>
-                    <Select
-                      value={form.status}
-                      onValueChange={v => setForm(p => {
-                        const next = { ...p, status: v };
-                        // Ao marcar como SOLUCIONADO, preencher automaticamente a data da correção (se estiver vazia)
-                        if (v === "SOLUCIONADO" && !p.data_realizado) {
-                          next.data_realizado = format(new Date(), "yyyy-MM-dd");
-                        }
-                        // Ao voltar para PENDENTE / EM ANDAMENTO, limpar data da correção
-                        if (v !== "SOLUCIONADO") {
-                          next.data_realizado = "";
-                        }
-                        return next;
-                      })}
-                    >
-                      <SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                {form.status === "SOLUCIONADO" ? (
-                  <div>
-                    <Label className="font-semibold">Data da correção</Label>
-                    <Input
-                      type="date"
-                      value={form.data_realizado}
-                      onChange={e => setForm(p => ({ ...p, data_realizado: e.target.value }))}
-                      className="min-h-[44px]"
+
+                  {/* Ação Corretiva */}
+                  <div data-error={!!errors.acao_corretiva}>
+                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                      Ação Corretiva (O Que Fazer) *
+                    </Label>
+                    <Textarea
+                      placeholder="Descreva a ação imediata para mitigar ou eliminar a irregularidade..."
+                      value={form.acao_corretiva}
+                      onChange={e => {
+                        setForm(p => ({ ...p, acao_corretiva: e.target.value }));
+                        setErrors(prev => ({ ...prev, acao_corretiva: "" }));
+                      }}
+                      rows={3}
+                      className={cn("resize-none text-sm min-h-[78px]", errors.acao_corretiva && "border-destructive")}
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Data em que a não conformidade foi corrigida. Preenchida automaticamente ao marcar como Solucionado — você pode ajustar se necessário.</p>
+                    {errors.acao_corretiva && <p className="text-xs text-destructive mt-1">{errors.acao_corretiva}</p>}
                   </div>
-                ) : (
-                  <div>
-                    <Label className="font-semibold text-muted-foreground">Data da correção</Label>
-                    <Input type="date" value="" disabled className="min-h-[44px] opacity-60" />
-                    <p className="text-xs text-muted-foreground mt-1">Disponível apenas quando o status for <strong>Solucionado</strong>.</p>
+
+                  {/* Trecho da Norma (Recolhível/Compacto para não poluir!) */}
+                  <div className="pt-1 border-t border-border/50">
+                    <button
+                      type="button"
+                      onClick={() => setMostrarDetalhesNorma(!mostrarDetalhesNorma)}
+                      className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 font-medium py-1"
+                    >
+                      {mostrarDetalhesNorma ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      <span>
+                        {form.trecho_norma ? "Ver/Editar trecho técnico da norma (IA)" : "Adicionar trecho técnico da norma (opcional)"}
+                      </span>
+                    </button>
+
+                    {mostrarDetalhesNorma && (
+                      <div className="mt-2 space-y-1.5 animate-in fade-in-50 duration-200">
+                        <Textarea
+                          placeholder="Trecho resumido ou requisito da norma citado no laudo técnico..."
+                          value={form.trecho_norma}
+                          onChange={e => setForm(p => ({ ...p, trecho_norma: e.target.value }))}
+                          rows={2}
+                          className="resize-none text-xs bg-muted/20"
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          Texto técnico incorporado no relatório para fundamentação legal.
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+
+                {/* CARD STATUS & RESPONSÁVEL */}
+                <div className="bg-card border rounded-lg p-3.5 shadow-xs space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                        Status
+                      </Label>
+                      <Select
+                        value={form.status}
+                        onValueChange={v => setForm(p => {
+                          const next = { ...p, status: v };
+                          if (v === "SOLUCIONADO" && !p.data_realizado) {
+                            next.data_realizado = format(new Date(), "yyyy-MM-dd");
+                          }
+                          if (v !== "SOLUCIONADO") {
+                            next.data_realizado = "";
+                          }
+                          return next;
+                        })}
+                      >
+                        <SelectTrigger className="h-10 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                        Responsável
+                      </Label>
+                      <Input
+                        placeholder="Nome ou setor (opcional)"
+                        value={form.responsavel}
+                        onChange={e => setForm(p => ({ ...p, responsavel: e.target.value }))}
+                        className="h-10 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* BLOCO CONDICIONAL SE SOLUCIONADO */}
+                  {form.status === "SOLUCIONADO" && (
+                    <div className="mt-3 p-3 bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg space-y-3 animate-in fade-in-50 duration-200">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-400">
+                        <CheckCircle2 className="w-4 h-4" /> Registro de Solução / Correção
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs font-semibold text-emerald-900 dark:text-emerald-300 block mb-1">
+                            Data da Correção
+                          </Label>
+                          <Input
+                            type="date"
+                            value={form.data_realizado}
+                            onChange={e => setForm(p => ({ ...p, data_realizado: e.target.value }))}
+                            className="h-9 text-sm bg-background"
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-xs font-semibold text-emerald-900 dark:text-emerald-300 block mb-1">
+                            Foto Depois (Solução)
+                          </Label>
+                          <input ref={depoisRef} type="file" accept="image/*" capture="environment" className="hidden"
+                            onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
+                          <input ref={depoisAppRef} type="file" accept="image/*" className="hidden"
+                            onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
+                          <input ref={depoisGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
+                            onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
+
+                          {(fotoDepoisPreview || existingFotoDepois || existingFotoDepoisPath) ? (
+                            <div className="relative mt-1">
+                              {fotoDepoisPreview ? (
+                                <img src={fotoDepoisPreview} alt="Depois" className="w-full h-24 object-cover rounded-md border" />
+                              ) : (
+                                <InspecaoImage path={existingFotoDepoisPath} legacyUrl={existingFotoDepois} alt="Depois" className="w-full h-24 object-cover rounded-md border" />
+                              )}
+                              <button
+                                type="button"
+                                aria-label="Remover foto depois"
+                                className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 shadow-sm"
+                                onClick={() => { setFotoDepoisFile(null); setFotoDepoisPreview(null); setExistingFotoDepois(null); setExistingFotoDepoisPath(null); }}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 h-9 text-xs gap-1 bg-background"
+                                onClick={() => depoisRef.current?.click()}
+                              >
+                                <Camera className="w-3.5 h-3.5" /> Câmera
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 h-9 text-xs gap-1 bg-background"
+                                onClick={() => depoisGalleryRef.current?.click()}
+                              >
+                                <ImageIcon className="w-3.5 h-3.5" /> Galeria
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </div>
 
-            {/* Spacer for iOS safe area */}
             <div className="h-2" />
           </div>
 
-          <DialogFooter className="gap-2 flex-shrink-0 bg-background px-4 sm:px-6 py-3 border-t flex flex-row sm:flex-row justify-end" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving} className="flex-1 sm:flex-none min-h-[44px]">Cancelar</Button>
-            <Button onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none min-h-[44px]">
+          <DialogFooter className="gap-2 flex-shrink-0 bg-muted/20 px-4 sm:px-6 py-3 border-t flex flex-row justify-end" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving} className="flex-1 sm:flex-none h-10 px-5">
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none h-10 px-6 font-semibold shadow-xs">
               {saving ? (
-                <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvando...</>
               ) : "Salvar Inspeção"}
             </Button>
           </DialogFooter>
