@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData, getSyncQueue, removeFromSyncQueue } from "@/lib/offlineStorage";
+import { isNetworkFailure } from "@/lib/offlineViewCache";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -302,22 +303,41 @@ export default function Entregas() {
             setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
             toast({ title: "Assinatura salva offline", description: `${ids.length} entrega(s) atualizada(s).` });
           } else {
-            const results = await Promise.all(
-              ids.map(id =>
-                (supabase.from as any)("entregas").update(updatePayload).eq("id", id)
-              )
-            );
-            
-            const failed = results.filter(r => r.error);
-            if (failed.length > 0) {
-              console.error("Failed to save signature directly:", failed.map(r => r.error));
-              if (failed.length === ids.length) {
-                toast({ title: "Falha ao salvar assinatura", description: "Ocorreu um erro no servidor. Tente novamente.", variant: "destructive" });
+            try {
+              const results = await Promise.all(
+                ids.map(id =>
+                  (supabase.from as any)("entregas").update(updatePayload).eq("id", id)
+                )
+              );
+              
+              const failed = results.filter(r => r.error);
+              if (failed.length > 0) {
+                const hasNetErr = failed.some(f => isNetworkFailure(f.error));
+                if (hasNetErr) {
+                  for (const id of ids) {
+                    addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...updatePayload } });
+                  }
+                  const cached = getCachedData<Entrega>("entregas") || [];
+                  setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
+                  toast({ title: "Assinatura salva offline (sem sinal)", description: "A assinatura foi guardada no aparelho e sincronizará quando voltar a internet." });
+                } else {
+                  console.error("Failed to save signature directly:", failed.map(r => r.error));
+                  if (failed.length === ids.length) {
+                    toast({ title: "Falha ao salvar assinatura", description: "Ocorreu um erro no servidor. Tente novamente.", variant: "destructive" });
+                  } else {
+                    toast({ title: "Salvo parcialmente", description: "Alguns itens falharam ao salvar.", variant: "destructive" });
+                  }
+                }
               } else {
-                toast({ title: "Salvo parcialmente", description: "Alguns itens falharam ao salvar.", variant: "destructive" });
+                toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
               }
-            } else {
-              toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
+            } catch (err) {
+              for (const id of ids) {
+                addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...updatePayload } });
+              }
+              const cached = getCachedData<Entrega>("entregas") || [];
+              setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
+              toast({ title: "Assinatura salva offline (sem sinal)", description: "A assinatura foi guardada no aparelho e sincronizará automaticamente." });
             }
           }
           refetch();
@@ -348,11 +368,33 @@ export default function Entregas() {
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   useEffect(() => {
     const loadUnidades = async () => {
-      const { data } = await supabase.from("empresa_config").select("id, nome, tipo").order("nome");
-      setUnidades((data as Unidade[]) || []);
+      // 1. Ler do cache local primeiro
+      const cached = getCachedData<Unidade>("empresa_config");
+      if (cached && cached.length > 0) {
+        setUnidades(cached);
+      }
+      // 2. Se online, atualizar do servidor
+      if (isOnline()) {
+        try {
+          const { data } = await supabase.from("empresa_config").select("id, nome, tipo").order("nome");
+          if (data && data.length > 0) {
+            setUnidades(data as Unidade[]);
+            setCachedData("empresa_config", data as any);
+          }
+        } catch (err) {
+          console.warn("Offline: mantendo unidades do cache", err);
+        }
+      }
+      // 3. Fallback de segurança se ainda estiver vazio e temos empresaId
+      setUnidades(prev => {
+        if (prev.length === 0 && empresaId) {
+          return [{ id: empresaId, nome: "Unidade Principal", tipo: "matriz" }];
+        }
+        return prev;
+      });
     };
     loadUnidades();
-  }, []);
+  }, [empresaId]);
 
   // Auto-fill unidade_origem_id when empresaId changes and form is empty
   useEffect(() => {
@@ -788,6 +830,57 @@ export default function Entregas() {
       toast({ title: `${failedEpis.length} EPI(s) com erro`, description: `Falha: ${failedEpis.join(", ")}. ${errorDetails}`, variant: "destructive" });
     }
     if (insertedIds.length === 0) {
+      const isNetFailure = results.some(r => r.status === "rejected" && isNetworkFailure(r.reason));
+      if (isNetFailure) {
+        // Fallback automático para modo offline se a conexão caiu no meio do envio
+        const cached = getCachedData<Entrega>("entregas") || [];
+        for (const item of epiList) {
+          const tempId = crypto.randomUUID();
+          const payload = {
+            id: tempId,
+            funcionario_id: form.funcionario_id,
+            epi_id: item.epi.source_epi_id || item.epi.id,
+            quantidade: item.quantidade,
+            data: form.data,
+            tipo: normalizedTipo,
+            status,
+            observacao: form.observacao || null,
+            empresa_id: empresaId,
+            unidade_origem_id: form.unidade_origem_id || null,
+          };
+          addToSyncQueue({ table: "entregas", type: "insert", payload });
+          insertedIds.push(tempId);
+          cached.unshift({
+            id: tempId,
+            funcionario_id: form.funcionario_id,
+            epi_id: item.epi.id,
+            quantidade: item.quantidade,
+            data: form.data,
+            tipo: normalizedTipo,
+            status,
+            observacao: form.observacao || null,
+            created_at: new Date().toISOString(),
+            assinatura_colaborador: null,
+            foto_reconhecimento: null,
+          } as Entrega);
+        }
+        setCachedData("entregas", cached);
+        toast({
+          title: "Salvo offline (queda de conexão)",
+          description: `${insertedIds.length} entrega(s) salva(s) com segurança no aparelho. Sincronizará quando a internet voltar.`,
+        });
+        setPendingEntrega({ funcionario_id: form.funcionario_id, entrega_ids: insertedIds });
+        setOpen(false);
+        resetForm();
+        setFormFuncSearch("");
+        setEpiCaSearch("");
+        setEpiList([]);
+        setEpiDropdownResults([]);
+        setSaving(false);
+        setShouldOpenSignatureAfterSave(true);
+        return;
+      }
+
       toast({ title: "Nenhum EPI foi registrado", description: "Verifique permissões ou tente novamente.", variant: "destructive" });
       setSaving(false);
       return;
