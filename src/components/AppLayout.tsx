@@ -24,53 +24,78 @@ interface EmpresaSwitcherInfo {
   empresa_pai_id: string | null;
 }
 
-export const mainNavItems: NavItem[] = [];
+export const mainNavItems: NavItem[] = [
+  { path: "/", label: "Dashboard", icon: LayoutDashboard, moduleKey: "dashboard" },
+];
 
 // Bottom nav: key shortcuts for mobile
 export const mobileBottomItems: NavItem[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard, moduleKey: "dashboard" },
   { path: "/epis", label: "EPIs", icon: Package, moduleKey: "epis" },
   { path: "/entregas", label: "Entregas", icon: ClipboardList, moduleKey: "entregas" },
-  { path: "/cadastro", label: "Cadastro", icon: Users, moduleKey: "cadastro_funcionarios" },
+  { path: "/cadastro/funcionarios", label: "Colaboradores", icon: Users, moduleKey: "cadastro_funcionarios" },
 ];
 
-export const epiItems: NavItem[] = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard, moduleKey: "dashboard" },
-  { path: "/epis", label: "Cadastro de EPIs", icon: Package, moduleKey: "epis" },
-  { path: "/epis/controle-contrato", label: "Estoque por Unidade", icon: Boxes, moduleKey: "estoque_contrato" },
-  { path: "/entregas", label: "Entregas", icon: ClipboardList, moduleKey: "entregas" },
-  { path: "/epis/solicitacoes-materiais", label: "Solicitação de Materiais", icon: ClipboardList, moduleKey: "solicitacoes_materiais" },
-  { path: "/relatorios", label: "Relatórios", icon: BarChart3, moduleKey: "relatorios" },
+// 🏢 CADASTRO MESTRE: Estrutura-base da organização que alimenta SST e operação
+export const cadastroMestreItems: NavItem[] = [
+  { path: "/cadastro/empresas", label: "Empresas / Unidades", icon: Building2, moduleKey: "cadastro_empresas" },
+  { path: "/cadastro/funcionarios", label: "Cargos e Funções", icon: Users, moduleKey: "cadastro_funcionarios" },
+  { path: "/documentacao-sst?aba=ges", label: "Estrutura Ocupacional & GES", icon: Network, moduleKey: "pgr" },
+  { path: "/cadastro/limpeza", label: "Limpeza de Cadastros", icon: RefreshCw, moduleKey: "cadastro_empresas" },
 ];
 
-/*
- * Gestão de ASO — saúde ocupacional.
- *
- * A CAT saiu daqui a pedido do cliente. Ela não é controle médico de
- * saúde: é a comunicação de um acidente à Previdência. A tela continua
- * existindo em /cat, com os registros intactos — o que saiu foi o atalho
- * deste grupo.
- */
-export const asoItems: NavItem[] = [
-  { path: "/aso", label: "Exames Ocupacionais", icon: Stethoscope, moduleKey: "aso" },
+// 📋 GESTÃO SST: Engenharia Ocupacional e Documentos Técnicos
+export const gestaoSstItems: NavItem[] = [
+  { path: "/documentacao-sst", label: "Documentação SST", icon: BookOpen, moduleKey: "pgr" },
+  { path: "/pgr", label: "PGR — Gerenciamento de Riscos", icon: FileText, moduleKey: "pgr" },
+  { path: "/pcmso/dashboard", label: "PCMSO — Saúde Ocupacional", icon: Stethoscope, moduleKey: "pgr" },
+  { path: "/ltcat", label: "LTCAT — Laudo Técnico", icon: ShieldCheck, moduleKey: "ltcat" },
+  { path: "/programas", label: "Laudos e Programas", icon: FileText, moduleKey: "pgr" },
+  { path: "/central-ppp", label: "PPP — Perfil Previdenciário", icon: ClipboardList, moduleKey: "ppp" },
 ];
 
-// Portal RH — acesso restrito do RH a ASOs liberados
-export const portalRhItems: NavItem[] = [
+// 👥 COLABORADORES: Gestão do Quadro e Documentação Individual
+export const colaboradoresItems: NavItem[] = [
+  { path: "/cadastro/funcionarios", label: "Quadro de Colaboradores", icon: Users, moduleKey: "cadastro_funcionarios" },
+  { path: "/arquivo-digital", label: "Dossiê do Colaborador", icon: FolderOpen, moduleKey: "arquivo_digital" },
+  { path: "/arquivo-digital/vencimentos", label: "Painel de Vencimentos", icon: Bell, moduleKey: "arquivo_digital" },
+];
+
+// 🩺 SAÚDE OCUPACIONAL: Gestão Médica, ASO e Portal RH
+export const saudeItems: NavItem[] = [
+  { path: "/aso", label: "Exames e ASO", icon: Stethoscope, moduleKey: "aso" },
   { path: "/rh/asos", label: "Portal RH — ASO", icon: Briefcase, moduleKey: "portal_rh" },
 ];
 
-// Gestão Documental SST
-export const gestaoDocItems: NavItem[] = [
-  { path: "/documentacao-sst", label: "Documentação SST", icon: BookOpen, moduleKey: "pgr" },
-  { path: "/arquivo-digital", label: "Dossiê do Colaborador", icon: FolderOpen, moduleKey: "arquivo_digital" },
+// 🦺 GESTÃO DE EPIs: Ciclo de vida dos equipamentos e entregas
+export const epiItems: NavItem[] = [
+  { path: "/epis", label: "Cadastro de EPIs", icon: Package, moduleKey: "epis" },
+  { path: "/epis/controle-contrato", label: "Estoque por Unidade", icon: Boxes, moduleKey: "estoque_contrato" },
+  { path: "/epis/solicitacoes-materiais", label: "Solicitação de Materiais", icon: ClipboardList, moduleKey: "solicitacoes_materiais" },
+  { path: "/entregas", label: "Entregas e Fichas", icon: ClipboardList, moduleKey: "entregas" },
+  { path: "/relatorios", label: "Relatórios de EPIs", icon: BarChart3, moduleKey: "relatorios" },
 ];
 
+// 🎓 TREINAMENTOS: Listas de presença e acervo audiovisual
 export const treinamentosItems: NavItem[] = [
-  { path: "/dds", label: "Listas de Presença", icon: MessageSquare, moduleKey: "dds" },
+  { path: "/dds", label: "Listas de Presença / DDS", icon: MessageSquare, moduleKey: "dds" },
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
 ];
-// Comercial — Orçamentos, Clientes, Catálogo
+
+// 🔎 INSPEÇÕES: Auditorias em campo, locais e extintores
+export const inspecoesItems: NavItem[] = [
+  { path: "/inspecoes-se/dashboard", label: "Dashboard", icon: LayoutDashboard, moduleKey: "inspecoes_se" },
+  { path: "/inspecoes-se", label: "Inspeções e Apontamentos", icon: ClipboardList, moduleKey: "inspecoes_se" },
+  { path: "/inspecoes-se/obras", label: "Locais e Obras", icon: HardHat, moduleKey: "inspecoes_se" },
+  { path: "/extintores", label: "Extintores (NR-23)", icon: Flame, moduleKey: "extintores" },
+];
+
+// 📊 RELATÓRIOS: Central consolidada
+export const relatoriosNavItems: NavItem[] = [
+  { path: "/relatorios", label: "Central de Relatórios", icon: BarChart3, moduleKey: "relatorios" },
+];
+
+// 💼 COMERCIAL: Orçamentos, clientes e catálogo
 export const comercialItems: NavItem[] = [
   { path: "/comercial", label: "Dashboard Comercial", icon: LayoutDashboard, moduleKey: "comercial" },
   { path: "/comercial/orcamentos", label: "Orçamentos e Cotações", icon: FileText, moduleKey: "comercial" },
@@ -78,30 +103,24 @@ export const comercialItems: NavItem[] = [
   { path: "/comercial/catalogo", label: "Catálogo de Serviços", icon: BookOpen, moduleKey: "comercial" },
 ];
 
-// eSocial técnico / stub
+// ⚙️ ADMINISTRAÇÃO: Acessos e permissões
+export const administracaoItems: NavItem[] = [
+  { path: "/cadastro/usuarios", label: "Usuários Liberados", icon: Shield, moduleKey: "cadastro_usuarios" },
+];
+
+// Aliases para compatibilidade total com módulos e testes legados
+export const asoItems: NavItem[] = [
+  { path: "/aso", label: "Exames Ocupacionais", icon: Stethoscope, moduleKey: "aso" },
+];
+export const portalRhItems: NavItem[] = [
+  { path: "/rh/asos", label: "Portal RH — ASO", icon: Briefcase, moduleKey: "portal_rh" },
+];
+export const gestaoDocItems: NavItem[] = gestaoSstItems;
+export const cadastroItems: NavItem[] = cadastroMestreItems;
+export const afterCadastroItems: NavItem[] = [];
 export const esocialItems: NavItem[] = [
   { path: "/esocial/s2240/mapeamentos", label: "S-2240 — Mapeamentos", icon: Network, moduleKey: "esocial" },
   { path: "/esocial/s2240/dashboard", label: "S-2240 — Dashboard", icon: LayoutDashboard, moduleKey: "esocial" },
-];
-
-export const afterCadastroItems: NavItem[] = [];
-
-export const inspecoesItems: NavItem[] = [
-  { path: "/inspecoes-se/dashboard", label: "Dashboard", icon: LayoutDashboard, moduleKey: "inspecoes_se" },
-  { path: "/inspecoes-se", label: "Listagem", icon: ClipboardList, moduleKey: "inspecoes_se" },
-  { path: "/inspecoes-se/obras", label: "Cadastro de Local", icon: HardHat, moduleKey: "inspecoes_se" },
-  { path: "/extintores", label: "Extintores (NR-23)", icon: Flame, moduleKey: "extintores" },
-];
-
-export const cadastroItems: NavItem[] = [
-  { path: "/cadastro", label: "Dashboard", icon: LayoutDashboard, moduleKey: "cadastro_funcionarios" },
-  { path: "/cadastro/empresas", label: "Empresas / Unidades", icon: Building2, moduleKey: "cadastro_empresas" },
-  { path: "/cadastro/funcionarios", label: "Funcionários", icon: Users, moduleKey: "cadastro_funcionarios" },
-  // "GES (PGR/PCMSO)" saiu daqui: /cadastro/ghe renderizava literalmente o
-  // MESMO componente da aba GES em Documentação, só com outro título. Dois
-  // caminhos de menu para a mesma tela. O GES agora tem um lugar só, em
-  // Documentação › GES; a rota antiga continua existindo e redireciona para lá.
-  { path: "/cadastro/usuarios", label: "Usuários Liberados", icon: Shield, moduleKey: "cadastro_usuarios" },
 ];
 
 // Bottom nav shows max 5 items: main nav items + "Mais" for cadastro
@@ -192,41 +211,90 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return canAccessModule(modulosPermitidos, moduleKey);
   };
 
+  const isItemActive = (path: string) => {
+    if (path === "/") return location.pathname === "/";
+    if (path.includes("?")) {
+      const [pathname, search] = path.split("?");
+      return location.pathname === pathname && location.search.includes(search);
+    }
+    if (path === "/documentacao-sst") {
+      return location.pathname.startsWith("/documentacao-sst") && !location.search.includes("aba=ges");
+    }
+    if (path === "/arquivo-digital") {
+      return location.pathname.startsWith("/arquivo-digital") && !location.pathname.startsWith("/arquivo-digital/vencimentos");
+    }
+    if (path === "/epis") {
+      return location.pathname === "/epis";
+    }
+    if (path === "/cadastro/empresas") {
+      return location.pathname.startsWith("/cadastro/empresas") || location.pathname.startsWith("/cadastro/filiais");
+    }
+    if (path === "/central-ppp") {
+      return location.pathname.startsWith("/central-ppp") || location.pathname.startsWith("/ppp");
+    }
+    if (path === "/aso") {
+      return location.pathname.startsWith("/aso") || location.pathname.startsWith("/exames");
+    }
+    if (path === "/comercial") {
+      return location.pathname === "/comercial";
+    }
+    return location.pathname.startsWith(path);
+  };
+
   const visibleMainItems = mainNavItems.filter((i) => canAccess(i.moduleKey));
+  const visibleCadastroMestreItems = cadastroMestreItems.filter((i) => canAccess(i.moduleKey));
+  const visibleGestaoSstItems = gestaoSstItems.filter((i) => canAccess(i.moduleKey));
+  const visibleColaboradoresItems = colaboradoresItems.filter((i) => canAccess(i.moduleKey));
+  const visibleSaudeItems = saudeItems.filter((i) => canAccess(i.moduleKey));
   const visibleEpiItems = epiItems.filter((i) => canAccess(i.moduleKey));
-  const visibleCadastroItems = cadastroItems.filter((i) => canAccess(i.moduleKey));
-  const visibleAfterCadastroItems = afterCadastroItems.filter((i) => canAccess(i.moduleKey));
-  const visibleAsoItems = asoItems.filter((i) => canAccess(i.moduleKey));
-  const visiblePortalRhItems = portalRhItems.filter((i) => canAccess(i.moduleKey));
-  const visibleGestaoDocItems = gestaoDocItems.filter((i) => canAccess(i.moduleKey));
   const visibleTreinamentosItems = treinamentosItems.filter((i) => canAccess(i.moduleKey));
-  // eSocial ocultado temporariamente do menu (rotas/páginas/dados preservados).
+  const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
+  const visibleRelatoriosItems = relatoriosNavItems.filter((i) => canAccess(i.moduleKey));
+  const visibleComercialItems = comercialItems.filter((i) => canAccess(i.moduleKey));
+  const visibleAdministracaoItems = administracaoItems.filter((i) => canAccess(i.moduleKey));
+
+  // Retrocompatibilidade para referências legadas
+  const visibleCadastroItems = visibleCadastroMestreItems;
+  const visibleAfterCadastroItems = afterCadastroItems.filter((i) => canAccess(i.moduleKey));
+  const visibleAsoItems = visibleSaudeItems;
+  const visiblePortalRhItems = portalRhItems.filter((i) => canAccess(i.moduleKey));
+  const visibleGestaoDocItems = visibleGestaoSstItems;
   const visibleEsocialItems: NavItem[] = [];
   void esocialItems;
-  const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
-  const visibleComercialItems = comercialItems.filter((i) => canAccess(i.moduleKey));
 
-  const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
-  const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
-  const isAsoActive = visibleAsoItems.some((i) => location.pathname.startsWith(i.path));
-  const isPortalRhActive = visiblePortalRhItems.some((i) => location.pathname.startsWith(i.path));
-  const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path) || location.pathname.startsWith("/arquivo-digital") || location.pathname.startsWith("/documentacao-sst") || location.pathname.startsWith("/programas") || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat") || location.pathname.startsWith("/aso") || location.pathname.startsWith("/ppp") || location.pathname.startsWith("/central-ppp");
-  const isTreinamentosActive = visibleTreinamentosItems.some((i) => location.pathname === i.path);
-  const isEsocialActive = visibleEsocialItems.some((i) => location.pathname.startsWith(i.path));
-  const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path) || location.pathname.startsWith("/extintores");
-  const isDigitalActive = location.pathname.startsWith("/arquivo-digital");
-  const isDocumentacaoActive = location.pathname.startsWith("/documentacao-sst") || location.pathname.startsWith("/programas") || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat") || location.pathname.startsWith("/aso") || location.pathname.startsWith("/ppp") || location.pathname.startsWith("/central-ppp");
-  const isComercialActive = location.pathname.startsWith("/comercial");
-  const [epiOpen, setEpiOpen] = useState(true);
-  const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
-  const [asoOpen, setAsoOpen] = useState(isAsoActive);
-  const [portalRhOpen, setPortalRhOpen] = useState(isPortalRhActive);
-  const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
+  const isCadastroMestreActive = visibleCadastroMestreItems.some((i) => isItemActive(i.path));
+  const isGestaoSstActive = visibleGestaoSstItems.some((i) => isItemActive(i.path)) || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/pcmso") || location.pathname.startsWith("/ltcat") || location.pathname.startsWith("/programas") || location.pathname.startsWith("/central-ppp") || (location.pathname.startsWith("/documentacao-sst") && !location.search.includes("aba=ges"));
+  const isColaboradoresActive = visibleColaboradoresItems.some((i) => isItemActive(i.path)) || location.pathname.startsWith("/arquivo-digital") || location.pathname.startsWith("/cadastro/funcionarios");
+  const isSaudeActive = visibleSaudeItems.some((i) => isItemActive(i.path));
+  const isEpiActive = visibleEpiItems.some((i) => isItemActive(i.path));
+  const isTreinamentosActive = visibleTreinamentosItems.some((i) => isItemActive(i.path));
+  const isInspecoesActive = visibleInspecoesItems.some((i) => isItemActive(i.path));
+  const isRelatoriosActive = visibleRelatoriosItems.some((i) => isItemActive(i.path));
+  const isComercialActive = visibleComercialItems.some((i) => isItemActive(i.path));
+  const isAdministracaoActive = visibleAdministracaoItems.some((i) => isItemActive(i.path));
+
+  const [cadastroMestreOpen, setCadastroMestreOpen] = useState(isCadastroMestreActive);
+  const [gestaoSstOpen, setGestaoSstOpen] = useState(isGestaoSstActive);
+  const [colaboradoresOpen, setColaboradoresOpen] = useState(isColaboradoresActive);
+  const [saudeOpen, setSaudeOpen] = useState(isSaudeActive);
+  const [epiOpen, setEpiOpen] = useState(isEpiActive);
   const [treinamentosOpen, setTreinamentosOpen] = useState(isTreinamentosActive);
-  const [esocialOpen, setEsocialOpen] = useState(isEsocialActive);
   const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
-
   const [comercialOpen, setComercialOpen] = useState(isComercialActive);
+  const [administracaoOpen, setAdministracaoOpen] = useState(isAdministracaoActive);
+
+  // Auto-expande o grupo ativo sempre que a rota mudar
+  useEffect(() => {
+    if (isCadastroMestreActive) setCadastroMestreOpen(true);
+    if (isGestaoSstActive) setGestaoSstOpen(true);
+    if (isColaboradoresActive) setColaboradoresOpen(true);
+    if (isSaudeActive) setSaudeOpen(true);
+    if (isEpiActive) setEpiOpen(true);
+    if (isTreinamentosActive) setTreinamentosOpen(true);
+    if (isInspecoesActive) setInspecoesOpen(true);
+    if (isComercialActive) setComercialOpen(true);
+    if (isAdministracaoActive) setAdministracaoOpen(true);
+  }, [location.pathname, location.search]);
 
   // Bottom nav items for mobile
   const visibleMobileBottomItems = mobileBottomItems.filter((i) => canAccess(i.moduleKey));
@@ -298,8 +366,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="p-3 space-y-0.5 flex-1 overflow-y-auto">
+          {/* 🏠 Dashboard */}
           {visibleMainItems.map((item) => {
-            const active = location.pathname === item.path;
+            const active = isItemActive(item.path);
             return (
               <Link
                 key={item.path}
@@ -307,7 +376,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   active
-                    ? "bg-sidebar-accent text-primary"
+                    ? "bg-sidebar-accent text-primary font-semibold"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
@@ -317,24 +386,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             );
           })}
 
-          {visibleCadastroItems.length > 0 && (
+          {/* 🏢 CADASTRO MESTRE */}
+          {visibleCadastroMestreItems.length > 0 && (
             <>
               <button
-                onClick={() => setCadastroOpen(!cadastroOpen)}
+                onClick={() => setCadastroMestreOpen(!cadastroMestreOpen)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isCadastroActive
-                    ? "bg-sidebar-accent text-primary"
+                  isCadastroMestreActive
+                    ? "bg-sidebar-accent text-primary font-semibold"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
-                <FolderOpen className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Cadastro</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${cadastroOpen ? "rotate-180" : ""}`} />
+                <Building2 className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Cadastro Mestre</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${cadastroMestreOpen ? "rotate-180" : ""}`} />
               </button>
-              {cadastroOpen && (
+              {cadastroMestreOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
-                  {visibleCadastroItems.map((item) => {
-                    const active = location.pathname === item.path;
+                  {visibleCadastroMestreItems.map((item) => {
+                    const active = isItemActive(item.path);
                     return (
                       <Link
                         key={item.path}
@@ -342,7 +412,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         onClick={() => setMobileOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                           active
-                            ? "bg-sidebar-accent text-primary"
+                            ? "bg-sidebar-accent text-primary font-semibold"
                             : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
@@ -356,43 +426,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-          {visibleAfterCadastroItems.map((item) => {
-            const active = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-sidebar-accent text-primary"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}
-              >
-                <item.icon className="w-4 h-4 shrink-0" />
-                <span className="truncate">{item.label}</span>
-              </Link>
-            );
-          })}
-
-          {visibleGestaoDocItems.length > 0 && (
+          {/* 📋 GESTÃO SST */}
+          {visibleGestaoSstItems.length > 0 && (
             <>
               <button
-                onClick={() => setGestaoDocOpen(!gestaoDocOpen)}
+                onClick={() => setGestaoSstOpen(!gestaoSstOpen)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isGestaoDocActive
-                    ? "bg-sidebar-accent text-primary"
+                  isGestaoSstActive
+                    ? "bg-sidebar-accent text-primary font-semibold"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
                 <FileText className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Gestão Documental</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gestaoDocOpen ? "rotate-180" : ""}`} />
+                <span className="truncate flex-1 text-left">Gestão SST</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gestaoSstOpen ? "rotate-180" : ""}`} />
               </button>
-              {gestaoDocOpen && (
+              {gestaoSstOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
-                  {visibleGestaoDocItems.map((item) => {
-                    const active = location.pathname === item.path || (item.path === "/arquivo-digital" && location.pathname.startsWith("/arquivo-digital")) || (item.path === "/documentacao-sst" && isDocumentacaoActive);
+                  {visibleGestaoSstItems.map((item) => {
+                    const active = isItemActive(item.path);
                     return (
                       <Link
                         key={item.path}
@@ -400,7 +452,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         onClick={() => setMobileOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                           active
-                            ? "bg-sidebar-accent text-primary"
+                            ? "bg-sidebar-accent text-primary font-semibold"
                             : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
@@ -414,31 +466,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-          {visiblePortalRhItems.length > 0 && (
+          {/* 👥 COLABORADORES */}
+          {visibleColaboradoresItems.length > 0 && (
             <>
               <button
-                onClick={() => setPortalRhOpen(!portalRhOpen)}
+                onClick={() => setColaboradoresOpen(!colaboradoresOpen)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isPortalRhActive
-                    ? "bg-sidebar-accent text-primary"
+                  isColaboradoresActive
+                    ? "bg-sidebar-accent text-primary font-semibold"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
-                <Briefcase className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Portal RH</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${portalRhOpen ? "rotate-180" : ""}`} />
+                <Users className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Colaboradores</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${colaboradoresOpen ? "rotate-180" : ""}`} />
               </button>
-              {portalRhOpen && (
+              {colaboradoresOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
-                  {visiblePortalRhItems.map((item) => {
-                    const active = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+                  {visibleColaboradoresItems.map((item) => {
+                    const active = isItemActive(item.path);
                     return (
                       <Link
                         key={item.path}
                         to={item.path}
                         onClick={() => setMobileOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                          active
+                            ? "bg-sidebar-accent text-primary font-semibold"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
                         <item.icon className="w-4 h-4 shrink-0" />
@@ -451,33 +506,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-
-
-          {visibleAsoItems.length > 0 && (
+          {/* 🩺 SAÚDE OCUPACIONAL */}
+          {visibleSaudeItems.length > 0 && (
             <>
               <button
-                onClick={() => setAsoOpen(!asoOpen)}
+                onClick={() => setSaudeOpen(!saudeOpen)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isAsoActive
-                    ? "bg-sidebar-accent text-primary"
+                  isSaudeActive
+                    ? "bg-sidebar-accent text-primary font-semibold"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
                 <Stethoscope className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Gestão de ASO</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${asoOpen ? "rotate-180" : ""}`} />
+                <span className="truncate flex-1 text-left">Saúde Ocupacional</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${saudeOpen ? "rotate-180" : ""}`} />
               </button>
-              {asoOpen && (
+              {saudeOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
-                  {visibleAsoItems.map((item) => {
-                    const active = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+                  {visibleSaudeItems.map((item) => {
+                    const active = isItemActive(item.path);
                     return (
                       <Link
                         key={item.path}
                         to={item.path}
                         onClick={() => setMobileOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                          active
+                            ? "bg-sidebar-accent text-primary font-semibold"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
                         <item.icon className="w-4 h-4 shrink-0" />
@@ -490,15 +546,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-
-
+          {/* 🦺 GESTÃO DE EPIs */}
           {visibleEpiItems.length > 0 && (
             <>
               <button
                 onClick={() => setEpiOpen(!epiOpen)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
                   isEpiActive
-                    ? "bg-sidebar-accent text-primary"
+                    ? "bg-sidebar-accent text-primary font-semibold"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
@@ -509,7 +564,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {epiOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
                   {visibleEpiItems.map((item) => {
-                    const active = location.pathname === item.path;
+                    const active = isItemActive(item.path);
                     return (
                       <Link
                         key={item.path}
@@ -517,7 +572,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         onClick={() => setMobileOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                           active
-                            ? "bg-sidebar-accent text-primary"
+                            ? "bg-sidebar-accent text-primary font-semibold"
                             : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
@@ -531,13 +586,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
+          {/* 🎓 TREINAMENTOS */}
           {visibleTreinamentosItems.length > 0 && (
             <>
               <button
                 onClick={() => setTreinamentosOpen(!treinamentosOpen)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
                   isTreinamentosActive
-                    ? "bg-sidebar-accent text-primary"
+                    ? "bg-sidebar-accent text-primary font-semibold"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
@@ -548,7 +604,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {treinamentosOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
                   {visibleTreinamentosItems.map((item) => {
-                    const active = location.pathname === item.path;
+                    const active = isItemActive(item.path);
                     return (
                       <Link
                         key={item.path}
@@ -556,7 +612,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         onClick={() => setMobileOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                           active
-                            ? "bg-sidebar-accent text-primary"
+                            ? "bg-sidebar-accent text-primary font-semibold"
                             : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
@@ -570,13 +626,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
+          {/* 🔎 INSPEÇÕES */}
           {visibleInspecoesItems.length > 0 && (
             <>
               <button
                 onClick={() => setInspecoesOpen(!inspecoesOpen)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
                   isInspecoesActive
-                    ? "bg-sidebar-accent text-primary"
+                    ? "bg-sidebar-accent text-primary font-semibold"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
@@ -587,7 +644,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {inspecoesOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
                   {visibleInspecoesItems.map((item) => {
-                    const active = location.pathname === item.path;
+                    const active = isItemActive(item.path);
                     return (
                       <Link
                         key={item.path}
@@ -595,7 +652,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         onClick={() => setMobileOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                           active
-                            ? "bg-sidebar-accent text-primary"
+                            ? "bg-sidebar-accent text-primary font-semibold"
                             : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
@@ -609,13 +666,38 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
+          {/* 📊 RELATÓRIOS */}
+          {visibleRelatoriosItems.length > 0 && (
+            <>
+              {visibleRelatoriosItems.map((item) => {
+                const active = isItemActive(item.path);
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      active
+                        ? "bg-sidebar-accent text-primary font-semibold"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </>
+          )}
+
+          {/* 💼 COMERCIAL */}
           {visibleComercialItems.length > 0 && (
             <>
               <button
                 onClick={() => setComercialOpen(!comercialOpen)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
                   isComercialActive
-                    ? "bg-sidebar-accent text-primary"
+                    ? "bg-sidebar-accent text-primary font-semibold"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
@@ -626,9 +708,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {comercialOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
                   {visibleComercialItems.map((item) => {
-                    const active =
-                      location.pathname === item.path ||
-                      (item.path === "/comercial/orcamentos" && location.pathname.startsWith("/comercial/orcamentos"));
+                    const active = isItemActive(item.path);
                     return (
                       <Link
                         key={item.path}
@@ -636,7 +716,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         onClick={() => setMobileOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                           active
-                            ? "bg-sidebar-accent text-primary"
+                            ? "bg-sidebar-accent text-primary font-semibold"
                             : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
@@ -650,35 +730,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-
-          {visibleEsocialItems.length > 0 && (
+          {/* ⚙️ ADMINISTRAÇÃO */}
+          {visibleAdministracaoItems.length > 0 && (
             <>
               <button
-                onClick={() => setEsocialOpen(!esocialOpen)}
+                onClick={() => setAdministracaoOpen(!administracaoOpen)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isEsocialActive
-                    ? "bg-sidebar-accent text-primary"
+                  isAdministracaoActive
+                    ? "bg-sidebar-accent text-primary font-semibold"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
-                <Network className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">eSocial (stub)</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${esocialOpen ? "rotate-180" : ""}`} />
+                <Shield className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Administração</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${administracaoOpen ? "rotate-180" : ""}`} />
               </button>
-              {esocialOpen && (
+              {administracaoOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
-                  <p className="text-[10px] text-sidebar-foreground/40 px-3 py-1 leading-tight">
-                    Modo técnico/stub — sem certificado digital, SOAP, XMLDSig, ICP-Brasil, S-3000 ou envio real.
-                  </p>
-                  {visibleEsocialItems.map((item) => {
-                    const active = location.pathname === item.path;
+                  {visibleAdministracaoItems.map((item) => {
+                    const active = isItemActive(item.path);
                     return (
                       <Link
                         key={item.path}
                         to={item.path}
                         onClick={() => setMobileOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                          active
+                            ? "bg-sidebar-accent text-primary font-semibold"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
                         <item.icon className="w-4 h-4 shrink-0" />
@@ -690,31 +769,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             </>
           )}
-
-          {/* Ocultado temporariamente
-          {(isSuperAdmin || isPrincipal) && (
-            <Link
-              to="/faturas"
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname === "/faturas"
-                  ? "bg-sidebar-accent text-primary"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              }`}
-            >
-              <FileText className="w-4 h-4 shrink-0" />
-              <span className="truncate">Faturas</span>
-              {faturasAlerta > 0 && (
-                <span className="relative ml-auto flex items-center">
-                  <Bell className="w-4 h-4 text-destructive animate-bounce" />
-                  <span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {faturasAlerta}
-                  </span>
-                </span>
-              )}
-            </Link>
-          )}
-          */}
 
           {isSuperAdmin && (
             <div className="pt-2 mt-2 border-t border-sidebar-border">
