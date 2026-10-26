@@ -17,11 +17,18 @@
 - **Estados inteligentes de navegação**:
   - Detecção precisa de item ativo via função `isItemActive`, suportando parâmetros de URL (ex: `?aba=ges`), subpastas e rotas equivalentes.
   - Expansão automática do grupo pai correspondente à rota atual com preservação da abertura/fechamento manual pelo usuário.
-- **Documentação Arquitetural**:
-  - Criação do documento `docs/architecture/NAVIGATION_REFACTOR.md` contendo matriz de migração, análise de riscos e preservações.
+- **Aprimoramento de Responsividade e Legibilidade da Sidebar (Tarefa 1)**:
+  - Resolução da causa estrutural do truncamento excessivo (`...`):
+    - Dimensionamento do `<aside>`: Desktop com `lg:w-[280px] xl:w-[290px] shrink-0` (substituindo o antigo `w-64` rígido de 256px), impedindo esmagamento flexbox pelo conteúdo.
+    - Mobile: Drawer fluido com `w-[280px] max-w-[85vw]`.
+    - Scrollbar: Implementação da classe `.sidebar-scroll` fina (5px) com track transparente no `src/index.css`, eliminando o consumo de 16px da barra nativa do Windows.
+    - Hierarquia de Subitens: Otimização do recuo de `ml-4 pl-3` (29px) para `ml-3 pl-2.5` (23px) e padding `px-2.5 py-1.5`, com tipografia de alta densidade SaaS `text-[13px] leading-snug`.
+    - Acessibilidade e Tooltip: Inclusão do atributo nativo `title={item.label}` em todos os botões e links de navegação.
+    - Isolamento de Layout: Tag `<main>` com `flex-1 min-w-0 overflow-auto`.
 
 ## Preservado
 - **Rotas e Roteamento (`src/App.tsx`)**: 100% das mais de 60 rotas existentes preservadas intactas, sem renomear rotas nem quebrar deep links salvos.
+- **Nomenclatura dos Módulos**: Mantida íntegra para revisão dedicada em etapa subsequente (Tarefa 2), sem misturar escopos.
 - **Banco de Dados e Persistência**: Nenhuma tabela, coluna, migration ou trigger modificada.
 - **Row Level Security (RLS)**: Políticas e isolamento mantidos 100% inalterados.
 - **Autenticação e Sessão**: Regras do `AuthContext`, switcher multiempresa e controle de perfis mantidos.
@@ -35,12 +42,12 @@
   - Executado com sucesso gerando o bundle de produção e service worker offline sem nenhum erro de TypeScript.
 - **Responsividade e Mobile**:
   - Barra inferior mobile (`mobileBottomItems`) preservada com atalhos de alta prioridade.
-  - Drawer mobile expansível com fechamento automático em toque/navegação.
+  - Drawer mobile fluido (`max-w-[85vw]`) com backdrop escuro e fechamento automático ao clicar no link ou fora.
 - **Permissões Granulares**:
   - Mapeamento estrito de `canAccess(moduleKey)` em todos os grupos e subitens.
 
 ## Pendências
-- Nenhuma pendência técnica. A arquitetura de navegação está implementada e estável.
+- Nenhuma pendência na infraestrutura visual da Sidebar.
 
 ## Próximo passo
-- Commit e push das alterações para o repositório remoto.
+- Pronto para avançar para a Tarefa 2 (Revisão da arquitetura de nomenclatura do menu) quando o usuário desejar.
