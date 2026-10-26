@@ -44,15 +44,17 @@ DOCUMENTOS SST (PGR, PCMSO, LTCAT, LAUDOS, PPP, eSocial)
 - **Inspeções**: Dashboard, Listagem, Cadastro de Local, Extintores (NR-23)
 - **Comercial**: Dashboard Comercial, Orçamentos e Cotações, Clientes, Catálogo de Serviços
 
-### 2.2 Estrutura Proposta (Nova Navegação)
+### 2.2 Estrutura Definitiva (Navegação Consolidada)
 
 ```text
 🏠 Dashboard (/)
 
 🏢 CADASTRO MESTRE
    ├── Empresas / Unidades (/cadastro/empresas)
-   ├── Cargos e Funções (/cadastro/funcionarios)
    ├── Estrutura Ocupacional & GES (/documentacao-sst?aba=ges)
+   ├── Quadro de Colaboradores (/cadastro/funcionarios)
+   ├── Dossiê do Colaborador (/arquivo-digital)
+   ├── Painel de Vencimentos (/arquivo-digital/vencimentos)
    └── Limpeza de Cadastros (/cadastro/limpeza)
 
 📋 GESTÃO SST
@@ -62,11 +64,6 @@ DOCUMENTOS SST (PGR, PCMSO, LTCAT, LAUDOS, PPP, eSocial)
    ├── LTCAT — Laudo Técnico (/ltcat)
    ├── Laudos e Programas (/programas)
    └── PPP — Perfil Previdenciário (/central-ppp)
-
-👥 COLABORADORES
-   ├── Colaboradores (/cadastro/funcionarios)
-   ├── Dossiê do Colaborador (/arquivo-digital)
-   └── Painel de Vencimentos (/arquivo-digital/vencimentos)
 
 🩺 SAÚDE OCUPACIONAL
    ├── Exames e ASO (/aso)

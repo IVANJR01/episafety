@@ -36,11 +36,13 @@ export const mobileBottomItems: NavItem[] = [
   { path: "/cadastro/funcionarios", label: "Colaboradores", icon: Users, moduleKey: "cadastro_funcionarios" },
 ];
 
-// 🏢 CADASTRO MESTRE: Estrutura-base da organização que alimenta SST e operação
+// 🏢 CADASTRO MESTRE: Informações-base da organização, estrutura ocupacional e colaboradores
 export const cadastroMestreItems: NavItem[] = [
   { path: "/cadastro/empresas", label: "Empresas / Unidades", icon: Building2, moduleKey: "cadastro_empresas" },
-  { path: "/cadastro/funcionarios", label: "Cargos e Funções", icon: Users, moduleKey: "cadastro_funcionarios" },
   { path: "/documentacao-sst?aba=ges", label: "Estrutura Ocupacional & GES", icon: Network, moduleKey: "pgr" },
+  { path: "/cadastro/funcionarios", label: "Quadro de Colaboradores", icon: Users, moduleKey: "cadastro_funcionarios" },
+  { path: "/arquivo-digital", label: "Dossiê do Colaborador", icon: FolderOpen, moduleKey: "arquivo_digital" },
+  { path: "/arquivo-digital/vencimentos", label: "Painel de Vencimentos", icon: Bell, moduleKey: "arquivo_digital" },
   { path: "/cadastro/limpeza", label: "Limpeza de Cadastros", icon: RefreshCw, moduleKey: "cadastro_empresas" },
 ];
 
@@ -262,9 +264,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleEsocialItems: NavItem[] = [];
   void esocialItems;
 
-  const isCadastroMestreActive = visibleCadastroMestreItems.some((i) => isItemActive(i.path));
+  const isCadastroMestreActive = visibleCadastroMestreItems.some((i) => isItemActive(i.path))
+    || location.pathname.startsWith("/cadastro/empresas")
+    || location.pathname.startsWith("/cadastro/filiais")
+    || location.pathname.startsWith("/cadastro/funcionarios")
+    || location.pathname.startsWith("/arquivo-digital")
+    || location.pathname.startsWith("/cadastro/limpeza")
+    || (location.pathname.startsWith("/documentacao-sst") && location.search.includes("aba=ges"))
+    || location.pathname.startsWith("/cadastro/ghe");
   const isGestaoSstActive = visibleGestaoSstItems.some((i) => isItemActive(i.path)) || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/pcmso") || location.pathname.startsWith("/ltcat") || location.pathname.startsWith("/programas") || location.pathname.startsWith("/central-ppp") || (location.pathname.startsWith("/documentacao-sst") && !location.search.includes("aba=ges"));
-  const isColaboradoresActive = visibleColaboradoresItems.some((i) => isItemActive(i.path)) || location.pathname.startsWith("/arquivo-digital") || location.pathname.startsWith("/cadastro/funcionarios");
   const isSaudeActive = visibleSaudeItems.some((i) => isItemActive(i.path));
   const isEpiActive = visibleEpiItems.some((i) => isItemActive(i.path));
   const isTreinamentosActive = visibleTreinamentosItems.some((i) => isItemActive(i.path));
@@ -275,7 +283,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const [cadastroMestreOpen, setCadastroMestreOpen] = useState(isCadastroMestreActive);
   const [gestaoSstOpen, setGestaoSstOpen] = useState(isGestaoSstActive);
-  const [colaboradoresOpen, setColaboradoresOpen] = useState(isColaboradoresActive);
   const [saudeOpen, setSaudeOpen] = useState(isSaudeActive);
   const [epiOpen, setEpiOpen] = useState(isEpiActive);
   const [treinamentosOpen, setTreinamentosOpen] = useState(isTreinamentosActive);
@@ -287,7 +294,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isCadastroMestreActive) setCadastroMestreOpen(true);
     if (isGestaoSstActive) setGestaoSstOpen(true);
-    if (isColaboradoresActive) setColaboradoresOpen(true);
     if (isSaudeActive) setSaudeOpen(true);
     if (isEpiActive) setEpiOpen(true);
     if (isTreinamentosActive) setTreinamentosOpen(true);
@@ -466,45 +472,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-          {/* 👥 COLABORADORES */}
-          {visibleColaboradoresItems.length > 0 && (
-            <>
-              <button
-                onClick={() => setColaboradoresOpen(!colaboradoresOpen)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isColaboradoresActive
-                    ? "bg-sidebar-accent text-primary font-semibold"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}
-              >
-                <Users className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Colaboradores</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${colaboradoresOpen ? "rotate-180" : ""}`} />
-              </button>
-              {colaboradoresOpen && (
-                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
-                  {visibleColaboradoresItems.map((item) => {
-                    const active = isItemActive(item.path);
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setMobileOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          active
-                            ? "bg-sidebar-accent text-primary font-semibold"
-                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <item.icon className="w-4 h-4 shrink-0" />
-                        <span className="truncate">{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
 
           {/* 🩺 SAÚDE OCUPACIONAL */}
           {visibleSaudeItems.length > 0 && (

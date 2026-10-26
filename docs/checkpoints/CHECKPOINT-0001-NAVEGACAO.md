@@ -5,9 +5,8 @@
   - Reorganização profissional da hierarquia de navegação com foco no conceito central *"O Cadastro Mestre alimenta os módulos operacionais e os documentos de SST"*.
   - Criação dos grupos estruturados:
     - 🏠 **Dashboard** (acesso direto ao topo)
-    - 🏢 **Cadastro Mestre** (Empresas/Unidades, Cargos/Funções, Estrutura Ocupacional & GES, Limpeza de Cadastros)
+    - 🏢 **Cadastro Mestre** (Empresas/Unidades, Estrutura Ocupacional & GES, Quadro de Colaboradores, Dossiê do Colaborador, Painel de Vencimentos, Limpeza de Cadastros)
     - 📋 **Gestão SST** (Documentação SST, PGR, PCMSO, LTCAT, Laudos e Programas, Central PPP)
-    - 👥 **Colaboradores** (Quadro de Colaboradores, Dossiê do Colaborador, Painel de Vencimentos)
     - 🩺 **Saúde Ocupacional** (Exames e ASO, Portal RH — ASO)
     - 🦺 **Gestão de EPIs** (Cadastro de EPIs, Estoque por Unidade, Solicitações de Materiais, Entregas e Fichas, Relatórios de EPIs)
     - 🎓 **Treinamentos** (Listas de Presença / DDS, Treinamentos em Vídeo)
