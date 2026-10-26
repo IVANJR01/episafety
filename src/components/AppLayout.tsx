@@ -42,7 +42,6 @@ export const cadastroMestreItems: NavItem[] = [
   { path: "/documentacao-sst?aba=ges", label: "Estrutura Ocupacional & GES", icon: Network, moduleKey: "pgr" },
   { path: "/cadastro/funcionarios", label: "Quadro de Colaboradores", icon: Users, moduleKey: "cadastro_funcionarios" },
   { path: "/arquivo-digital", label: "Dossiê do Colaborador", icon: FolderOpen, moduleKey: "arquivo_digital" },
-  { path: "/arquivo-digital/vencimentos", label: "Painel de Vencimentos", icon: Bell, moduleKey: "arquivo_digital" },
   { path: "/cadastro/limpeza", label: "Limpeza de Cadastros", icon: RefreshCw, moduleKey: "cadastro_empresas" },
 ];
 
@@ -50,7 +49,6 @@ export const cadastroMestreItems: NavItem[] = [
 export const gestaoSstItems: NavItem[] = [
   { path: "/documentacao-sst", label: "Documentação SST", icon: BookOpen, moduleKey: "pgr" },
   { path: "/pgr", label: "PGR — Gerenciamento de Riscos", icon: FileText, moduleKey: "pgr" },
-  { path: "/pcmso/dashboard", label: "PCMSO — Saúde Ocupacional", icon: Stethoscope, moduleKey: "pgr" },
   { path: "/ltcat", label: "LTCAT — Laudo Técnico", icon: ShieldCheck, moduleKey: "ltcat" },
   { path: "/programas", label: "Laudos e Programas", icon: FileText, moduleKey: "pgr" },
   { path: "/central-ppp", label: "PPP — Perfil Previdenciário", icon: ClipboardList, moduleKey: "ppp" },
@@ -63,10 +61,12 @@ export const colaboradoresItems: NavItem[] = [
   { path: "/arquivo-digital/vencimentos", label: "Painel de Vencimentos", icon: Bell, moduleKey: "arquivo_digital" },
 ];
 
-// 🩺 SAÚDE OCUPACIONAL: Gestão Médica, ASO e Portal RH
+// 🩺 SAÚDE OCUPACIONAL: Gestão Médica, PCMSO, ASO, Exames e Vencimentos
 export const saudeItems: NavItem[] = [
+  { path: "/pcmso/dashboard", label: "PCMSO — Saúde Ocupacional", icon: Stethoscope, moduleKey: "pgr" },
   { path: "/aso", label: "Exames e ASO", icon: Stethoscope, moduleKey: "aso" },
   { path: "/rh/asos", label: "Portal RH — ASO", icon: Briefcase, moduleKey: "portal_rh" },
+  { path: "/arquivo-digital/vencimentos", label: "Painel de Vencimentos", icon: Bell, moduleKey: "arquivo_digital" },
 ];
 
 // 🦺 GESTÃO DE EPIs: Ciclo de vida dos equipamentos e entregas
@@ -268,12 +268,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     || location.pathname.startsWith("/cadastro/empresas")
     || location.pathname.startsWith("/cadastro/filiais")
     || location.pathname.startsWith("/cadastro/funcionarios")
-    || location.pathname.startsWith("/arquivo-digital")
+    || (location.pathname.startsWith("/arquivo-digital") && location.pathname !== "/arquivo-digital/vencimentos")
     || location.pathname.startsWith("/cadastro/limpeza")
     || (location.pathname.startsWith("/documentacao-sst") && location.search.includes("aba=ges"))
     || location.pathname.startsWith("/cadastro/ghe");
-  const isGestaoSstActive = visibleGestaoSstItems.some((i) => isItemActive(i.path)) || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/pcmso") || location.pathname.startsWith("/ltcat") || location.pathname.startsWith("/programas") || location.pathname.startsWith("/central-ppp") || (location.pathname.startsWith("/documentacao-sst") && !location.search.includes("aba=ges"));
-  const isSaudeActive = visibleSaudeItems.some((i) => isItemActive(i.path));
+  const isGestaoSstActive = visibleGestaoSstItems.some((i) => isItemActive(i.path)) || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat") || location.pathname.startsWith("/programas") || location.pathname.startsWith("/central-ppp") || (location.pathname.startsWith("/documentacao-sst") && !location.search.includes("aba=ges"));
+  const isSaudeActive = visibleSaudeItems.some((i) => isItemActive(i.path)) || location.pathname.startsWith("/pcmso") || location.pathname.startsWith("/aso") || location.pathname.startsWith("/rh/asos") || location.pathname === "/arquivo-digital/vencimentos";
   const isEpiActive = visibleEpiItems.some((i) => isItemActive(i.path));
   const isTreinamentosActive = visibleTreinamentosItems.some((i) => isItemActive(i.path));
   const isInspecoesActive = visibleInspecoesItems.some((i) => isItemActive(i.path));

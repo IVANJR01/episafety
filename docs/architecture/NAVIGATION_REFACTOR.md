@@ -54,20 +54,20 @@ DOCUMENTOS SST (PGR, PCMSO, LTCAT, LAUDOS, PPP, eSocial)
    ├── Estrutura Ocupacional & GES (/documentacao-sst?aba=ges)
    ├── Quadro de Colaboradores (/cadastro/funcionarios)
    ├── Dossiê do Colaborador (/arquivo-digital)
-   ├── Painel de Vencimentos (/arquivo-digital/vencimentos)
    └── Limpeza de Cadastros (/cadastro/limpeza)
 
 📋 GESTÃO SST
    ├── Documentação SST (/documentacao-sst)
    ├── PGR — Gerenciamento de Riscos (/pgr)
-   ├── PCMSO — Saúde Ocupacional (/pcmso/dashboard)
    ├── LTCAT — Laudo Técnico (/ltcat)
    ├── Laudos e Programas (/programas)
    └── PPP — Perfil Previdenciário (/central-ppp)
 
 🩺 SAÚDE OCUPACIONAL
+   ├── PCMSO — Saúde Ocupacional (/pcmso/dashboard)
    ├── Exames e ASO (/aso)
-   └── Portal RH — ASO (/rh/asos)
+   ├── Portal RH — ASO (/rh/asos)
+   └── Painel de Vencimentos (/arquivo-digital/vencimentos)
 
 🦺 GESTÃO DE EPIs
    ├── Visão Geral EPIs (/)
