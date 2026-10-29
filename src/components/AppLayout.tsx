@@ -39,7 +39,7 @@ export const mobileBottomItems: NavItem[] = [
 // 🏢 CADASTRO MESTRE: Informações-base da organização, estrutura ocupacional e colaboradores
 export const cadastroMestreItems: NavItem[] = [
   { path: "/cadastro/empresas", label: "Empresas / Unidades", icon: Building2, moduleKey: "cadastro_empresas" },
-  { path: "/documentacao-sst?aba=ges", label: "Estrutura Ocupacional & GES", icon: Network, moduleKey: "pgr" },
+  { path: "/cadastro/estrutura", label: "Estrutura Ocupacional & GES", icon: Network, moduleKey: "pgr" },
   { path: "/cadastro/funcionarios", label: "Quadro de Colaboradores", icon: Users, moduleKey: "cadastro_funcionarios" },
   { path: "/arquivo-digital", label: "Dossiê do Colaborador", icon: FolderOpen, moduleKey: "arquivo_digital" },
   { path: "/cadastro/limpeza", label: "Limpeza de Cadastros", icon: RefreshCw, moduleKey: "cadastro_empresas" },
@@ -219,6 +219,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const [pathname, search] = path.split("?");
       return location.pathname === pathname && location.search.includes(search);
     }
+    if (path === "/cadastro/estrutura") {
+      return location.pathname.startsWith("/cadastro/estrutura")
+        || location.pathname.startsWith("/estrutura-ocupacional")
+        || location.pathname.startsWith("/cadastro/ghe")
+        || (location.pathname.startsWith("/documentacao-sst") && location.search.includes("aba=ges"));
+    }
     if (path === "/documentacao-sst") {
       return location.pathname.startsWith("/documentacao-sst") && !location.search.includes("aba=ges");
     }
@@ -267,6 +273,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isCadastroMestreActive = visibleCadastroMestreItems.some((i) => isItemActive(i.path))
     || location.pathname.startsWith("/cadastro/empresas")
     || location.pathname.startsWith("/cadastro/filiais")
+    || location.pathname.startsWith("/cadastro/estrutura")
+    || location.pathname.startsWith("/estrutura-ocupacional")
     || location.pathname.startsWith("/cadastro/funcionarios")
     || (location.pathname.startsWith("/arquivo-digital") && location.pathname !== "/arquivo-digital/vencimentos")
     || location.pathname.startsWith("/cadastro/limpeza")

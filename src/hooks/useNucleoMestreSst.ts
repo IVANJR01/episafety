@@ -315,6 +315,17 @@ export function useNucleoMestreSst() {
     return mapa;
   }, [activeFuncionarios]);
 
+  const contagemTrabalhadoresPorSetor = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const f of activeFuncionarios as any[]) {
+      if (f.setor) {
+        const norm = (f.setor || "").trim().toLowerCase();
+        mapa.set(norm, (mapa.get(norm) || 0) + 1);
+      }
+    }
+    return mapa;
+  }, [activeFuncionarios]);
+
   const legacyGesAsSst = legacyGhe.map((g: any) => ({
     id: g.id,
     empresa_id: g.empresa_id,
@@ -856,6 +867,9 @@ export function useNucleoMestreSst() {
       loadingGheFuncoes ||
       loadingPerigos ||
       loadingExposicoes,
+    activeFuncionarios,
+    contagemTrabalhadoresPorSetor,
+    contagemTrabalhadoresPorGes,
     saveAtividade: saveAtividadeMutation.mutateAsync,
     deleteAtividade: deleteAtividadeMutation.mutateAsync,
     saveEstabelecimento: saveEstabelecimentoMutation.mutateAsync,

@@ -23,9 +23,8 @@ export default function EstruturaGhePage() {
     })();
   }, [id]);
 
-  // A lista de GES agora vive na aba GES de Documentação (antes havia uma
-  // página separada em /cadastro/ghe que montava o mesmo componente).
-  const voltar = () => navigate("/documentacao-sst?aba=ges");
+  // A lista de GES vive no Cadastro Mestre em /cadastro/estrutura?aba=ges
+  const voltar = () => navigate("/cadastro/estrutura?aba=ges");
 
   if (loading) return <div className="p-4 text-sm text-muted-foreground">Carregando…</div>;
   if (!ghe) return (

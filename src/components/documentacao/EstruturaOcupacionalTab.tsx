@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import { caracteristicasAmbiente, ordenarPorCodigoGes } from "@/lib/sstEstrutura
 import { exportarFuncoes } from "@/lib/exportarFuncoes";
 import { GruposDoSetorDialog } from "./GruposDoSetorDialog";
 import { GesExposicoesTab } from "./GesExposicoesTab";
-import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle, Users, Download, Sparkles } from "lucide-react";
+import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle, Users, Download, Sparkles, FolderOpen, ChevronLeft, ChevronRight, ListTree, AlertCircle } from "lucide-react";
 
 /*
  * O que a coluna Tipo mostra.
@@ -81,26 +81,11 @@ interface ColunaEstrutura<T> {
   classe?: string;
   /** Texto do `title` (tooltip) da célula no desktop, quando ela trunca. */
   dica?: (item: T) => string;
-  /**
-   * Campo de texto corrido. No cartão do celular o rótulo vai numa linha
-   * própria e o valor ocupa a largura toda, cortado em 3 linhas.
-   *
-   * Lado a lado, um rótulo comprido ("Descrição das atividades:") comia metade
-   * da largura e sobrava uma coluna estreita onde um parágrafo virava vinte
-   * linhas — um único cadastro tomava a tela inteira e a lista deixava de ser
-   * navegável.
-   */
   longo?: boolean;
 }
 
 /**
  * Listagem da Estrutura Ocupacional: cartões no celular, tabela no desktop.
- *
- * As tabelas tinham até 7 colunas. Em 390px de largura isso não cabe de jeito
- * nenhum: o CNPJ quebrava no meio do número ("51.213.683/000 04") e a coluna
- * de Ações era empurrada para fora da tela — os botões de editar e excluir
- * simplesmente não existiam no celular. No cartão cada campo ganha o próprio
- * rótulo e o texto pode quebrar à vontade.
  */
 function ListaEstrutura<T extends { id: string }>({
   itens, vazio, rotuloPrincipal, principal, colunas, onEditar, onExcluir, acoesExtras, rotuloEditar,
@@ -114,11 +99,6 @@ function ListaEstrutura<T extends { id: string }>({
   onExcluir: (item: T) => void;
   /** Botão adicional antes de editar/excluir (ex.: grupos do setor). */
   acoesExtras?: (item: T) => React.ReactNode;
-  /**
-   * O que o lápis faz nesta lista. Em Setores ele abre o setor inteiro
-   * (ambiente, processos e a edição); nas outras, abre o formulário direto.
-   * Um ícone sem dica nenhuma obriga a clicar para descobrir.
-   */
   rotuloEditar?: string;
 }) {
   const acoes = (item: T) => (
@@ -135,13 +115,6 @@ function ListaEstrutura<T extends { id: string }>({
     </div>
   );
 
-  /*
-   * O nome é texto, não ação.
-   *
-   * Ele já foi um botão "Gerenciar" e depois um link para o detalhamento —
-   * sempre duplicando o que o lápis da mesma linha faz. A linha tem os botões
-   * à direita; o nome identifica o registro.
-   */
   const nome = (item: T) => principal(item);
 
   if (itens.length === 0) {
@@ -178,19 +151,11 @@ function ListaEstrutura<T extends { id: string }>({
         ))}
       </div>
 
-      {/*
-        A tabela saía sem cabeçalho destacado: a primeira linha de rótulos tinha
-        o mesmo peso das linhas de dados, e a tabela lida como uma lista solta.
-        Fundo no cabeçalho, rótulo em caixa alta miúda e linhas mais altas é o
-        que separa as duas coisas sem precisar de borda em tudo.
-      */}
       <Card className="hidden sm:block overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow className="hover:bg-transparent">
-                {/* Largura mínima para o nome não quebrar em duas linhas
-                    quando uma coluna de texto longo puxa o espaço. */}
                 <TableHead className="h-11 min-w-[190px] text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {rotuloPrincipal}
                 </TableHead>
@@ -226,16 +191,24 @@ function ListaEstrutura<T extends { id: string }>({
 }
 
 interface EstruturaProps {
-  /**
-   * Restringe a exibição a uma única seção. Usado pelo assistente do PGR, que
-   * mostra uma etapa por vez — reaproveita os mesmos formulários em vez de
-   * duplicá-los, para que a correção de um campo valha nos dois lugares.
-   */
   only?: SecaoEstrutura;
+  abaInicial?: string;
 }
 
-export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
+export function EstruturaOcupacionalTab({ only, abaInicial }: EstruturaProps = {}) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Resolve a aba correta com base na URL ou prop
+  const resolverSubAba = () => {
+    const param = searchParams.get("subaba") || searchParams.get("aba") || abaInicial;
+    if (param === "ges" || param === "riscos") return "riscos";
+    if (param === "setores" || param === "setor") return "setores";
+    if (param === "funcoes" || param === "funcao") return "funcoes";
+    if (param === "estabelecimentos" || param === "estabelecimento") return "estabelecimentos";
+    return "estabelecimentos";
+  };
+
   const {
     estabelecimentos,
     ambientes,
@@ -253,6 +226,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     saveGes,
     vincularGesSetor,
     vincularGesFuncao,
+    definirFuncoesDoGes,
     gesList,
     gheSetores,
     gheFuncoes,
@@ -261,12 +235,36 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     deleteSetor,
     deleteProcesso,
     deleteFuncao,
+    deleteGes,
+    activeFuncionarios,
+    contagemTrabalhadoresPorSetor,
+    contagemTrabalhadoresPorGes,
   } = useNucleoMestreSst();
 
   const { toast } = useToast();
 
-  const [activeSubTab, setActiveSubTab] = useState<string>("estabelecimentos");
+  const [activeSubTab, setActiveSubTab] = useState<string>(resolverSubAba);
   const [setorDetalheId, setSetorDetalheId] = useState<string | null>(null);
+
+  // Sincroniza a sub-aba quando a URL mudar (ex: clicar no menu com ?aba=ges)
+  useEffect(() => {
+    if (!only) {
+      setActiveSubTab(resolverSubAba());
+    }
+  }, [searchParams, abaInicial, only]);
+
+  // Modal de GES criado e gerido dentro do Setor
+  const [openGesSetorModal, setOpenGesSetorModal] = useState(false);
+  const [gesSetorFormData, setGesSetorFormData] = useState<{
+    id?: string;
+    codigo: string;
+    nome: string;
+    descricao?: string;
+    setor_id: string;
+  }>({ codigo: "", nome: "", descricao: "", setor_id: "" });
+  const [gesSetorFuncoesSelecionadas, setGesSetorFuncoesSelecionadas] = useState<string[]>([]);
+  const [salvandoGesSetor, setSalvandoGesSetor] = useState(false);
+  const [erroGesSetor, setErroGesSetor] = useState("");
 
   /**
    * Com `only`, a seção vem SEMPRE da prop — nunca do estado.
@@ -495,41 +493,13 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           pe_direito: formData.pe_direito || null,
           descricao: formData.descricao || null,
         } as any);
-        const setorSalvo = await saveSetor({
+        await saveSetor({
           id: formData.id,
           nome: formData.nome,
           ambiente_id: (ambienteSalvo as any).id,
         } as any);
-
-        // O GES do setor também sai daqui. Exigir um cadastro separado só
-        // produzia GES sem critério nenhum, batizados com nome de setor — ou
-        // seja, o mesmo cadastro feito duas vezes. Continua dando para criar um
-        // GES à mão na aba GES quando um setor tiver exposições diferentes,
-        // que é o caso em que a NR-01 realmente separa os dois.
-        const setorId = (setorSalvo as any).id;
-        const vinculo = (gheSetores as any[]).find((v) => v.setor_id === setorId);
-        const gesExistente = vinculo && gesList.find((g: any) => g.id === vinculo.ghe_id);
-        const proximoCodigo = String(
-          gesList.reduce((max: number, g: any) => Math.max(max, Number(g.codigo) || 0), 0) + 1,
-        ).padStart(2, "0");
-        const gesSalvo = await saveGes({
-          id: gesExistente?.id,
-          codigo: gesExistente?.codigo || proximoCodigo,
-          nome: formData.nome,
-          // Sem critério, o PDF do PGR imprime "não declarado — pendente de
-          // justificativa técnica" em todo grupo, e a tela de GES estampa o
-          // aviso amarelo. Como aqui o agrupamento É o setor, o critério é
-          // exatamente esse — dito por escrito, e editável na aba GES por quem
-          // quiser detalhar. Nunca sobrescreve um critério já escrito à mão.
-          criterio_agrupamento: gesExistente?.criterio_agrupamento
-            || `Agrupamento por setor: todos os trabalhadores de ${formData.nome} atuam no mesmo ambiente e estão sujeitos às mesmas condições de exposição.`,
-          _silencioso: true,
-        } as any);
-        await vincularGesSetor({
-          ges_id: (gesSalvo as any).id,
-          setor_id: setorId,
-          nome: formData.nome,
-        });
+        // Regra Arquitetural: Setor NÃO cria GES automaticamente.
+        // O setor é salvo de forma independente. O GES é criado conscientemente dentro do Setor.
       }
       if (modalType === "processo") await saveProcesso(dados);
       if (modalType === "funcao") {
@@ -643,6 +613,121 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     }
   };
 
+  const abrirModalGesSetor = (setorId: string, ges?: any) => {
+    setErroGesSetor("");
+    if (ges) {
+      const funcs = (gheFuncoes as any[])
+        .filter((v) => v.ghe_id === ges.id && v.funcao_id)
+        .map((v) => v.funcao_id);
+      setGesSetorFormData({
+        id: ges.id,
+        codigo: ges.codigo || "",
+        nome: ges.nome || "",
+        descricao: ges.criterio_agrupamento || ges.descricao || "",
+        setor_id: setorId,
+      });
+      setGesSetorFuncoesSelecionadas(funcs);
+    } else {
+      const proximoNum = gesList.reduce((max: number, g: any) => {
+        const num = Number(String(g.codigo || "").replace(/\D/g, ""));
+        return isNaN(num) ? max : Math.max(max, num);
+      }, 0) + 1;
+      const codigoSugerido = `GES-${String(proximoNum).padStart(2, "0")}`;
+      const setorNome = setores.find((s) => s.id === setorId)?.nome || "";
+
+      setGesSetorFormData({
+        codigo: codigoSugerido,
+        nome: `GES ${setorNome}`,
+        descricao: `Trabalhadores do setor ${setorNome}, expostos às mesmas condições ambientais e operacionais.`,
+        setor_id: setorId,
+      });
+      const funcoesDesteSetor = funcoes.filter((f: any) => f.setor_id === setorId).map((f: any) => f.id);
+      setGesSetorFuncoesSelecionadas(funcoesDesteSetor);
+    }
+    setOpenGesSetorModal(true);
+  };
+
+  const handleSalvarGesSetor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErroGesSetor("");
+
+    const nomeTrim = (gesSetorFormData.nome || "").trim();
+    if (!nomeTrim) {
+      setErroGesSetor("O nome do GES é obrigatório.");
+      return;
+    }
+    const codigoTrim = (gesSetorFormData.codigo || "").trim();
+    if (!codigoTrim) {
+      setErroGesSetor("O código do GES é obrigatório.");
+      return;
+    }
+
+    // Regra de Unicidade: no mesmo setor, não permitir duplicar código ou nome
+    const vinculosDesteSetor = (gheSetores as any[]).filter((v) => v.setor_id === gesSetorFormData.setor_id);
+    const gesExistentesNoSetor = vinculosDesteSetor
+      .map((v) => gesList.find((g: any) => g.id === v.ghe_id))
+      .filter(Boolean);
+
+    const duplicadoNome = gesExistentesNoSetor.find(
+      (g: any) => g.id !== gesSetorFormData.id && normalizar(g.nome) === normalizar(nomeTrim),
+    );
+    if (duplicadoNome) {
+      setErroGesSetor(`Já existe um GES chamado "${nomeTrim}" neste setor.`);
+      return;
+    }
+
+    const duplicadoCodigo = gesExistentesNoSetor.find(
+      (g: any) => g.id !== gesSetorFormData.id && normalizar(g.codigo) === normalizar(codigoTrim),
+    );
+    if (duplicadoCodigo) {
+      setErroGesSetor(`O código "${codigoTrim}" já está em uso neste setor.`);
+      return;
+    }
+
+    setSalvandoGesSetor(true);
+    try {
+      const setorNome = setores.find((s) => s.id === gesSetorFormData.setor_id)?.nome || "";
+      const salvo: any = await saveGes({
+        id: gesSetorFormData.id,
+        codigo: codigoTrim,
+        nome: nomeTrim,
+        criterio_agrupamento: gesSetorFormData.descricao || null,
+        _silencioso: false,
+      } as any);
+
+      await vincularGesSetor({
+        ges_id: salvo.id,
+        setor_id: gesSetorFormData.setor_id,
+        nome: setorNome,
+      });
+
+      await definirFuncoesDoGes({
+        ges_id: salvo.id,
+        funcao_ids: gesSetorFuncoesSelecionadas,
+      });
+
+      toast({
+        title: "GES salvo com sucesso!",
+        description: `${codigoTrim} — ${nomeTrim} configurado para o setor ${setorNome}.`,
+      });
+      setOpenGesSetorModal(false);
+    } catch (err) {
+      console.error(err);
+      setErroGesSetor(mensagemErro(err, "GES"));
+    } finally {
+      setSalvandoGesSetor(false);
+    }
+  };
+
+  const handleExcluirGesDoSetor = (gesId: string, gesNome: string) => {
+    setDeleteConfirm({
+      open: true,
+      type: "ges",
+      id: gesId,
+      nome: gesNome,
+    });
+  };
+
   const handleDelete = async () => {
     try {
       if (deleteConfirm.type === "estabelecimento") await deleteEstabelecimento(deleteConfirm.id);
@@ -650,6 +735,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
       if (deleteConfirm.type === "setor") await deleteSetor(deleteConfirm.id);
       if (deleteConfirm.type === "processo") await deleteProcesso(deleteConfirm.id);
       if (deleteConfirm.type === "funcao") await deleteFuncao(deleteConfirm.id);
+      if (deleteConfirm.type === "ges") await deleteGes(deleteConfirm.id);
       setDeleteConfirm({ open: false, type: "", id: "", nome: "" });
     } catch (err) {
       console.error(err);
@@ -799,20 +885,20 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 classe: "text-xs text-muted-foreground max-w-[220px]",
                 celula: (est) => formatarEndereco(est.endereco) || "—",
               },
-              {
-                rotulo: "Trabalhadores",
-                classe: "text-right tabular-nums",
-                celula: (est) => est.qtd_trabalhadores ?? "—",
-              },
-            ]}
-            onEditar={(est) => handleOpenModal("estabelecimento", est)}
-            onExcluir={(est) => setDeleteConfirm({ open: true, type: "estabelecimento", id: est.id, nome: est.nome })}
-          />
-        </TabsContent>
+                {
+                  rotulo: "Trabalhadores",
+                  classe: "text-right tabular-nums",
+                  celula: (est) => est.qtd_trabalhadores ?? "—",
+                },
+              ]}
+              onEditar={(est) => handleOpenModal("estabelecimento", est)}
+              onExcluir={(est) => setDeleteConfirm({ open: true, type: "estabelecimento", id: est.id, nome: est.nome })}
+            />
+          </TabsContent>
 
-        {/* 2. SETORES */}
-        <TabsContent value="setores" className="mt-4 space-y-4">
-          {setorDetalheId ? (
+          {/* 2. SETORES */}
+          <TabsContent value="setores" className="mt-4 space-y-4">
+            {setorDetalheId ? (
             (() => {
               const setorAtual = setores.find(s => s.id === setorDetalheId);
               if (!setorAtual) return null;
@@ -825,99 +911,265 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 .map((v) => gesList.find((g: any) => g.id === v.ghe_id))
                 .filter(Boolean);
 
-              return (
-                <div className="space-y-8 animate-in fade-in duration-300">
-                  <div className="flex flex-wrap items-center gap-4 border-b pb-4">
-                    <Button variant="ghost" size="sm" onClick={() => setSetorDetalheId(null)} className="shrink-0">
-                      &larr; Voltar
-                    </Button>
-                    <div>
-                      <h3 className="text-xl font-bold text-foreground">Setor: {setorAtual.nome}</h3>
+              const totalTrabalhadoresSetor = contagemTrabalhadoresPorSetor.get(normalizar(setorAtual.nome)) || 0;
 
+              return (
+                <div className="space-y-6 animate-in fade-in duration-300">
+                  {/* Navegação de retorno e cabeçalho do Setor */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4">
+                    <div className="space-y-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSetorDetalheId(null)}
+                        className="-ml-2 text-muted-foreground hover:text-foreground h-8 px-2 gap-1"
+                      >
+                        <ChevronLeft className="w-4 h-4" /> Voltar para Setores
+                      </Button>
+                      <div className="flex items-center gap-2.5 pt-1">
+                        <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                          <LayoutGrid className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-bold tracking-tight text-foreground">{setorAtual.nome}</h2>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                            <span className="font-medium text-foreground">{gesDoSetor.length} {gesDoSetor.length === 1 ? "GES" : "GES"}</span>
+                            <span>·</span>
+                            <span className="font-medium text-foreground">{funcoesDoSetor.length} {funcoesDoSetor.length === 1 ? "função" : "funções"}</span>
+                            <span>·</span>
+                            <span className="font-medium text-foreground">{totalTrabalhadoresSetor} {totalTrabalhadoresSetor === 1 ? "colaborador" : "colaboradores"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleOpenModal("setor", setorAtual)}>
+                        <Edit2 className="w-4 h-4 mr-1.5" /> Editar Nome do Setor
+                      </Button>
                     </div>
                   </div>
 
-                  {/* Detalhes do Ambiente */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold text-foreground text-lg">Ambiente de Trabalho</h4>
-                      <Button variant="outline" size="sm" onClick={() => handleOpenModal("setor", setorAtual)}>
-                        <Edit2 className="w-4 h-4 mr-1" /> Editar
+                  {/* BLOCO 1: GES DO SETOR (O Coração da Estrutura) */}
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-primary" />
+                          GES deste Setor
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                            {gesDoSetor.length}
+                          </span>
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          Grupos de Exposição Similar específicos de {setorAtual.nome}.
+                        </p>
+                      </div>
+                      <Button onClick={() => abrirModalGesSetor(setorAtual.id)} size="sm">
+                        <Plus className="w-4 h-4 mr-1" /> Novo GES neste Setor
                       </Button>
                     </div>
-                    {ambienteAtual ? (
-                      <Card className="p-4 bg-muted/40">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-muted-foreground block mb-1">Tipo de Ambiente</span>
-                            <Badge variant="outline">{ambienteAtual.tipo_ambiente}</Badge>
-                          </div>
-                          {ambienteAtual.pe_direito && (
-                            <div>
-                              <span className="text-muted-foreground block mb-1">Pé-direito</span>
-                              <span className="font-medium text-foreground">{ambienteAtual.pe_direito} m</span>
-                            </div>
-                          )}
-                          <div className="md:col-span-2">
-                            <span className="text-muted-foreground block mb-1">Caracterização Física</span>
-                            <p className="text-foreground">{ambienteAtual.descricao || "Não informada"}</p>
-                          </div>
+
+                    {gesDoSetor.length === 0 ? (
+                      <Card className="border-dashed p-6 text-center bg-muted/20">
+                        <div className="max-w-md mx-auto space-y-2.5">
+                          <Layers className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+                          <h4 className="font-semibold text-sm text-foreground">Nenhum GES cadastrado para {setorAtual.nome}</h4>
+                          <p className="text-xs text-muted-foreground">
+                            O setor existe perfeitamente sem GES. Quando quiser definir riscos e exposições, crie o primeiro grupo e selecione as funções expostas.
+                          </p>
+                          <Button onClick={() => abrirModalGesSetor(setorAtual.id)} size="sm" className="mt-1">
+                            <Plus className="w-4 h-4 mr-1" /> Criar Primeiro GES
+                          </Button>
                         </div>
                       </Card>
                     ) : (
-                      <p className="text-sm text-muted-foreground italic">Ambiente não caracterizado.</p>
-                    )}
-                  </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {gesDoSetor.map((ges: any) => {
+                          const funcsIds = new Set(
+                            (gheFuncoes as any[])
+                              .filter((v) => v.ghe_id === ges.id && v.funcao_id)
+                              .map((v) => v.funcao_id),
+                          );
+                          const funcoesDesteGes = funcoes.filter((f: any) => funcsIds.has(f.id));
+                          const trabalhadoresDesteGes = contagemTrabalhadoresPorGes.get(ges.id) || Number(ges.trabalhadores || 0);
 
-                  {/*
-                    Processos do setor.
-                    
-                    Aqui é o lugar deles desde que a etapa "Processos" do
-                    assistente saiu: o processo pertence ao setor, e cadastrar
-                    numa lista solta obrigava a escolher o setor de novo num
-                    seletor — com chance de escolher o errado. Entrando por
-                    dentro do setor, o vínculo já vem pronto.
-                  */}
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h4 className="font-semibold text-foreground text-lg">Processos de trabalho</h4>
-                      <Button variant="outline" size="sm"
-                        onClick={() => handleOpenModal("processo", { setor_id: setorAtual.id })}>
-                        <Plus className="w-4 h-4 mr-1" /> Novo processo
-                      </Button>
-                    </div>
-                    {processosDoSetor.length === 0 ? (
-                      <p className="text-sm text-muted-foreground italic">
-                        Nenhum processo cadastrado neste setor.
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {processosDoSetor.map((pr: any) => (
-                          <Card key={pr.id} className="p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0 space-y-1">
-                                <Badge variant="outline">{pr.caracteristica_atividade || "—"}</Badge>
-                                <p className="text-sm text-foreground break-words">
-                                  {pr.descricao_etapas || "Sem descrição."}
-                                </p>
+                          return (
+                            <Card key={ges.id} className="border hover:border-primary/50 transition-all p-3.5 space-y-2.5">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="space-y-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <Badge variant="outline" className="font-mono text-xs font-bold text-primary border-primary/30">
+                                      {ges.codigo || "GES"}
+                                    </Badge>
+                                    <h4 className="font-bold text-sm text-foreground truncate">{ges.nome}</h4>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                    <span className="flex items-center gap-1">
+                                      <Briefcase className="w-3.5 h-3.5" />
+                                      {funcoesDesteGes.length} {funcoesDesteGes.length === 1 ? "função" : "funções"}
+                                    </span>
+                                    <span>·</span>
+                                    <span className="flex items-center gap-1 font-medium text-foreground">
+                                      <Users className="w-3.5 h-3.5 text-primary" />
+                                      {trabalhadoresDesteGes} {trabalhadoresDesteGes === 1 ? "trabalhador" : "trabalhadores"}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => navigate(`/cadastro/ghe/${ges.id}/estrutura`)}
+                                    title="Estrutura de perigos, riscos e EPIs deste GES"
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <ListTree className="w-4 h-4 text-primary" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => abrirModalGesSetor(setorAtual.id, ges)}
+                                    title="Editar nome e funções deste GES"
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Edit2 className="w-4 h-4 text-muted-foreground" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleExcluirGesDoSetor(ges.id, ges.nome)}
+                                    title="Excluir este GES"
+                                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="flex shrink-0 gap-1">
-                                <Button variant="ghost" size="sm" aria-label="Editar processo"
-                                  onClick={() => handleOpenModal("processo", pr)}>
-                                  <Edit2 className="w-4 h-4 text-muted-foreground" />
-                                </Button>
-                                <Button variant="ghost" size="sm" aria-label="Excluir processo"
-                                  onClick={() => setDeleteConfirm({ open: true, type: "processo", id: pr.id, nome: pr.nome })}>
-                                  <Trash2 className="w-4 h-4 text-red-600" />
-                                </Button>
+
+                              {/* Funções do GES */}
+                              <div className="pt-2 border-t text-xs">
+                                <span className="text-muted-foreground block text-[11px] mb-1">Funções vinculadas:</span>
+                                {funcoesDesteGes.length === 0 ? (
+                                  <span className="text-amber-600 italic">Nenhuma função vinculada a este GES.</span>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1">
+                                    {funcoesDesteGes.map((f: any) => (
+                                      <span key={f.id} className="inline-block bg-muted px-2 py-0.5 rounded text-[11px] text-foreground">
+                                        {f.nome}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                          </Card>
-                        ))}
+                            </Card>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
 
+                  {/* BLOCO 2: FUNÇÕES DO SETOR */}
+                  <div className="space-y-3 pt-4 border-t">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-primary" />
+                          Funções do Setor
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                            {funcoesDoSetor.length}
+                          </span>
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          Cargos e funções alocados em {setorAtual.nome}.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => handleOpenModal("funcao", { setor_id: setorAtual.id })}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Plus className="w-4 h-4 mr-1" /> Nova Função neste Setor
+                      </Button>
+                    </div>
+
+                    {funcoesDoSetor.length === 0 ? (
+                      <Card className="border-dashed p-6 text-center bg-muted/10">
+                        <p className="text-xs text-muted-foreground">
+                          Nenhuma função cadastrada neste setor ainda. Clique em "Nova Função" para adicionar.
+                        </p>
+                      </Card>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                        {funcoesDoSetor.map((f: any) => {
+                          const vinculoGes = (gheFuncoes as any[]).find((v) => v.funcao_id === f.id);
+                          const gesDestaFuncao = vinculoGes ? gesList.find((g: any) => g.id === vinculoGes.ghe_id) : null;
+
+                          return (
+                            <Card key={f.id} className="p-3 flex items-center justify-between gap-2 border">
+                              <div className="min-w-0 space-y-0.5">
+                                <span className="font-semibold text-xs text-foreground block truncate">{f.nome}</span>
+                                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                  {f.cbo && <span>CBO: {f.cbo}</span>}
+                                  {gesDestaFuncao ? (
+                                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono text-primary">
+                                      {gesDestaFuncao.codigo || gesDestaFuncao.nome}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-amber-600 text-[10px]">Sem GES</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleOpenModal("funcao", f)}
+                                  className="h-7 w-7 p-0"
+                                  title="Editar função"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setDeleteConfirm({ open: true, type: "funcao", id: f.id, nome: f.nome })}
+                                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                                  title="Excluir função"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* BLOCO 3: AMBIENTE E PROCESSOS (Opcional, em detalhes colapsáveis) */}
+                  <details className="border rounded-lg p-3 bg-muted/10 text-xs text-muted-foreground group">
+                    <summary className="font-semibold text-foreground cursor-pointer flex items-center justify-between">
+                      <span>Ambiente físico e processos do setor (Opcional)</span>
+                      <span className="text-[11px] text-primary group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div className="mt-3 space-y-3 pt-3 border-t">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-foreground">Ambiente de Trabalho:</span>
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenModal("setor", setorAtual)} className="h-7 text-xs">
+                          <Edit2 className="w-3.5 h-3.5 mr-1" /> Editar Ambiente
+                        </Button>
+                      </div>
+                      {ambienteAtual ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 bg-background rounded border text-xs">
+                          <div><strong>Tipo:</strong> {ambienteAtual.tipo_ambiente || "Próprio"}</div>
+                          <div><strong>Pé-direito:</strong> {ambienteAtual.pe_direito ? `${ambienteAtual.pe_direito} m` : "Não informado"}</div>
+                          <div className="sm:col-span-2"><strong>Descrição:</strong> {ambienteAtual.descricao || "Não informada"}</div>
+                        </div>
+                      ) : (
+                        <p className="italic">Nenhum detalhe físico de ambiente preenchido.</p>
+                      )}
+                    </div>
+                  </details>
                 </div>
               );
             })()
@@ -925,82 +1177,33 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
             <>
               <div className="flex flex-wrap justify-between items-center gap-2">
                 <h3 className="font-semibold text-foreground flex items-center gap-2">
-              Setores
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                {setores.length} {setores.length === 1 ? "setor" : "setores"}
-              </span>
-            </h3>
+                  Setores
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    {setores.length} {setores.length === 1 ? "setor" : "setores"}
+                  </span>
+                </h3>
                 <Button onClick={() => handleOpenModal("setor")} size="sm">
                   <Plus className="w-4 h-4 mr-1" /> Novo Setor
                 </Button>
               </div>
+
+              {/* Tabela de Setores Simplificada e Métrica */}
               <ListaEstrutura
                 itens={setoresOrdenados}
                 vazio="Nenhum setor cadastrado."
-                rotuloPrincipal="Nome do Setor"
-                principal={(set) => set.nome}
+                rotuloPrincipal="Setor"
+                principal={(set) => (
+                  <button
+                    onClick={() => setSetorDetalheId(set.id)}
+                    className="font-bold text-foreground hover:text-primary transition-colors text-left flex items-center gap-1.5 group"
+                    title="Clique para abrir os GES e Funções deste setor"
+                  >
+                    <span>{set.nome}</span>
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/60 group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                )}
                 colunas={[
                   {
-                    rotulo: "Ambiente de trabalho",
-                    longo: true,
-                    /* Sai inteiro. Era `max-w-xs truncate` — uma linha com
-                       reticências — e a caracterização do ambiente é o que a
-                       NR-01 cobra: escondê-la atrás do mouse não serve. */
-                    classe: "text-sm text-muted-foreground whitespace-normal break-words align-top",
-                    celula: (set) =>
-                      caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)) || "—",
-                  },
-                  /*
-                   * Processo dentro da linha do setor.
-                   *
-                   * Um setor pode ter mais de um processo (`sst_processos` tem
-                   * `setor_id`, não o contrário), então a célula empilha todos
-                   * em vez de mostrar só o primeiro — mostrar um e esconder o
-                   * resto seria pior do que não mostrar nenhum. Setor sem
-                   * processo fica com "—", e é o próprio buraco aparecendo.
-                   */
-                  {
-                    rotulo: "Descrição do processo",
-                    longo: true,
-                    classe: "text-sm text-muted-foreground whitespace-normal break-words align-top",
-                    celula: (set) => {
-                      const ps = processosDoSetor(set.id);
-                      if (!ps.length) return "—";
-                      return (
-                        <div className="space-y-1">
-                          {ps.map((pr) => (
-                            <p key={pr.id}>{pr.descricao_etapas || "—"}</p>
-                          ))}
-                        </div>
-                      );
-                    },
-                  },
-                  {
-                    rotulo: "Característica",
-                    celula: (set) => {
-                      const ps = processosDoSetor(set.id);
-                      if (!ps.length) return <span className="text-muted-foreground/70">—</span>;
-                      return (
-                        <div className="space-y-1">
-                          {ps.map((pr) => (
-                            <Badge key={pr.id} variant="outline" className="whitespace-nowrap">
-                              {pr.caracteristica_atividade || "—"}
-                            </Badge>
-                          ))}
-                        </div>
-                      );
-                    },
-                  },
-                  {
-                    /*
-                     * "Grupos de exposição" era o rótulo mais largo da tabela e
-                     * empurrava as duas últimas colunas para fora da tela — o
-                     * cabeçalho aparecia cortado como "GRUPOS D EXPOSIÇÃ".
-                     *
-                     * A célula também mostrava `nome`, que nestes grupos é o
-                     * próprio código ("09"). Mostrar o código por escrito diz a
-                     * mesma coisa em três letras de cabeçalho.
-                     */
                     rotulo: "GES",
                     classe: "whitespace-nowrap align-top",
                     celula: (set) => {
@@ -1008,30 +1211,71 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                         .filter((v) => v.setor_id === set.id).map((v) => v.ghe_id));
                       const grupos = gesList.filter((g: any) => ids.has(g.id));
                       if (!grupos.length) {
-                        return <span className="text-muted-foreground/70 italic">Sem GES</span>;
+                        return (
+                          <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50/50 text-[11px] font-normal">
+                            0 GES · Sem GES
+                          </Badge>
+                        );
                       }
-                      return <span>{grupos.map((g: any) => g.codigo || g.nome).join(" · ")}</span>;
+                      return (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge variant="secondary" className="font-semibold text-xs">
+                            {grupos.length} {grupos.length === 1 ? "GES" : "GES"}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground font-mono">
+                            ({grupos.map((g: any) => g.codigo || g.nome).join(", ")})
+                          </span>
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    rotulo: "Funções",
+                    classe: "text-center tabular-nums align-top",
+                    celula: (set) => {
+                      const total = funcoes.filter((f: any) => f.setor_id === set.id).length;
+                      return <span className="font-medium text-foreground">{total}</span>;
+                    },
+                  },
+                  {
+                    rotulo: "Colaboradores",
+                    classe: "text-center tabular-nums align-top",
+                    celula: (set) => {
+                      const total = contagemTrabalhadoresPorSetor.get(normalizar(set.nome)) || 0;
+                      return <span className="font-medium text-foreground">{total}</span>;
                     },
                   },
                 ]}
                 acoesExtras={(set) => (
-                  <Button variant="ghost" size="sm" aria-label="Duplicar setor"
-                    onClick={() => duplicarSetor(set.id)} disabled={duplicandoId === set.id}>
-                    {duplicandoId === set.id ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/70" /> : <ClipboardPaste className="w-4 h-4 text-muted-foreground" />}
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 text-primary hover:bg-primary/10 hover:text-primary font-medium text-xs h-8 px-2.5 mr-1"
+                      onClick={() => setSetorDetalheId(set.id)}
+                      title="Abrir setor para gerenciar GES e Funções"
+                    >
+                      <FolderOpen className="w-3.5 h-3.5" />
+                      Abrir setor
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label="Duplicar setor"
+                      onClick={() => duplicarSetor(set.id)}
+                      disabled={duplicandoId === set.id}
+                      className="h-8 w-8 p-0"
+                    >
+                      {duplicandoId === set.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/70" />
+                      ) : (
+                        <ClipboardPaste className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
                 )}
-                /*
-                  O lápis abre o setor — ambiente, processos e o botão de
-                  editar, tudo lá dentro.
-
-                  Antes havia duas portas para o mesmo lugar: o nome do setor
-                  era um link para o detalhamento, e o lápis ao lado abria o
-                  formulário. Como o detalhamento também tem "Editar", as duas
-                  terminavam no mesmo formulário por caminhos diferentes — e
-                  nada na tela dizia qual era qual.
-                */
-                rotuloEditar="Abrir o setor: ambiente, processos e edição"
-                onEditar={(set) => setSetorDetalheId(set.id)}
+                rotuloEditar="Editar nome e ambiente do setor"
+                onEditar={(set) => handleOpenModal("setor", set)}
                 onExcluir={(set) => setDeleteConfirm({ open: true, type: "setor", id: set.id, nome: set.nome })}
               />
             </>
@@ -1573,6 +1817,119 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         open={!!setorDosGrupos}
         onOpenChange={(open) => { if (!open) setSetorDosGrupos(null); }}
       />
+
+      {/* Modal de Criação e Edição de GES contextualizado no Setor */}
+      <Dialog open={openGesSetorModal} onOpenChange={setOpenGesSetorModal}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>
+              {gesSetorFormData.id ? "Editar GES" : "Novo GES"} — Setor {setores.find(s => s.id === gesSetorFormData.setor_id)?.nome}
+            </DialogTitle>
+            <DialogDescription>
+              Defina o código sequencial, nome do grupo e selecione as funções que compartilham as mesmas exposições.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSalvarGesSetor} className="space-y-4 pt-1">
+            {erroGesSetor && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-xs text-destructive flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{erroGesSetor}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="gesCodigo" className="text-xs font-semibold">Código Interno *</Label>
+                <Input
+                  id="gesCodigo"
+                  value={gesSetorFormData.codigo}
+                  onChange={(e) => setGesSetorFormData({ ...gesSetorFormData, codigo: e.target.value })}
+                  placeholder="ex: GES-01"
+                  className="mt-1 font-mono text-xs"
+                  required
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="gesNome" className="text-xs font-semibold">Nome do GES *</Label>
+                <Input
+                  id="gesNome"
+                  value={gesSetorFormData.nome}
+                  onChange={(e) => setGesSetorFormData({ ...gesSetorFormData, nome: e.target.value })}
+                  placeholder="ex: Costura Produção"
+                  className="mt-1 text-xs"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="gesDescricao" className="text-xs font-semibold">Descrição / Critério de Agrupamento</Label>
+              <Textarea
+                id="gesDescricao"
+                value={gesSetorFormData.descricao}
+                onChange={(e) => setGesSetorFormData({ ...gesSetorFormData, descricao: e.target.value })}
+                placeholder="Descreva as condições ou atividades compartilhadas pelo grupo..."
+                className="mt-1 text-xs"
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">
+                  Funções vinculadas ({gesSetorFuncoesSelecionadas.length} de {funcoes.filter((f: any) => f.setor_id === gesSetorFormData.setor_id).length} selecionadas)
+                </Label>
+                <span className="text-[11px] text-muted-foreground">Marque quem tem a mesma exposição</span>
+              </div>
+              <div className="max-h-48 overflow-y-auto border rounded-lg p-2 space-y-1 bg-muted/20">
+                {funcoes.filter((f: any) => f.setor_id === gesSetorFormData.setor_id).length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic py-3 text-center">
+                    Nenhuma função cadastrada neste setor ainda. Você poderá adicioná-las e vinculá-las depois.
+                  </p>
+                ) : (
+                  funcoes.filter((f: any) => f.setor_id === gesSetorFormData.setor_id).map((f: any) => {
+                    const selecionada = gesSetorFuncoesSelecionadas.includes(f.id);
+                    return (
+                      <label
+                        key={f.id}
+                        className={`flex items-center gap-2.5 p-2 rounded-md text-xs cursor-pointer transition-colors ${
+                          selecionada ? "bg-primary/10 text-primary font-medium border border-primary/20" : "hover:bg-muted text-foreground"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selecionada}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setGesSetorFuncoesSelecionadas([...gesSetorFuncoesSelecionadas, f.id]);
+                            } else {
+                              setGesSetorFuncoesSelecionadas(gesSetorFuncoesSelecionadas.filter(id => id !== f.id));
+                            }
+                          }}
+                          className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                        />
+                        <span className="flex-1">{f.nome}</span>
+                        {f.cbo && <span className="text-[10px] text-muted-foreground font-mono">CBO {f.cbo}</span>}
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0 pt-2">
+              <Button type="button" variant="outline" onClick={() => setOpenGesSetorModal(false)} disabled={salvandoGesSetor}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={salvandoGesSetor}>
+                {salvandoGesSetor && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {gesSetorFormData.id ? "Atualizar GES" : "Criar GES"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

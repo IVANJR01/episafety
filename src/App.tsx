@@ -93,6 +93,7 @@ import LaudoInsalubridade from "@/pages/programas/LaudoInsalubridade";
 import LaudoPericulosidade from "@/pages/programas/LaudoPericulosidade";
 
 import DocumentacaoSst from "@/pages/DocumentacaoSst";
+import EstruturaOcupacionalPage from "@/pages/cadastro/EstruturaOcupacionalPage";
 import ArquivoDigitalModule from "@/pages/arquivo-digital/ArquivoDigitalModule";
 import SstExpressDashboard from "@/pages/sst-express/SstExpressDashboard";
 import ExtintoresDashboard from "@/pages/extintores/ExtintoresDashboard";
@@ -305,10 +306,13 @@ function ProtectedRoute() {
         {/* Standalone detail page without tabs */}
         <Route path="/arquivo-digital/dossie/:id" element={<NetworkErrorBoundary><DossieColaborador /></NetworkErrorBoundary>} />
         
+        <Route path="/cadastro/estrutura" element={<NetworkErrorBoundary><EstruturaOcupacionalPage /></NetworkErrorBoundary>} />
+        <Route path="/cadastro/estrutura-ocupacional" element={<Navigate to="/cadastro/estrutura" replace />} />
+        <Route path="/estrutura-ocupacional" element={<Navigate to="/cadastro/estrutura" replace />} />
+        
         {/* A tela de GES era duplicada: /cadastro/ghe montava o mesmo
-            componente da aba GES em Documentação. Vira redirecionamento para
-            não quebrar links já existentes (ex.: os do PCMSO). */}
-        <Route path="/cadastro/ghe" element={<Navigate to="/documentacao-sst?aba=ges" replace />} />
+            componente da aba GES em Documentação. Redireciona para o Cadastro Mestre. */}
+        <Route path="/cadastro/ghe" element={<Navigate to="/cadastro/estrutura?aba=ges" replace />} />
         <Route path="/cadastro/ghe/:id/estrutura" element={<EstruturaGhePage />} />
         <Route path="/cadastro/limpeza" element={<NetworkErrorBoundary><LimpezaCadastros /></NetworkErrorBoundary>} />
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
