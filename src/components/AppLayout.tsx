@@ -50,7 +50,6 @@ export const gestaoSstItems: NavItem[] = [
   { path: "/documentacao-sst", label: "Documentação SST", icon: BookOpen, moduleKey: "pgr" },
   { path: "/pgr", label: "PGR — Gerenciamento de Riscos", icon: FileText, moduleKey: "pgr" },
   { path: "/ltcat", label: "LTCAT — Laudo Técnico", icon: ShieldCheck, moduleKey: "ltcat" },
-  { path: "/programas", label: "Laudos e Programas", icon: FileText, moduleKey: "pgr" },
   { path: "/central-ppp", label: "PPP — Perfil Previdenciário", icon: ClipboardList, moduleKey: "ppp" },
 ];
 

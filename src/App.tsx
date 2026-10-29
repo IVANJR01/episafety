@@ -353,8 +353,8 @@ function ProtectedRoute() {
         <Route path="/ltcat/:id/editar" element={<LtcatNovo />} />
         <Route path="/ltcat/validar/:id" element={<LtcatValidar />} />
 
-        {/* Módulo Programas — landing + reuso de rotas existentes + stubs */}
-        <Route path="/programas" element={<ProgramasHome />} />
+        {/* Módulo Programas — landing consolidada na Central de Documentação SST */}
+        <Route path="/programas" element={<Navigate to="/documentacao-sst?aba=elaborar" replace />} />
         <Route path="/programas/gerar" element={<GerarDocumentos />} />
         <Route path="/programas/pgr" element={<Navigate to="/pgr" replace />} />
         <Route path="/programas/pcmso" element={<Navigate to="/pcmso/dashboard" replace />} />
