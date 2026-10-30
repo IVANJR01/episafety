@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  textoDaCelula, notaDeRisco, codigoDoGes, grupoDoRisco,
+  textoDaCelula, notaDeRisco, codigoDoGes, grupoDoRisco, classeDaPlanilha,
+  semColunasGeradas,
 } from "./celulasDoInventario";
 
 /**
@@ -81,5 +82,56 @@ describe("o grupo do risco", () => {
   it("o que não se reconhece vira 'outro', sem chutar", () => {
     expect(grupoDoRisco("Agente desconhecido")).toBe("outro");
     expect(grupoDoRisco("")).toBe("outro");
+  });
+});
+
+describe("a classificação escrita na planilha", () => {
+  it("vira o apelido que o banco guarda", () => {
+    /*
+     * O banco guarda "toleravel"/"moderado" em minúsculas e sem acento.
+     * Gravar "TOLERÁVEL" cru deixaria dois valores para a mesma classe,
+     * e as contagens por classe parariam de fechar.
+     */
+    expect(classeDaPlanilha("TOLERÁVEL")).toBe("toleravel");
+    expect(classeDaPlanilha("Moderado")).toBe("moderado");
+    expect(classeDaPlanilha("TRIVIAL")).toBe("trivial");
+    expect(classeDaPlanilha("SUBSTANCIAL")).toBe("substancial");
+    expect(classeDaPlanilha("INTOLERÁVEL")).toBe("intoleravel");
+  });
+
+  it("palavra de outra consultoria também é reconhecida", () => {
+    expect(classeDaPlanilha("RISCO CRÍTICO")).toBe("intoleravel");
+  });
+
+  it("o que não é classe devolve null, para quem chama calcular", () => {
+    /* Gravar algo que ninguém reconhece é pior que calcular pela matriz. */
+    expect(classeDaPlanilha("")).toBeNull();
+    expect(classeDaPlanilha("N.A")).toBeNull();
+    expect(classeDaPlanilha("ver com o engenheiro")).toBeNull();
+  });
+});
+
+describe("o que não pode ir no insert", () => {
+  it("tira nivel_risco, que o banco calcula sozinho", () => {
+    /*
+     * Era o que derrubava a importação no fim: "cannot insert a
+     * non-DEFAULT value into column nivel_risco", depois de ler o
+     * arquivo inteiro certo.
+     */
+    const pronto = semColunasGeradas({
+      perigo_descricao: "Ruído", probabilidade: 3, severidade: 4, nivel_risco: 12,
+    });
+    expect("nivel_risco" in pronto, "o nível foi junto e o banco recusa tudo").toBe(false);
+  });
+
+  it("não leva mais nada junto", () => {
+    const pronto = semColunasGeradas({
+      perigo_descricao: "Ruído", probabilidade: 3, severidade: 4, nivel_risco: 12,
+    });
+    expect(pronto).toEqual({ perigo_descricao: "Ruído", probabilidade: 3, severidade: 4 });
+  });
+
+  it("item que já vem sem o campo passa inteiro", () => {
+    expect(semColunasGeradas({ a: 1 })).toEqual({ a: 1 });
   });
 });

@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { semColunasGeradas } from "@/lib/celulasDoInventario";
 import { Upload, FileSpreadsheet, Download, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { gerarPlanilhaBlob } from "@/lib/documentos/gerarPlanilha";
 import { classificarRisco } from "@/lib/pgrMatriz";
@@ -312,8 +313,14 @@ export default function ImportarInventarioDialog({
     setSalvando(true);
 
     try {
-      // Remove campos auxiliares que não são colunas do banco
-      const payloads = linhasProcessadas.map(({ ges_texto_original, ...item }) => item);
+      /*
+       * Fora os campos auxiliares, sai `nivel_risco`: é coluna gerada
+       * pelo banco e, mandando valor, o Postgres recusa a gravação
+       * inteira. A tela precisa dele para mostrar e ordenar, por isso
+       * ele é tirado aqui e não na leitura.
+       */
+      const payloads = linhasProcessadas.map(({ ges_texto_original, ...item }) =>
+        semColunasGeradas(item));
 
       const { error } = await (supabase.from as any)("pgr_inventario_itens").insert(payloads);
       if (error) throw error;

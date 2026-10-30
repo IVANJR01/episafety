@@ -73,3 +73,51 @@ export function grupoDoRisco(texto: string): string {
   if (s.includes("acident") || s.includes("mecanic")) return "acidente";
   return "outro";
 }
+
+/** As classes de risco que o sistema guarda. */
+export type ClasseDeRisco =
+  | "trivial" | "toleravel" | "moderado" | "substancial" | "intoleravel";
+
+/**
+ * A classificação escrita na planilha, na forma que o sistema guarda.
+ *
+ * A planilha traz a palavra do técnico — "TOLERÁVEL", "MODERADO" —, e o
+ * banco guarda o apelido sem acento e em minúsculas: "toleravel",
+ * "moderado". Gravar a palavra crua deixaria dois valores para a mesma
+ * classe, e os filtros e contagens por classe parariam de fechar.
+ *
+ * Palavra que não é uma das cinco devolve null — e aí quem chama decide
+ * calcular pela matriz, em vez de gravar algo que ninguém reconhece.
+ */
+export function classeDaPlanilha(texto: unknown): ClasseDeRisco | null {
+  const s = chaveDaCelula(texto);
+  if (!s) return null;
+  if (s.startsWith("trivial")) return "trivial";
+  if (s.startsWith("toleravel")) return "toleravel";
+  if (s.startsWith("moderado")) return "moderado";
+  if (s.startsWith("substancial")) return "substancial";
+  if (s.startsWith("intoleravel")) return "intoleravel";
+  /* "crítico" e "sério" aparecem em planilhas de outras consultorias. */
+  if (s.includes("critico") || s.includes("serio")) return "intoleravel";
+  return null;
+}
+
+/**
+ * Colunas que o BANCO calcula e que o insert não pode mandar.
+ *
+ * `nivel_risco` é coluna gerada (severidade * probabilidade). Mandando
+ * valor, o Postgres recusa a gravação inteira — "cannot insert a
+ * non-DEFAULT value into column nivel_risco" — e a importação morre
+ * depois de ter lido o arquivo todo certo.
+ *
+ * A tela usa o nível para mostrar e para ordenar; por isso ele é tirado
+ * aqui, na hora de gravar, e não lá atrás na leitura.
+ */
+export const COLUNAS_GERADAS_PELO_BANCO = ["nivel_risco"] as const;
+
+/** O item pronto para gravar, sem as colunas que o banco calcula. */
+export function semColunasGeradas<T extends Record<string, unknown>>(item: T): Partial<T> {
+  const copia: Record<string, unknown> = { ...item };
+  for (const coluna of COLUNAS_GERADAS_PELO_BANCO) delete copia[coluna];
+  return copia as Partial<T>;
+}

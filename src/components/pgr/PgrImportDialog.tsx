@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import * as XLSX from "xlsx";
 import {
-  textoDaCelula, notaDeRisco, codigoDoGes, grupoDoRisco,
+  textoDaCelula, notaDeRisco, codigoDoGes, grupoDoRisco, classeDaPlanilha,
 } from "@/lib/celulasDoInventario";
 import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
@@ -1024,7 +1024,15 @@ export default function PgrImportDialog({
         const P = item.probabilidade && item.probabilidade >= 1 && item.probabilidade <= 5 ? item.probabilidade : 3;
         const S = item.severidade && item.severidade >= 1 && item.severidade <= 5 ? item.severidade : 3;
         const nivel = P * S;
-        const classe = classificarRisco(S, P) || (nivel <= 3 ? "trivial" : nivel <= 8 ? "toleravel" : nivel <= 12 ? "moderado" : nivel <= 15 ? "substancial" : "intoleravel");
+        /*
+         * A classificação que o técnico escreveu manda; a matriz é o
+         * recurso de quando a planilha não traz nenhuma. Recalcular por
+         * cima da palavra dele é trocar o julgamento técnico por uma
+         * conta — e é ela que define a prioridade das ações.
+         */
+        const classe = classeDaPlanilha(item.classificacao)
+          || classificarRisco(S, P)
+          || (nivel <= 3 ? "trivial" : nivel <= 8 ? "toleravel" : nivel <= 12 ? "moderado" : nivel <= 15 ? "substancial" : "intoleravel");
 
         const gesId = item.ges_codigo ? mapaGes.get(item.ges_codigo.trim().toLowerCase()) : null;
         const setorId = item.setor ? mapaSetores.get(item.setor.trim().toLowerCase()) : null;
@@ -1044,12 +1052,31 @@ export default function PgrImportDialog({
           epi: item.epi || null,
           probabilidade: P,
           severidade: S,
-          nivel_risco: nivel,
+          /*
+           * `nivel_risco` NÃO vai no insert: é coluna gerada pelo banco
+           * (severidade * probabilidade). Mandando valor, o Postgres
+           * recusa a gravação inteira — "cannot insert a non-DEFAULT
+           * value into column nivel_risco" —, e a importação acabava
+           * depois de ter lido tudo certo.
+           */
           classificacao: classe,
           necessita_acao: nivel >= 9 || !!item.plano_acao_sugerido,
           avaliacao_estado: "avaliado",
-          tempo_exposicao: "Habitual e Permanente",
-          tecnica_utilizada: "Avaliação Qualitativa",
+          /*
+           * Campos que a planilha traz e que eram gravados com um texto
+           * fixo igual para todos os riscos. Sem dado, ficam vazios — o
+           * PGR não afirma "Avaliação Qualitativa" sobre um risco que
+           * ninguém avaliou assim.
+           */
+          descricao_ambiente: item.descricao_ambiente || null,
+          processo: item.processo || null,
+          funcoes_snapshot: item.funcoes_snapshot || null,
+          limite_tolerancia: item.limite_tolerancia || null,
+          intensidade: item.intensidade || null,
+          tipo_exposicao: item.tipo_exposicao || null,
+          tempo_exposicao: item.tipo_exposicao || null,
+          tecnica_utilizada: item.tecnica_utilizada || null,
+          atenuacao: item.atenuacao || null,
         };
       });
 
