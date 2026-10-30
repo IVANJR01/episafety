@@ -31,6 +31,7 @@ import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/of
 import { isNetworkFailure } from "@/lib/offlineViewCache";
 import ImportarFotosDialog from "@/components/inspecoes/ImportarFotosDialog";
 import ObraCombobox from "@/components/inspecoes/ObraCombobox";
+import ReferenciasNormativas from "@/components/inspecoes/ReferenciasNormativas";
 import { criarObra } from "@/lib/obras";
 import jsPDF from "jspdf";
 import { getGDriveImageProxyUrl } from "@/lib/googleDrive";
@@ -1840,15 +1841,7 @@ export default function InspecoesSE() {
                         {item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "—"}
                       </span>
                       <GravidadeBadge gravidade={item.gravidade} />
-                      {item.referencia_normativa && (
-                        <span
-                          className="inline-flex items-start gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-medium max-w-full whitespace-normal break-words leading-snug"
-                          title={item.referencia_normativa}
-                        >
-                          <Sparkles className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                          <span className="break-words whitespace-pre-line">{item.referencia_normativa}</span>
-                        </span>
-                      )}
+                      <ReferenciasNormativas texto={item.referencia_normativa} />
                       {(() => {
                         const obra = obras.find(o => o.id === item.obra_id);
                         // "Removida" so quando a obra realmente sumiu; sem permissao
@@ -1940,14 +1933,7 @@ export default function InspecoesSE() {
                 </div>
 
                 {/* Ref Normativa */}
-                {item.referencia_normativa && (
-                  <div className="flex items-start gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-                    <span className="text-xs font-medium text-primary break-words whitespace-pre-line leading-snug" title={item.referencia_normativa}>
-                      {item.referencia_normativa}
-                    </span>
-                  </div>
-                )}
+                <ReferenciasNormativas texto={item.referencia_normativa} />
 
                 {/* Gravidade + Local */}
                 <div className="flex items-center gap-2 flex-wrap">
