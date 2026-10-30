@@ -4,6 +4,9 @@ import {
   textoDaCelula, notaDeRisco, codigoDoGes, grupoDoRisco, classeDaPlanilha,
 } from "@/lib/celulasDoInventario";
 import JSZip from "jszip";
+import {
+  responsavelTecnicoDoWord, unidadesDoWord, type UnidadeDoWord,
+} from "@/lib/dadosDoWordPgr";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -126,6 +129,9 @@ export default function PgrImportDialog({
     return "acidente";
   };
 
+  /** As linhas do último .docx lido — ver dadosDoWordPgr.ts. */
+  const linhasDoWordRef = useRef<string[]>([]);
+
   const lerTextoDocx = async (file: File): Promise<string> => {
     const zip = await JSZip.loadAsync(file);
     const docXml = await zip.file("word/document.xml")?.async("string");
@@ -146,7 +152,44 @@ export default function PgrImportDialog({
       if (linha.trim()) linhas.push(linha.trim());
     }
 
+    linhasDoWordRef.current = linhas;
     return linhas.join("\n");
+  };
+
+  /**
+   * Completa o que a IA deixou em branco com o que está escrito no Word.
+   *
+   * A identificação das unidades e o responsável técnico vêm em tabelas
+   * de rótulo e valor, e voltavam vazios da IA: a tela mostrava
+   * "Responsável Técnico: A definir" num PGR que diz o nome e o registro
+   * dele em letras garrafais. A leitura direta não custa chamada, não
+   * erra o que está escrito, e só preenche o que veio vazio.
+   */
+  const completarComOWord = (dados: any) => {
+    const linhas = linhasDoWordRef.current;
+    if (!linhas || linhas.length === 0) return dados;
+
+    const doc = { ...(dados?.documento || {}) };
+    const tecnico = responsavelTecnicoDoWord(linhas);
+    if (tecnico) {
+      if (!doc.resp_tec_nome) doc.resp_tec_nome = tecnico.nome;
+      if (!doc.resp_tec_registro && tecnico.registro) doc.resp_tec_registro = tecnico.registro;
+      if (!doc.resp_tec_formacao && tecnico.especialidade) {
+        doc.resp_tec_formacao = tecnico.especialidade;
+      }
+    }
+
+    const unidades = unidadesDoWord(linhas);
+    return {
+      ...dados,
+      documento: doc,
+      /*
+       * As unidades entram para a conferência de quem importa. O
+       * cadastro delas é outra tela — aqui elas servem para a pessoa ver
+       * que o documento é da empresa certa antes de aprovar.
+       */
+      unidades: unidades.length > 0 ? unidades : dados?.unidades,
+    };
   };
 
   const processarDocumentoComIA = async (file: File) => {
@@ -196,7 +239,7 @@ export default function PgrImportDialog({
               });
             });
 
-            setDadosExtraidos({
+            setDadosExtraidos(completarComOWord({
               documento: {
                 data_emissao: new Date().toISOString().slice(0, 10),
                 data_vigencia_inicio: new Date().toISOString().slice(0, 10),
@@ -206,14 +249,14 @@ export default function PgrImportDialog({
               setores: setoresMapeados,
               ghes: ghesFb,
               inventario: inventarioFb,
-            });
+            }));
             toast.success("Documento Word (.docx) analisado com sucesso!");
             return;
           }
         }
 
         if (data?.error) throw new Error(data.error);
-        setDadosExtraidos(data);
+        setDadosExtraidos(completarComOWord(data));
         toast.success("Documento Word interpretado com sucesso pela Inteligência Artificial!");
         return;
       }
@@ -1339,6 +1382,35 @@ export default function PgrImportDialog({
                     </p>
                   </div>
                 </div>
+
+                {/*
+                  * As unidades lidas do Word.
+                  *
+                  * Não é enfeite: o PGR do cliente cobre quatro
+                  * inscrições da mesma empresa, e é aqui que quem importa
+                  * confere se o documento é da empresa certa antes de
+                  * aprovar.
+                  */}
+                {Array.isArray(dadosExtraidos.unidades) && dadosExtraidos.unidades.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[11px] text-muted-foreground">
+                      Unidades no documento ({dadosExtraidos.unidades.length}):
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(dadosExtraidos.unidades as UnidadeDoWord[]).map((u, i) => (
+                        <span
+                          key={`${u.cnpj}-${i}`}
+                          title={[u.nome, u.cnpj, [u.cidade, u.uf].filter(Boolean).join("/")]
+                            .filter(Boolean).join(" · ")}
+                          className="inline-flex items-center gap-1 rounded border border-primary/20 bg-primary/5 px-1.5 py-0.5 text-[11px] text-primary"
+                        >
+                          {u.rotulo}
+                          <span className="opacity-70">{u.cnpj}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
