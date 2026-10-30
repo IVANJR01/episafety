@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import * as XLSX from "xlsx";
+import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -122,9 +123,32 @@ export default function PgrImportDialog({
     return "acidente";
   };
 
-  const processarPdfComIA = async (file: File) => {
-    if (file.size > 30 * 1024 * 1024) {
-      toast.error("O arquivo excede o limite de 30MB.");
+  const lerTextoDocx = async (file: File): Promise<string> => {
+    const zip = await JSZip.loadAsync(file);
+    const docXml = await zip.file("word/document.xml")?.async("string");
+    if (!docXml) throw new Error("Documento Word (.docx) inválido ou sem conteúdo textual.");
+
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(docXml, "application/xml");
+    const paragraphs = xmlDoc.getElementsByTagName("w:p");
+    const linhas: string[] = [];
+
+    for (let i = 0; i < paragraphs.length; i++) {
+      const p = paragraphs[i];
+      const textNodes = p.getElementsByTagName("w:t");
+      let linha = "";
+      for (let j = 0; j < textNodes.length; j++) {
+        linha += textNodes[j].textContent || "";
+      }
+      if (linha.trim()) linhas.push(linha.trim());
+    }
+
+    return linhas.join("\n");
+  };
+
+  const processarDocumentoComIA = async (file: File) => {
+    if (file.size > 35 * 1024 * 1024) {
+      toast.error("O arquivo excede o limite de 35MB.");
       return;
     }
 
@@ -132,6 +156,66 @@ export default function PgrImportDialog({
     setLoading(true);
 
     try {
+      const nomeLower = file.name.toLowerCase();
+
+      // Caso 1: Arquivo Word (.docx)
+      if (nomeLower.endsWith(".docx")) {
+        toast.info("Extraindo texto do documento Word...");
+        const textoDocx = await lerTextoDocx(file);
+        if (!textoDocx || textoDocx.length < 30) {
+          throw new Error("O documento Word não possui texto legível suficiente.");
+        }
+
+        const { data, error } = await supabase.functions.invoke("parse-pgr", {
+          body: { texto: textoDocx },
+        });
+
+        if (error) {
+          // Fallback para parse-pcmso com texto
+          const fb = await supabase.functions.invoke("parse-pcmso", { body: { texto: textoDocx } });
+          if (fb.error) throw new Error(error.message || "Erro no serviço de IA.");
+          if (fb.data) {
+            const ghesFb = fb.data.ghes || [];
+            const setoresMapeados = Array.from(new Set(ghesFb.map((g: any) => g.setor).filter(Boolean))).map((s) => ({ nome: s as string }));
+            const inventarioFb: any[] = [];
+            ghesFb.forEach((g: any) => {
+              (g.riscos || []).forEach((r: any) => {
+                inventarioFb.push({
+                  setor: g.setor,
+                  ges_codigo: g.codigo,
+                  grupo: normalizarGrupo(r.grupo),
+                  perigo_descricao: r.tipo_agente || "Risco ocupacional",
+                  tipo_agente: r.tipo_agente,
+                  controles_existentes: ["Acompanhamento e medidas de controle"],
+                  probabilidade: 3,
+                  severidade: 3,
+                });
+              });
+            });
+
+            setDadosExtraidos({
+              documento: {
+                data_emissao: new Date().toISOString().slice(0, 10),
+                data_vigencia_inicio: new Date().toISOString().slice(0, 10),
+                data_vigencia_fim: new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
+                metodologia_avaliacao: "Matriz 5x5 (NR-01)",
+              },
+              setores: setoresMapeados,
+              ghes: ghesFb,
+              inventario: inventarioFb,
+            });
+            toast.success("Documento Word (.docx) analisado com sucesso!");
+            return;
+          }
+        }
+
+        if (data?.error) throw new Error(data.error);
+        setDadosExtraidos(data);
+        toast.success("Documento Word interpretado com sucesso pela Inteligência Artificial!");
+        return;
+      }
+
+      // Caso 2: Arquivo PDF
       const pdf_base64 = await fileToBase64(file);
       
       // Tenta a Edge Function parse-pgr
@@ -146,7 +230,6 @@ export default function PgrImportDialog({
         });
         if (fb.error) throw new Error(error.message || "Erro ao conectar com serviço de IA.");
         if (fb.data) {
-          // Converte o retorno do parse-pcmso para o formato do PGR
           const ghesFb = fb.data.ghes || [];
           const setoresMapeados = Array.from(new Set(ghesFb.map((g: any) => g.setor).filter(Boolean))).map((s) => ({ nome: s as string }));
           const inventarioFb: any[] = [];
@@ -186,7 +269,7 @@ export default function PgrImportDialog({
       setDadosExtraidos(data);
       toast.success("PGR interpretado com sucesso pela Inteligência Artificial!");
     } catch (err: any) {
-      toast.error("Falha ao analisar o PDF: " + (err.message || String(err)));
+      toast.error("Falha ao analisar o documento: " + (err.message || String(err)));
     } finally {
       setLoading(false);
     }
@@ -954,17 +1037,17 @@ export default function PgrImportDialog({
             <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
               <TabsList className="grid grid-cols-3 w-full">
                 <TabsTrigger value="pdf" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                  <FileText className="w-4 h-4" /> Arquivo PDF (IA)
+                  <FileText className="w-4 h-4" /> PDF ou Word (.docx)
+                </TabsTrigger>
+                <TabsTrigger value="xlsx" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                  <FileSpreadsheet className="w-4 h-4" /> Planilha Excel (GRO)
                 </TabsTrigger>
                 <TabsTrigger value="texto" className="flex items-center gap-1.5 text-xs sm:text-sm">
                   <FileText className="w-4 h-4" /> Colar Texto
                 </TabsTrigger>
-                <TabsTrigger value="xlsx" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                  <FileSpreadsheet className="w-4 h-4" /> Planilha Excel
-                </TabsTrigger>
               </TabsList>
 
-              {/* ABA 1: UPLOAD DE PDF */}
+              {/* ABA 1: UPLOAD DE PDF OU WORD */}
               <TabsContent value="pdf" className="mt-4 space-y-4">
                 <div
                   onClick={() => fileInputPdfRef.current?.click()}
@@ -973,11 +1056,11 @@ export default function PgrImportDialog({
                   <input
                     ref={fileInputPdfRef}
                     type="file"
-                    accept=".pdf,application/pdf"
+                    accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     className="hidden"
                     onChange={(e) => {
                       const f = e.target.files?.[0];
-                      if (f) processarPdfComIA(f);
+                      if (f) processarDocumentoComIA(f);
                     }}
                   />
                   <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center mx-auto text-indigo-600">
@@ -985,10 +1068,10 @@ export default function PgrImportDialog({
                   </div>
                   <div>
                     <p className="font-semibold text-slate-800 text-sm sm:text-base">
-                      {arquivo ? arquivo.name : "Clique para selecionar o PDF do PGR"}
+                      {arquivo ? arquivo.name : "Clique para selecionar o PDF ou Word (.docx) do PGR"}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Arquivos PDF até 30MB. A Inteligência Artificial fará a leitura e classificação automática.
+                    <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                      Arquivos PDF ou Word (.docx) até 35MB. A Inteligência Artificial fará a leitura e classificação automática.
                     </p>
                   </div>
                 </div>
