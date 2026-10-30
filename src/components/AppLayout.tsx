@@ -83,11 +83,17 @@ export const treinamentosItems: NavItem[] = [
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
 ];
 
-// 🔎 INSPEÇÕES: Auditorias em campo, locais e extintores
+/*
+ * 🔎 INSPEÇÕES: auditorias em campo e extintores.
+ *
+ * "Locais e Obras" saiu daqui e virou aba dentro de Inspeções e
+ * Apontamentos: local não é assunto próprio — existe para a inspeção
+ * acontecer em algum lugar. Quem ia lançar inspeção numa obra nova tinha
+ * de sair da tela, achar outro item do menu, cadastrar e voltar.
+ */
 export const inspecoesItems: NavItem[] = [
   { path: "/inspecoes-se/dashboard", label: "Dashboard", icon: LayoutDashboard, moduleKey: "inspecoes_se" },
   { path: "/inspecoes-se", label: "Inspeções e Apontamentos", icon: ClipboardList, moduleKey: "inspecoes_se" },
-  { path: "/inspecoes-se/obras", label: "Locais e Obras", icon: HardHat, moduleKey: "inspecoes_se" },
   { path: "/extintores", label: "Extintores (NR-23)", icon: Flame, moduleKey: "extintores" },
 ];
 

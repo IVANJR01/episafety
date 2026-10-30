@@ -69,6 +69,6 @@ describe("prazo das ações do cronograma", () => {
     const texto = textoDo(await renderPcmsoPdf(contexto([
       { acao: "Revisão do PCMSO", responsavel: "Médico Coordenador", data_planejada: null },
     ])));
-    expect(texto).toContain("Durante a vigência");
+    expect(texto).toContain("Durante o ano");
   }, 60_000);
 });

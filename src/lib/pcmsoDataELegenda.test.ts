@@ -75,7 +75,8 @@ describe("data inválida nunca vira texto de programador", () => {
     ]));
     const tudo = desenho(pdf).texto.join(" | ");
     expect(tudo, "o documento imprimiu Invalid Date").not.toContain("Invalid Date");
-    expect(tudo).toContain("Durante a vigência");
+    /* O texto do cronograma mudou de "Durante a vigência" para "Durante o ano". */
+    expect(tudo).toContain("Durante o ano");
   }, 60_000);
 });
 

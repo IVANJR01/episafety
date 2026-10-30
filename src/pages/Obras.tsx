@@ -41,7 +41,14 @@ const emptyForm = {
   status: "ATIVA",
 };
 
-export default function Obras() {
+/**
+ * Cadastro de Local.
+ *
+ * `embutido` é para quando a tela mora dentro de outra — hoje, na aba
+ * "Locais e Obras" de Inspeções. Aí ela não repete o container nem o
+ * título da página, que já estão no quadro de fora.
+ */
+export default function Obras({ embutido = false }: { embutido?: boolean } = {}) {
   const { user, empresaId, empresaScopeIds } = useAuth();
   const [items, setItems] = useState<Obra[]>([]);
   const [loading, setLoading] = useState(true);
@@ -215,13 +222,21 @@ export default function Obras() {
   });
 
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-4">
+    <div className={embutido ? "space-y-4" : "container mx-auto p-4 md:p-6 space-y-4"}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-primary" /> Cadastro de Local
-          </h1>
-          <p className="text-sm text-muted-foreground">Locais vinculados às inspeções da empresa.</p>
+          {embutido ? (
+            <p className="text-sm text-muted-foreground">
+              Os locais e obras onde as inspeções acontecem.
+            </p>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Building2 className="w-6 h-6 text-primary" /> Cadastro de Local
+              </h1>
+              <p className="text-sm text-muted-foreground">Locais vinculados às inspeções da empresa.</p>
+            </>
+          )}
         </div>
         <Button onClick={openNew} className="min-h-[44px]">
           <Plus className="w-4 h-4 mr-1" /> Novo local

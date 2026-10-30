@@ -36,9 +36,8 @@ import Install from "@/pages/Install";
 import Privacidade from "@/pages/Privacidade";
 import Termos from "@/pages/Termos";
 import DDS from "@/pages/DDS";
-import InspecoesSE from "@/pages/InspecoesSE";
+import InspecoesModule from "@/pages/InspecoesModule";
 import InspecoesDashboard from "@/pages/InspecoesDashboard";
-import Obras from "@/pages/Obras";
 import Treinamentos from "@/pages/Treinamentos";
 
 import CadastroDashboard from "@/pages/CadastroDashboard";
@@ -317,9 +316,10 @@ function ProtectedRoute() {
         <Route path="/cadastro/limpeza" element={<NetworkErrorBoundary><LimpezaCadastros /></NetworkErrorBoundary>} />
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
         <Route path="/dds" element={<DDS />} />
-        <Route path="/inspecoes-se" element={<InspecoesSE />} />
+        <Route path="/inspecoes-se" element={<InspecoesModule />} />
         <Route path="/inspecoes-se/dashboard" element={<InspecoesDashboard />} />
-        <Route path="/inspecoes-se/obras" element={<Obras />} />
+        {/* Rota antiga do cadastro de locais: abre a aba, para link e favorito continuarem valendo. */}
+        <Route path="/inspecoes-se/obras" element={<InspecoesModule abaInicial="locais" />} />
         <Route path="/extintores" element={<ExtintoresDashboard />} />
         <Route path="/treinamentos" element={<Navigate to="/arquivo-digital" replace />} />
         <Route path="/exames" element={<Navigate to="/aso" replace />} />
