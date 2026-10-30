@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import * as XLSX from "xlsx";
+import { lerInventarioDaPlanilha } from "@/lib/importarPgrPlanilha";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -363,174 +364,72 @@ export default function PgrImportDialog({
         }
       }
 
-      // 3. Localiza dinamicamente a linha do cabeçalho
-      let headerIdx = -1;
-      for (let i = 0; i < Math.min(rawRows.length, 25); i++) {
-        const colsComDado = rawRows[i].filter((c) => String(c).trim() !== "").length;
-        if (colsComDado < 2) continue; // Pula títulos de 1 coluna mesclada
-
-        const rowStr = rawRows[i].map((c) => normalizarChave(String(c))).join(" ");
-        const temTermoRisco =
-          rowStr.includes("perigo") ||
-          rowStr.includes("agente") ||
-          rowStr.includes("fator") ||
-          rowStr.includes("risco");
-        const temTermoEstrutura =
-          rowStr.includes("setor") ||
-          rowStr.includes("ambiente") ||
-          rowStr.includes("ges") ||
-          rowStr.includes("ghe") ||
-          rowStr.includes("funcao") ||
-          rowStr.includes("cargo");
-
-        if (temTermoRisco || (temTermoEstrutura && colsComDado >= 3)) {
-          headerIdx = i;
-          break;
-        }
+      /*
+       * 3. Lê o inventário — ver src/lib/importarPgrPlanilha.ts.
+       *
+       * A leitura morava aqui dentro e errava três coisas na planilha
+       * real do cliente: tomava o TÍTULO por cabeçalho, lia o SETOR da
+       * coluna "DESCRIÇÃO DO AMBIENTE" e lia PROBABILIDADE/SEVERIDADE
+       * das colunas "PROCESSO" e "DESCRIÇÃO DO AMBIENTE" — porque
+       * procurava pelas letras soltas "p" e "s". As duas notas caíam no
+       * padrão 2 e 2, e a classificação do risco saía inventada.
+       */
+      const leitura = lerInventarioDaPlanilha(rawRows);
+      if (leitura.linhaCabecalho < 0) {
+        throw new Error(
+          "Não encontrei o cabeçalho do inventário nesta planilha. "
+          + "Ela precisa ter uma linha com SETOR, GES, FUNÇÃO e os campos de risco.",
+        );
       }
-
-      if (headerIdx === -1) {
-        headerIdx = 0; // fallback se não encontrou padrão
-      }
-
-      let headers = rawRows[headerIdx].map((c) => normalizarChave(String(c || "")));
-      let startRow = headerIdx + 1;
-
-      // Se a linha seguinte for sub-cabeçalho (EPC, EPI, Atenuação), combina
-      if (headerIdx + 1 < rawRows.length) {
-        const nextRow = rawRows[headerIdx + 1].map((c) => normalizarChave(String(c || "")));
-        const nextStr = nextRow.join(" ");
-        if (
-          nextStr.includes("epc") ||
-          nextStr.includes("epi") ||
-          nextStr.includes("atenuacao") ||
-          nextStr.includes("procedimento")
-        ) {
-          headers = headers.map((h, col) => {
-            const sub = nextRow[col] || "";
-            return sub ? `${h}_${sub}` : h;
-          });
-          startRow = headerIdx + 2;
-        }
-      }
-
-      const findCol = (termos: string[]) => {
-        return headers.findIndex((h) => termos.some((t) => h.includes(t)));
-      };
-
-      const cAmbiente = findCol(["ambiente", "descricaodoambiente", "local"]);
-      const cSetor = findCol(["setor", "area", "departamento", "ambiente", "local"]);
-      const cGes = findCol(["ges", "ghe", "grupodeexposicao", "codigoges", "codigoghe"]);
-      const cFuncao = findCol(["funcao", "cargo", "ocupacao", "posto", "atividade"]);
-      const cAgente = findCol(["agente", "grupoderisco", "categoria", "natureza", "tipoagente"]);
-      const cTipoAgente = findCol(["tipodeagente", "tipoagente"]);
-      const cPerigo = findCol(["perigo", "descricaodoperigo", "fator", "fatorederisco", "evento", "risco"]);
-      const cFonte = findCol(["fonte", "fontegeradora", "circunstancia", "origem"]);
-      const cLesoes = findCol(["lesoes", "possiveislesoes", "danos", "agravos", "efeito", "consequencia"]);
-      const cMedidas = findCol(["medidas", "controles", "prevencao", "epc", "procedimento"]);
-      const cEpi = findCol(["epi", "protecaoint", "equipamento"]);
-      const cProb = findCol(["prob", "probabilidade", "p"]);
-      const cSev = findCol(["sev", "severidade", "gravidade", "s"]);
 
       const setoresSet = new Set<string>();
       const ghesMap = new Map<string, any>();
       const inventarioItens: any[] = [];
 
-      const ant = {
-        setor: "",
-        ges: "",
-        funcao: "",
-        ambiente: "",
-      };
-
-      for (let r = startRow; r < rawRows.length; r++) {
-        const row = rawRows[r];
-        if (!row || row.every((c) => !c || String(c).trim() === "")) continue;
-
-        const val = (idx: number) => (idx >= 0 && row[idx] != null ? String(row[idx]).trim() : "");
-        const num = (idx: number, defVal: number) => {
-          if (idx < 0) return defVal;
-          const raw = String(row[idx] ?? "").replace(/[^0-9]/g, "");
-          const parsed = Number(raw);
-          return !isNaN(parsed) && parsed >= 1 && parsed <= 5 ? parsed : defVal;
-        };
-
-        let setor = val(cSetor);
-        let gesCodigo = val(cGes);
-        let funcaoStr = val(cFuncao);
-        let ambiente = val(cAmbiente);
-        let perigoDesc = val(cPerigo) || val(cTipoAgente);
-        let agenteStr = val(cAgente);
-        let fonte = val(cFonte);
-        let lesoes = val(cLesoes);
-        let medidas = val(cMedidas);
-        let epi = val(cEpi);
-
-        // Herança de campos agrupados da linha anterior
-        if (!setor && ant.setor) setor = ant.setor;
-        if (!gesCodigo && ant.ges) gesCodigo = ant.ges;
-        if (!funcaoStr && ant.funcao) funcaoStr = ant.funcao;
-        if (!ambiente && ant.ambiente) ambiente = ant.ambiente;
-
-        // Se a linha não tem nenhum indicador de risco nem de perigo, pula
-        if (!perigoDesc && !agenteStr && !fonte && !lesoes && !medidas) {
-          continue;
-        }
-
-        // Atualiza estado anterior
-        if (setor) ant.setor = setor;
-        if (gesCodigo) ant.ges = gesCodigo;
-        if (funcaoStr) ant.funcao = funcaoStr;
-        if (ambiente) ant.ambiente = ambiente;
-
-        setor = setor || "Geral";
-        gesCodigo = gesCodigo || "GES 01";
-        perigoDesc = perigoDesc || agenteStr || "Risco ocupacional identificado";
-
+      for (const item of leitura.itens) {
+        const setor = item.setor || "Geral";
+        const gesCodigo = item.ges_codigo || "01";
         setoresSet.add(setor);
-
-        // Desmembra funções separadas por vírgula, barra ou quebra de linha
-        const funcoesArr = funcaoStr
-          ? funcaoStr
-              .split(/[\n,;/]+/)
-              .map((f) => f.trim())
-              .filter(Boolean)
-          : [];
 
         if (!ghesMap.has(gesCodigo)) {
           ghesMap.set(gesCodigo, {
             codigo: gesCodigo,
-            nome: gesCodigo.toLowerCase().startsWith("ges") ? gesCodigo : `GES ${gesCodigo}`,
-            setor: setor,
-            funcoes: funcoesArr,
+            nome: setor,
+            setor,
+            funcoes: [...item.funcoes],
           });
         } else {
           const g = ghesMap.get(gesCodigo);
-          funcoesArr.forEach((f) => {
-            if (!g.funcoes.includes(f)) g.funcoes.push(f);
-          });
+          item.funcoes.forEach((f) => { if (!g.funcoes.includes(f)) g.funcoes.push(f); });
         }
-
-        const grupo = normalizarGrupo(agenteStr || perigoDesc);
-        const P = num(cProb, 2);
-        const S = num(cSev, 2);
-
-        const controlesArr: string[] = [];
-        if (medidas && medidas !== "N.A" && medidas !== "-") controlesArr.push(medidas);
-        if (epi && epi !== "N.A" && epi !== "-") controlesArr.push(`EPI: ${epi}`);
 
         inventarioItens.push({
           setor,
           ges_codigo: gesCodigo,
-          grupo,
-          tipo_agente: agenteStr || perigoDesc,
-          perigo_descricao: perigoDesc,
-          fonte_geradora: fonte && fonte !== "N.A" ? fonte : null,
-          lesoes: lesoes && lesoes !== "N.A" ? lesoes : null,
-          controles_existentes: controlesArr.length > 0 ? controlesArr : ["Medidas preventivas gerais"],
-          epi: epi || null,
-          probabilidade: P,
-          severidade: S,
+          grupo: item.grupo,
+          tipo_agente: item.tipo_agente,
+          perigo_descricao: item.perigo_descricao,
+          fonte_geradora: item.fonte_geradora,
+          lesoes: item.lesoes,
+          descricao_ambiente: item.descricao_ambiente,
+          processo: item.processo,
+          funcoes_snapshot: item.funcoes,
+          limite_tolerancia: item.limite_tolerancia,
+          intensidade: item.intensidade,
+          tipo_exposicao: item.tipo_exposicao,
+          tecnica_utilizada: item.tecnica_utilizada,
+          controles_existentes: item.controles_existentes.length > 0
+            ? item.controles_existentes
+            : ["Medidas preventivas gerais"],
+          epi: item.epi,
+          atenuacao: item.atenuacao,
+          /*
+           * Sem nota na planilha, o padrão 2 continua — mas agora é
+           * exceção, e não a regra que valia para todo o inventário.
+           */
+          probabilidade: item.probabilidade ?? 2,
+          severidade: item.severidade ?? 2,
+          classificacao: item.classificacao,
         });
       }
 
