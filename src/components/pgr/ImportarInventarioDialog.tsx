@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { semColunasGeradas } from "@/lib/celulasDoInventario";
+import { indiceDeGes, gesDaEstrutura } from "@/lib/vinculosDoInventario";
 import { Upload, FileSpreadsheet, Download, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { gerarPlanilhaBlob } from "@/lib/documentos/gerarPlanilha";
 import { classificarRisco } from "@/lib/pgrMatriz";
@@ -154,26 +155,17 @@ export default function ImportarInventarioDialog({
         (supabase.from as any)("sst_ges").select("id, codigo, nome").eq("empresa_id", empresaId),
       ]);
 
-      const mapaGhe = new Map<string, string>();
-      const registrar = (id: string, codigo?: string | null, nome?: string | null) => {
-        if (!id) return;
-        if (codigo) {
-          const norm = normalizarChave(codigo);
-          mapaGhe.set(norm, id);
-          const semPref = norm.replace(/^(ges|ghe)/, "");
-          if (semPref) mapaGhe.set(semPref, id);
-          if (!norm.startsWith("ges") && !norm.startsWith("ghe")) {
-            mapaGhe.set("ges" + norm, id);
-            mapaGhe.set("ghe" + norm, id);
-          }
-        }
-        if (nome) {
-          mapaGhe.set(normalizarChave(nome), id);
-        }
-      };
-
-      (ghesResp.data || []).forEach((g: any) => registrar(g.id, g.codigo, g.nome));
-      (sstGesResp.data || []).forEach((g: any) => registrar(g.id, g.codigo, g.nome));
+      /*
+       * Dois índices, não um.
+       *
+       * `ghe_id` aponta para ghe_ges e `ges_id` para sst_ges: são
+       * tabelas diferentes, e o id de uma não vale na coluna da outra.
+       * Os dois cadastros caíam no mesmo mapa e o mesmo id ia para as
+       * duas colunas — o banco recusava o inventário inteiro com
+       * "violates foreign key constraint". Ver vinculosDoInventario.ts.
+       */
+      const indiceGhe = indiceDeGes((ghesResp.data || []) as any);
+      const indiceSstGes = indiceDeGes((sstGesResp.data || []) as any);
 
       const findCol = (termos: string[]) => {
         return headers.findIndex((h) => termos.some((t) => h.includes(t)));
@@ -257,7 +249,8 @@ export default function ImportarInventarioDialog({
         const nivel = P * S;
         const classe = classificarRisco(S, P) || (nivel <= 3 ? "trivial" : nivel <= 8 ? "toleravel" : nivel <= 12 ? "moderado" : nivel <= 15 ? "substancial" : "intoleravel");
 
-        const gheId = gesTexto ? mapaGhe.get(normalizarChave(gesTexto)) || null : null;
+        const gheId = gesDaEstrutura(indiceGhe, gesTexto, setor);
+        const gesEstruturaId = gesDaEstrutura(indiceSstGes, gesTexto, setor);
 
         const funcoesArr = funcaoStr ? funcaoStr.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean) : null;
         const controlesArr = medidas ? medidas.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean) : null;
@@ -266,8 +259,9 @@ export default function ImportarInventarioDialog({
         itensParaSalvar.push({
           pgr_id: pgrId,
           empresa_id: empresaId,
+          /* ghe_id -> ghe_ges; ges_id -> sst_ges. Cada um do seu. */
           ghe_id: gheId,
-          ges_id: gheId,
+          ges_id: gesEstruturaId,
           setor: setor || null,
           descricao_ambiente: ambiente || null,
           processo: processo || null,

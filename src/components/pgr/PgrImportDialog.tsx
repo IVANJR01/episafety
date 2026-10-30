@@ -9,6 +9,7 @@ import {
   responsavelTecnicoDoWord, unidadesDoWord, type UnidadeDoWord,
 } from "@/lib/dadosDoWordPgr";
 import { avisoDeEmpresa } from "@/lib/conferirEmpresaDoDocumento";
+import { indiceDeGes, gesDaEstrutura } from "@/lib/vinculosDoInventario";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -1090,6 +1091,17 @@ export default function PgrImportDialog({
         }
       }
 
+      /*
+       * O GES da Estrutura Ocupacional (sst_ges), que é tabela DIFERENTE
+       * da do módulo de PGR (ghe_ges). Ver vinculosDoInventario.ts: o id
+       * de uma não vale na coluna da outra, e o banco recusava o
+       * inventário inteiro por causa disso.
+       */
+      const { data: gesEstrutura } = await (supabase.from as any)("sst_ges")
+        .select("id, codigo, nome")
+        .eq("empresa_id", empresaId);
+      const indiceGesEstrutura = indiceDeGes((gesEstrutura || []) as any);
+
       // 5. Insere os Itens do Inventário de Riscos
       const itensInventario = (dadosExtraidos.inventario || []).map((item) => {
         const P = item.probabilidade && item.probabilidade >= 1 && item.probabilidade <= 5 ? item.probabilidade : 3;
@@ -1111,8 +1123,9 @@ export default function PgrImportDialog({
         return {
           pgr_id: novoPgrId,
           empresa_id: empresaId,
+          /* ghe_id -> ghe_ges; ges_id -> sst_ges. Tabelas diferentes. */
           ghe_id: gesId || null,
-          ges_id: gesId || null,
+          ges_id: gesDaEstrutura(indiceGesEstrutura, item.ges_codigo, item.setor),
           setor: item.setor || null,
           grupo: item.grupo,
           tipo_agente: item.tipo_agente || null,
