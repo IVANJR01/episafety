@@ -446,34 +446,39 @@ export default function PgrImportDialog({
         }
       }
 
-      // 3. Localiza dinamicamente a linha do cabeçalho
+      // 3. Localiza dinamicamente a linha do cabeçalho por pontuação
+      const avaliarLinhaCabecalho = (row: any[]) => {
+        const normCols = row.map((c) => normalizarChave(String(c))).filter(Boolean);
+        if (normCols.length < 2) return 0;
+
+        let score = 0;
+        if (normCols.some((c) => c === "setor" || c.startsWith("setor") || c.includes("nomedosetor"))) score += 14;
+        else if (normCols.some((c) => c.includes("area") || c.includes("departamento") || c.includes("posto") || c.includes("secao"))) score += 6;
+
+        if (normCols.some((c) => c === "ges" || c === "ghe" || c.includes("grupodeexposicao"))) score += 10;
+        if (normCols.some((c) => c === "funcao" || c.includes("cargo") || c.includes("ocupacao"))) score += 10;
+        if (normCols.some((c) => c.includes("perigo") || c.includes("fator") || c.includes("risco"))) score += 10;
+        if (normCols.some((c) => c.includes("agente") || c.includes("grupoderisco"))) score += 8;
+        if (normCols.some((c) => c.includes("fonte") || c.includes("geradora"))) score += 6;
+        if (normCols.some((c) => c.includes("prob") || c.includes("sev") || c.includes("severidade"))) score += 6;
+        if (normCols.some((c) => c.includes("medida") || c.includes("controle") || c.includes("epi") || c.includes("epc"))) score += 6;
+
+        score += Math.min(normCols.length, 12);
+        return score;
+      };
+
       let headerIdx = -1;
+      let maxScore = 0;
       for (let i = 0; i < Math.min(rawRows.length, 25); i++) {
-        const colsComDado = rawRows[i].filter((c) => String(c).trim() !== "").length;
-        if (colsComDado < 2) continue; // Pula títulos de 1 coluna mesclada
-
-        const rowStr = rawRows[i].map((c) => normalizarChave(String(c))).join(" ");
-        const temTermoRisco =
-          rowStr.includes("perigo") ||
-          rowStr.includes("agente") ||
-          rowStr.includes("fator") ||
-          rowStr.includes("risco");
-        const temTermoEstrutura =
-          rowStr.includes("setor") ||
-          rowStr.includes("ambiente") ||
-          rowStr.includes("ges") ||
-          rowStr.includes("ghe") ||
-          rowStr.includes("funcao") ||
-          rowStr.includes("cargo");
-
-        if (temTermoRisco || (temTermoEstrutura && colsComDado >= 3)) {
+        const sc = avaliarLinhaCabecalho(rawRows[i]);
+        if (sc > maxScore) {
+          maxScore = sc;
           headerIdx = i;
-          break;
         }
       }
 
-      if (headerIdx === -1) {
-        headerIdx = 0; // fallback se não encontrou padrão
+      if (headerIdx === -1 || maxScore < 10) {
+        headerIdx = 0;
       }
 
       let headers = rawRows[headerIdx].map((c) => normalizarChave(String(c || "")));
@@ -497,23 +502,48 @@ export default function PgrImportDialog({
         }
       }
 
-      const findCol = (termos: string[]) => {
-        return headers.findIndex((h) => termos.some((t) => h.includes(t)));
+      const findExactOrIncludes = (exactTerms: string[], fallbackTerms: string[] = [], excludeTerms: string[] = []) => {
+        // 1. Correspondência exata
+        let idx = headers.findIndex((h) => exactTerms.some((t) => h === t));
+        if (idx >= 0) return idx;
+
+        // 2. Prefixo
+        idx = headers.findIndex((h) => exactTerms.some((t) => h.startsWith(t)) && !excludeTerms.some((e) => h.includes(e)));
+        if (idx >= 0) return idx;
+
+        // 3. Contém
+        idx = headers.findIndex((h) => exactTerms.some((t) => h.includes(t)) && !excludeTerms.some((e) => h.includes(e)));
+        if (idx >= 0) return idx;
+
+        // 4. Termos secundários de fallback
+        if (fallbackTerms.length > 0) {
+          idx = headers.findIndex((h) => fallbackTerms.some((t) => h.includes(t)) && !excludeTerms.some((e) => h.includes(e)));
+          if (idx >= 0) return idx;
+        }
+        return -1;
       };
 
-      const cAmbiente = findCol(["ambiente", "descricaodoambiente", "local"]);
-      const cSetor = findCol(["setor", "area", "departamento", "ambiente", "local"]);
-      const cGes = findCol(["ges", "ghe", "grupodeexposicao", "codigoges", "codigoghe"]);
-      const cFuncao = findCol(["funcao", "cargo", "ocupacao", "posto", "atividade"]);
-      const cAgente = findCol(["agente", "grupoderisco", "categoria", "natureza", "tipoagente"]);
-      const cTipoAgente = findCol(["tipodeagente", "tipoagente"]);
-      const cPerigo = findCol(["perigo", "descricaodoperigo", "fator", "fatorederisco", "evento", "risco"]);
-      const cFonte = findCol(["fonte", "fontegeradora", "circunstancia", "origem"]);
-      const cLesoes = findCol(["lesoes", "possiveislesoes", "danos", "agravos", "efeito", "consequencia"]);
-      const cMedidas = findCol(["medidas", "controles", "prevencao", "epc", "procedimento"]);
-      const cEpi = findCol(["epi", "protecaoint", "equipamento"]);
-      const cProb = findCol(["prob", "probabilidade", "p"]);
-      const cSev = findCol(["sev", "severidade", "gravidade", "s"]);
+      // Mapeamento prioritário e sem ambiguidades
+      const cSetor = findExactOrIncludes(
+        ["setor", "setores", "nomedosetor", "setorarea"],
+        ["area", "departamento", "secao", "posto", "unidade", "localdetrabalho", "postodetrabalho", "local"],
+        ["ambiente", "descricaodoambiente"] // NUNCA confundir Setor com Ambiente
+      );
+      const cAmbiente = findExactOrIncludes(["descricaodoambiente", "ambiente"], ["localizacao", "instalacao"]);
+      const cGes = findExactOrIncludes(["ges", "ghe", "codigoges", "codigoghe"], ["grupodeexposicao", "grupo", "homogeneo"]);
+      const cFuncao = findExactOrIncludes(["funcao", "funcoes", "cargo", "cargos"], ["ocupacao", "trabalhadores", "atividade"]);
+      const cAgente = findExactOrIncludes(["agente", "grupoderisco", "categoria", "natureza"], ["tipoagente", "tipo"]);
+      const cTipoAgente = findExactOrIncludes(["tipodeagente", "tipoagente"]);
+      const cPerigo = findExactOrIncludes(
+        ["perigo", "descricaodoperigo", "fator", "fatorederisco", "fatorrisco"],
+        ["evento", "causa", "situacaoperigosa", "risco"]
+      );
+      const cFonte = findExactOrIncludes(["fonte", "fontegeradora", "circunstancia", "origem"]);
+      const cLesoes = findExactOrIncludes(["lesoes", "possiveislesoes", "danos", "agravos", "efeito", "consequencia"]);
+      const cMedidas = findExactOrIncludes(["medidas", "controles", "prevencao", "epc", "procedimento"]);
+      const cEpi = findExactOrIncludes(["epi", "protecaoint", "equipamento"]);
+      const cProb = findExactOrIncludes(["prob", "probabilidade", "p"]);
+      const cSev = findExactOrIncludes(["sev", "severidade", "gravidade", "s"]);
 
       const setoresSet = new Set<string>();
       const ghesMap = new Map<string, any>();
@@ -529,6 +559,16 @@ export default function PgrImportDialog({
       for (let r = startRow; r < rawRows.length; r++) {
         const row = rawRows[r];
         if (!row || row.every((c) => !c || String(c).trim() === "")) continue;
+
+        // Detecta linhas de separação que anunciam novo setor (ex: "SETOR: COSTURA" ou "ÁREA OPERACIONAL")
+        for (const c of row) {
+          const str = String(c || "").trim();
+          const matchSetor = str.match(/^(?:setor|area|departamento)\s*[:\-]\s*(.+)$/i);
+          if (matchSetor && matchSetor[1] && matchSetor[1].length < 60) {
+            ant.setor = matchSetor[1].trim();
+            break;
+          }
+        }
 
         const val = (idx: number) => (idx >= 0 && row[idx] != null ? String(row[idx]).trim() : "");
         const num = (idx: number, defVal: number) => {
@@ -549,6 +589,22 @@ export default function PgrImportDialog({
         let medidas = val(cMedidas);
         let epi = val(cEpi);
 
+        // Descarta linhas que sejam cabeçalhos residuais (ex: se o "perigo" for palavras como "FUNÇÃO", "IDENTIFICAÇÃO DE PERIGOS", etc.)
+        const pNorm = normalizarChave(perigoDesc);
+        if (
+          pNorm === "funcao" ||
+          pNorm === "cargo" ||
+          pNorm === "perigo" ||
+          pNorm === "agente" ||
+          pNorm === "identificacaodeperigos" ||
+          pNorm.startsWith("identificacaodeper") ||
+          pNorm === "fatoresderisco" ||
+          pNorm === "fontesgeradoras" ||
+          pNorm === "possiveislesoes"
+        ) {
+          continue;
+        }
+
         // Herança de campos agrupados da linha anterior
         if (!setor && ant.setor) setor = ant.setor;
         if (!gesCodigo && ant.ges) gesCodigo = ant.ges;
@@ -566,7 +622,8 @@ export default function PgrImportDialog({
         if (funcaoStr) ant.funcao = funcaoStr;
         if (ambiente) ant.ambiente = ambiente;
 
-        setor = setor || "Geral";
+        // Se o setor ainda for vazio, mas a empresa tiver o nome da unidade ou estabelecimento
+        setor = setor || ant.setor || "Operacional";
         gesCodigo = gesCodigo || "GES 01";
         perigoDesc = perigoDesc || agenteStr || "Risco ocupacional identificado";
 
@@ -1234,6 +1291,33 @@ export default function PgrImportDialog({
                   {(dadosExtraidos.acoes?.length || 0) + (dadosExtraidos.inventario?.filter((i) => i.plano_acao_sugerido)?.length || 0)}
                 </span>
                 <p className="text-xs text-muted-foreground font-medium mt-0.5">Ações 5W2H</p>
+              </div>
+            </div>
+
+            {/* Setores Identificados em Destaque */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                  Setores Identificados ({dadosExtraidos.setores?.length || 0}):
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {(dadosExtraidos.setores || []).map((s, idx) => {
+                  const qtdRiscos = (dadosExtraidos.inventario || []).filter((i) => i.setor === s.nome).length;
+                  return (
+                    <Badge
+                      key={idx}
+                      variant="secondary"
+                      className="text-xs font-medium bg-white border border-slate-300 text-slate-800 shadow-xs flex items-center gap-1.5 py-1 px-2.5"
+                    >
+                      <span className="font-semibold">{s.nome}</span>
+                      <span className="text-[10px] text-muted-foreground bg-slate-100 rounded-full px-1.5 py-0.2">
+                        {qtdRiscos} riscos
+                      </span>
+                    </Badge>
+                  );
+                })}
               </div>
             </div>
 
