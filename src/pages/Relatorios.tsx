@@ -38,8 +38,15 @@ export default function Relatorios() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
-        <p className="text-muted-foreground text-sm mt-1">Filtrar e analisar entregas</p>
+        {/*
+          * "Relatórios", solto, prometia os relatórios do sistema inteiro.
+          * Esta tela filtra e analisa ENTREGAS DE EPI — é o que o título
+          * passa a dizer, agora que ela mora dentro de Gestão de EPIs.
+          */}
+        <h1 className="text-2xl font-bold tracking-tight">Relatórios de EPIs</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Filtrar e analisar as entregas de EPI.
+        </p>
       </div>
 
       <Card>

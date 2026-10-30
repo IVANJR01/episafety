@@ -94,10 +94,19 @@ export const inspecoesItems: NavItem[] = [
   { path: "/extintores", label: "Extintores (NR-23)", icon: Flame, moduleKey: "extintores" },
 ];
 
-// 📊 RELATÓRIOS: Central consolidada
-export const relatoriosNavItems: NavItem[] = [
-  { path: "/relatorios", label: "Central de Relatórios", icon: BarChart3, moduleKey: "relatorios" },
-];
+/*
+ * 📊 RELATÓRIOS
+ *
+ * "Central de Relatórios" era um item de primeiro nível apontando para
+ * /relatorios — a MESMA rota de "Relatórios de EPIs", que já está dentro
+ * de Gestão de EPIs. O mesmo destino aparecia duas vezes no menu, e o
+ * nome de fora prometia uma central de todos os relatórios enquanto a
+ * tela filtra e analisa ENTREGAS DE EPI.
+ *
+ * Ficou o item de dentro, onde o assunto é. A lista segue exportada e
+ * vazia porque o rodapé do menu ainda a consulta.
+ */
+export const relatoriosNavItems: NavItem[] = [];
 
 // 💼 COMERCIAL: Orçamentos, clientes e catálogo
 export const comercialItems: NavItem[] = [
