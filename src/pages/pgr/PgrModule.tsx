@@ -9,7 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Plus, FileWarning, ShieldCheck, History, Edit, Sparkles, Upload } from "lucide-react";
+import { Eye, Plus, FileWarning, ShieldCheck, History, Edit, Sparkles, Upload, Trash2, Loader2 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { podeExcluirPgr } from "@/lib/excluirPgrRascunho";
 import { PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrDocumento, PgrStatus } from "@/lib/pgrTypes";
 import PgrImportDialog from "@/components/pgr/PgrImportDialog";
 
@@ -19,7 +24,40 @@ export default function PgrModule() {
   const perms = usePermissions("pgr");
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
-  const { data: pgrs = [], isLoading } = useQuery({
+  /**
+   * Excluir rascunho.
+   *
+   * Uma importação na empresa errada deixava quatro rascunhos na tela e
+   * nenhum jeito de tirá-los: o histórico de versões só tinha "Ver".
+   * Documento emitido não entra nisso — ver podeExcluirPgr.
+   */
+  const [excluindo, setExcluindo] = useState<PgrDocumento | null>(null);
+  const [apagando, setApagando] = useState(false);
+
+  const excluirRascunho = async () => {
+    if (!excluindo || !podeExcluirPgr(excluindo)) return;
+    setApagando(true);
+    try {
+      /*
+       * O inventário sai primeiro: ele aponta para o PGR, e apagar o
+       * documento antes deixaria os itens órfãos se a chave não tivesse
+       * cascata.
+       */
+      await (supabase.from as any)("pgr_inventario_itens").delete().eq("pgr_id", excluindo.id);
+      const { error } = await (supabase.from as any)("pgr_documentos")
+        .delete().eq("id", excluindo.id);
+      if (error) throw error;
+      toast.success("Rascunho excluído.");
+      setExcluindo(null);
+      await refetchPgrs();
+    } catch (e: any) {
+      toast.error("Não foi possível excluir", { description: e?.message });
+    } finally {
+      setApagando(false);
+    }
+  };
+
+  const { data: pgrs = [], isLoading, refetch: refetchPgrs } = useQuery({
     queryKey: ["pgr-list-gestao", empresaId, empresaScopeIds.join(",")],
     queryFn: async () => {
       let q = (supabase.from as any)("pgr_documentos").select("*");
@@ -247,6 +285,15 @@ export default function PgrModule() {
                           <Button size="sm" variant="ghost" className="text-indigo-600" onClick={() => navigate(`/pgr/${p.id}`)}>
                             <Eye className="h-4 w-4 mr-1.5" /> Ver
                           </Button>
+                          {perms.canDelete && podeExcluirPgr(p) && (
+                            <Button
+                              size="sm" variant="ghost" className="text-destructive"
+                              title="Excluir este rascunho"
+                              onClick={() => setExcluindo(p)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -257,6 +304,28 @@ export default function PgrModule() {
           )}
         </div>
       )}
+
+      <Dialog open={!!excluindo} onOpenChange={(v) => { if (!v && !apagando) setExcluindo(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir este rascunho?</DialogTitle>
+            <DialogDescription>
+              O rascunho e o inventário de riscos dele são apagados, e isso não se
+              desfaz. Documento já emitido não pode ser excluído — só rascunho.
+            </DialogDescription>
+          </DialogHeader>
+          <p className="py-2 text-sm font-medium">{excluindo ? formatarVersao(excluindo) : ""}</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExcluindo(null)} disabled={apagando}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={excluirRascunho} disabled={apagando}>
+              {apagando && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Excluir rascunho
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <PgrImportDialog
         open={importDialogOpen}

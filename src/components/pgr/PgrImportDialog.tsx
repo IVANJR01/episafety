@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 import {
   textoDaCelula, notaDeRisco, codigoDoGes, grupoDoRisco, classeDaPlanilha,
@@ -7,6 +7,7 @@ import JSZip from "jszip";
 import {
   responsavelTecnicoDoWord, unidadesDoWord, type UnidadeDoWord,
 } from "@/lib/dadosDoWordPgr";
+import { avisoDeEmpresa } from "@/lib/conferirEmpresaDoDocumento";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -90,6 +91,8 @@ export default function PgrImportDialog({
   onImportadoSucesso,
 }: Props) {
   const [tab, setTab] = useState<"pdf" | "texto" | "xlsx">("pdf");
+  /** Dados da empresa aberta, para conferir de quem é o documento. */
+  const [empresaAtiva, setEmpresaAtiva] = useState<{ nome: string; cnpj: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [baixandoModelo, setBaixandoModelo] = useState(false);
@@ -131,6 +134,30 @@ export default function PgrImportDialog({
 
   /** As linhas do último .docx lido — ver dadosDoWordPgr.ts. */
   const linhasDoWordRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    if (!open || !empresaId) return;
+    (async () => {
+      const { data } = await (supabase.from as any)("empresa_config")
+        .select("nome, cnpj").eq("id", empresaId).maybeSingle();
+      setEmpresaAtiva(data ? { nome: data.nome || "", cnpj: data.cnpj || "" } : null);
+    })();
+  }, [open, empresaId]);
+
+  /**
+   * De quem é o documento que está sendo importado.
+   *
+   * Um PGR do G-91 NORDESTE foi importado quatro vezes para a CG3
+   * ENGENHARIA, e a tela não dizia nada: o seletor de empresa fica no
+   * canto da barra lateral, e quem está com o arquivo na mão não olha
+   * para lá. O PGR é documento legal de uma organização só.
+   */
+  const cnpjDoDocumento =
+    (dadosExtraidos?.unidades?.[0]?.cnpj as string | undefined)
+    || (dadosExtraidos?.empresa?.cnpj as string | undefined)
+    || (dadosExtraidos?.documento?.cnpj as string | undefined)
+    || "";
+  const aviso = avisoDeEmpresa(cnpjDoDocumento, empresaAtiva?.cnpj, empresaAtiva?.nome);
 
   const lerTextoDocx = async (file: File): Promise<string> => {
     const zip = await JSZip.loadAsync(file);
@@ -1356,6 +1383,30 @@ export default function PgrImportDialog({
               </Button>
             </div>
 
+            {/*
+              * De quem é este documento.
+              *
+              * Fica ANTES dos dados extraídos, e não embaixo deles: quem
+              * confere começa por aqui, e é aqui que o erro se evita.
+              */}
+            {aviso && (
+              <div
+                className={`rounded-xl border p-4 ${aviso.grave
+                  ? "border-destructive/40 bg-destructive/5"
+                  : "border-amber-300 bg-amber-50 dark:bg-amber-950/20"}`}
+              >
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className={`w-5 h-5 shrink-0 mt-0.5 ${aviso.grave ? "text-destructive" : "text-amber-600"}`} />
+                  <div>
+                    <p className={`text-sm font-semibold ${aviso.grave ? "text-destructive" : "text-amber-900 dark:text-amber-200"}`}>
+                      {aviso.titulo}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">{aviso.detalhe}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Metadados do PGR */}
             <Card className="border-slate-200 shadow-sm">
               <CardContent className="p-4 space-y-3">
@@ -1523,7 +1574,15 @@ export default function PgrImportDialog({
             <Button
               onClick={handleConfirmarImportacao}
               disabled={salvando}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
+              /*
+               * O aviso de empresa errada não bloqueia — empresa sem CNPJ
+               * cadastrado cairia no bloqueio sem erro nenhum. O botão
+               * muda de cor e de texto, para quem aprova ver que está
+               * aprovando algo que o sistema desaconselha.
+               */
+              className={aviso?.grave
+                ? "bg-destructive hover:bg-destructive/90 text-white gap-2"
+                : "bg-indigo-600 hover:bg-indigo-700 text-white gap-2"}
             >
               {salvando ? (
                 <>
@@ -1531,7 +1590,8 @@ export default function PgrImportDialog({
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4" /> Aprovar e Salvar PGR no Sistema
+                  <CheckCircle2 className="w-4 h-4" />
+                  {aviso?.grave ? "Salvar mesmo assim nesta empresa" : "Aprovar e Salvar PGR no Sistema"}
                 </>
               )}
             </Button>
