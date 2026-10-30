@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,13 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Plus, FileWarning, ShieldCheck, History, Edit } from "lucide-react";
+import { Eye, Plus, FileWarning, ShieldCheck, History, Edit, Sparkles, Upload } from "lucide-react";
 import { PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrDocumento, PgrStatus } from "@/lib/pgrTypes";
+import PgrImportDialog from "@/components/pgr/PgrImportDialog";
 
 export default function PgrModule() {
   const navigate = useNavigate();
   const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
   const perms = usePermissions("pgr");
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const { data: pgrs = [], isLoading } = useQuery({
     queryKey: ["pgr-list-gestao", empresaId, empresaScopeIds.join(",")],
@@ -87,11 +89,20 @@ export default function PgrModule() {
             Programa de Gerenciamento de Riscos e acompanhamento das revisões
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {perms.canCreate && (
-            <Button onClick={() => navigate("/pgr/novo")} className="bg-indigo-600 hover:bg-indigo-700">
-              <Plus className="h-4 w-4 mr-2" /> Iniciar / Nova Revisão
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setImportDialogOpen(true)}
+                className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800 shadow-sm"
+              >
+                <Sparkles className="h-4 w-4 mr-2 text-indigo-500" /> Importar PGR (PDF / IA)
+              </Button>
+              <Button onClick={() => navigate("/pgr/novo")} className="bg-indigo-600 hover:bg-indigo-700">
+                <Plus className="h-4 w-4 mr-2" /> Iniciar / Nova Revisão
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -104,12 +115,27 @@ export default function PgrModule() {
             <FileWarning className="h-12 w-12 text-slate-300 mb-4" />
             <h3 className="text-lg font-medium text-slate-700 mb-2">Nenhum PGR foi iniciado para este estabelecimento</h3>
             <p className="text-sm text-slate-500 max-w-md mb-6">
-              Inicie a elaboração do Programa de Gerenciamento de Riscos agora mesmo. Os dados da estrutura e do inventário serão unificados.
+              Inicie a elaboração do Programa de Gerenciamento de Riscos agora mesmo ou importe um documento PDF existente para preencher automaticamente setores, funções, GES e inventário.
             </p>
             {perms.canCreate && (
-              <Button size="lg" onClick={() => navigate("/pgr/novo")} className="bg-indigo-600 hover:bg-indigo-700">
-                Iniciar Elaboração do PGR
-              </Button>
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <Button
+                  size="lg"
+                  onClick={() => setImportDialogOpen(true)}
+                  className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-md"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Importar PGR Existente (PDF com IA)
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => navigate("/pgr/novo")}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Elaborar do Zero (Manual)
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -231,6 +257,15 @@ export default function PgrModule() {
           )}
         </div>
       )}
+
+      <PgrImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        empresaId={empresaId || ""}
+        onImportadoSucesso={(novoId) => {
+          navigate(`/pgr/${novoId}`);
+        }}
+      />
     </div>
   );
 }
