@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 import {
   textoDaCelula, notaDeRisco, codigoDoGes, grupoDoRisco, classeDaPlanilha,
+  tipoDeExposicao,
 } from "@/lib/celulasDoInventario";
 import JSZip from "jszip";
 import {
@@ -1143,7 +1144,13 @@ export default function PgrImportDialog({
           funcoes_snapshot: item.funcoes_snapshot || null,
           limite_tolerancia: item.limite_tolerancia || null,
           intensidade: item.intensidade || null,
-          tipo_exposicao: item.tipo_exposicao || null,
+          /*
+           * `tipo_exposicao` é lista fechada no banco; a planilha
+           * escreve em português corrente. Mandando o texto cru, o
+           * Postgres recusa o inventário inteiro — ver tipoDeExposicao.
+           * A frase original fica em `tempo_exposicao`, que é texto.
+           */
+          tipo_exposicao: tipoDeExposicao(item.tipo_exposicao),
           tempo_exposicao: item.tipo_exposicao || null,
           tecnica_utilizada: item.tecnica_utilizada || null,
           atenuacao: item.atenuacao || null,
@@ -1153,7 +1160,18 @@ export default function PgrImportDialog({
       if (itensInventario.length > 0) {
         const { error: invErr } = await (supabase.from as any)("pgr_inventario_itens")
           .insert(itensInventario);
-        if (invErr) throw invErr;
+        if (invErr) {
+          /*
+           * Falhou o inventário: o PGR recém-criado sai junto.
+           *
+           * O cabeçalho é gravado antes dos riscos. Deixando-o para trás,
+           * cada tentativa frustrada vira um rascunho vazio na lista — foi
+           * o que encheu a tela do cliente de rascunhos sem risco nenhum.
+           * Um PGR sem inventário não serve para nada mesmo.
+           */
+          await (supabase.from as any)("pgr_documentos").delete().eq("id", novoPgrId);
+          throw invErr;
+        }
       }
 
       // 6. Insere Plano de Ação sugerido ou extraído da aba 5W2H da planilha

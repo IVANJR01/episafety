@@ -121,3 +121,33 @@ export function semColunasGeradas<T extends Record<string, unknown>>(item: T): P
   for (const coluna of COLUNAS_GERADAS_PELO_BANCO) delete copia[coluna];
   return copia as Partial<T>;
 }
+
+/** Os valores que a coluna `tipo_exposicao` aceita no banco. */
+export type TipoDeExposicao = "continua" | "intermitente" | "eventual" | "nao_aplicavel";
+
+/**
+ * O tipo de exposição, no valor que o banco aceita.
+ *
+ * `tipo_exposicao` não é texto livre: é uma lista fechada no Postgres
+ * (continua, intermitente, eventual, nao_aplicavel). A planilha escreve
+ * em português corrente — "Intermitente", "Permanente" —, e mandar isso
+ * cru derruba a gravação INTEIRA do inventário com "invalid input value
+ * for enum". Era o que estava acontecendo: o PGR era criado e nenhum
+ * risco entrava.
+ *
+ * A frase original não se perde: ela vai para `tempo_exposicao`, que é
+ * texto e guarda o que o técnico escreveu.
+ */
+export function tipoDeExposicao(valor: unknown): TipoDeExposicao | null {
+  const s = chaveDaCelula(valor);
+  if (!s) return null;
+  if (s.startsWith("intermitente")) return "intermitente";
+  if (s.startsWith("eventual") || s.startsWith("ocasional")) return "eventual";
+  /* "Permanente", "Contínua", "Habitual e Permanente", "Habitual". */
+  if (s.includes("permanente") || s.includes("continu") || s.includes("habitual")) {
+    return "continua";
+  }
+  if (s === "na" || s.startsWith("naoseaplica")) return "nao_aplicavel";
+  /* Palavra que não é nenhuma das quatro: não se inventa uma. */
+  return null;
+}

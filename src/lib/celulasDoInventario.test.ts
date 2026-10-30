@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   textoDaCelula, notaDeRisco, codigoDoGes, grupoDoRisco, classeDaPlanilha,
-  semColunasGeradas,
+  semColunasGeradas, tipoDeExposicao,
 } from "./celulasDoInventario";
 
 /**
@@ -133,5 +133,60 @@ describe("o que não pode ir no insert", () => {
 
   it("item que já vem sem o campo passa inteiro", () => {
     expect(semColunasGeradas({ a: 1 })).toEqual({ a: 1 });
+  });
+});
+
+describe("os valores que o banco aceita", () => {
+  it("o grupo sai sempre da lista do enum", () => {
+    /*
+     * `grupo` é lista fechada no Postgres. Um valor fora dela derruba a
+     * gravação inteira do inventário.
+     */
+    const aceitos = [
+      "fisico", "quimico", "biologico", "ergonomico",
+      "acidente", "psicossocial", "outro",
+    ];
+    const textos = [
+      "Físico", "Químico", "Biológico", "Ergonômico", "Acidentes",
+      "Psicossocial", "Mecânico", "", "qualquer coisa", "N.A",
+    ];
+    for (const t of textos) {
+      expect(aceitos, `"${t}" saiu fora da lista do banco`).toContain(grupoDoRisco(t));
+    }
+  });
+});
+
+describe("o tipo de exposição", () => {
+  it("traduz o que a planilha escreve para o que o banco aceita", () => {
+    /*
+     * A coluna é uma lista fechada no Postgres. Mandar "Intermitente"
+     * cru derrubava a gravação INTEIRA do inventário com "invalid input
+     * value for enum" — o PGR era criado e nenhum risco entrava.
+     */
+    expect(tipoDeExposicao("Intermitente")).toBe("intermitente");
+    expect(tipoDeExposicao("Permanente")).toBe("continua");
+    expect(tipoDeExposicao("Contínua")).toBe("continua");
+    expect(tipoDeExposicao("Habitual e Permanente")).toBe("continua");
+    expect(tipoDeExposicao("Eventual")).toBe("eventual");
+    expect(tipoDeExposicao("Ocasional")).toBe("eventual");
+  });
+
+  it("'N.A' vira 'não se aplica'", () => {
+    expect(tipoDeExposicao("N.A")).toBe("nao_aplicavel");
+    expect(tipoDeExposicao("Não se aplica")).toBe("nao_aplicavel");
+  });
+
+  it("palavra que não é nenhuma das quatro devolve null", () => {
+    /* Escolher uma por chute descreveria errado a exposição de alguém. */
+    expect(tipoDeExposicao("8 horas por dia")).toBeNull();
+    expect(tipoDeExposicao("")).toBeNull();
+  });
+
+  it("devolve só valores da lista do banco", () => {
+    const aceitos = ["continua", "intermitente", "eventual", "nao_aplicavel"];
+    for (const texto of ["Intermitente", "Permanente", "Eventual", "N.A", "qualquer"]) {
+      const v = tipoDeExposicao(texto);
+      if (v !== null) expect(aceitos, `"${texto}" saiu fora da lista`).toContain(v);
+    }
   });
 });
