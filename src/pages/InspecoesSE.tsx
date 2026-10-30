@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
+import { formularioDeNovaInspecao, hojeISO } from "@/lib/novaInspecao";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
@@ -114,8 +115,16 @@ type ObraOption = {
   status: string;
 };
 
+/*
+ * A data NÃO sai daqui.
+ *
+ * Isto é calculado uma vez, quando o arquivo carrega. O sistema é um app
+ * instalado que fica dias aberto no celular em campo: na segunda-feira
+ * ele ainda oferecia a sexta-feira. A data de abertura vem de
+ * formularioDeNovaInspecao(), na hora de abrir.
+ */
 const emptyForm = {
-  data_inspecao: format(new Date(), "yyyy-MM-dd"),
+  data_inspecao: hojeISO(),
   situacao_detectada: "",
   gravidade: "LEVE",
   acao_corretiva: "",
@@ -369,10 +378,11 @@ export default function InspecoesSE() {
   function contextoAnterior() {
     // A lista vem ordenada por `numero` crescente: o último com data é o
     // lançamento mais recente, e é dele que o próximo registro continua.
+    //
+    // A DATA não entra: ela é sempre a de hoje — ver novaInspecao.ts.
     const ultimo = [...items].reverse().find((i) => i.data_inspecao);
     if (!ultimo) return null;
     return {
-      data_inspecao: ultimo.data_inspecao,
       obra_id: ultimo.obra_id || "",
       local: ultimo.local || "",
     };
@@ -383,9 +393,15 @@ export default function InspecoesSE() {
     setErrors({});
     if (!hasDraft()) {
       resetDraft();
-      const anterior = contextoAnterior();
-      if (anterior) setForm({ ...emptyForm, ...anterior });
-    } else setForm(form); // keep draft
+      setForm(formularioDeNovaInspecao(emptyForm, contextoAnterior()));
+    } else {
+      /*
+       * Rascunho interrompido continua de onde parou, mas com a data de
+       * hoje: se ficou parado desde ontem, a inspeção de hoje nasceria
+       * datada de ontem.
+       */
+      setForm((p: any) => ({ ...p, data_inspecao: hojeISO() }));
+    }
     clearPhotoPreviews();
     setMostrarDetalhesNorma(false);
     originalFotoAntesPathRef.current = null;
