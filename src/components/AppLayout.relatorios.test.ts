@@ -47,3 +47,34 @@ describe("relatórios no menu", () => {
     expect(paths).toContain("/entregas");
   });
 });
+
+describe("o módulo Comercial saiu do sistema", () => {
+  /*
+   * A pedido do cliente: "um tempo atrás eu estava querendo criar algo
+   * comercial, porém não deu certo". Conferido antes de apagar: zero
+   * orçamento, zero serviço no catálogo e um único cliente chamado
+   * "TESTE 01".
+   */
+  it("nenhum item de menu aponta para /comercial", () => {
+    const sobrou = todosOsItens().filter((i) => i.path.startsWith("/comercial"));
+    expect(sobrou.map((i) => i.path), "ficou um atalho para tela que não existe mais")
+      .toEqual([]);
+  });
+
+  it("não é mais um módulo de permissão", async () => {
+    /*
+     * Módulo sem tela vira caixa marcável que não libera nada, e quem
+     * configura o perfil acredita que liberou.
+     */
+    const { MODULOS } = await import("@/lib/permissions");
+    expect((MODULOS as any[]).map((m) => m.key)).not.toContain("comercial");
+  });
+
+  it("os outros grupos do menu continuam de pé", () => {
+    /* Mexer no menu é o jeito mais fácil de derrubar o que está ao lado. */
+    const paths = todosOsItens().map((i) => i.path);
+    expect(paths).toContain("/epis");
+    expect(paths).toContain("/inspecoes-se");
+    expect(paths).toContain("/aso");
+  });
+});

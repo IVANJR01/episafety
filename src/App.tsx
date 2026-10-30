@@ -48,11 +48,6 @@ import Backups from "@/pages/Backups";
 import VideoTreinamentos from "@/pages/VideoTreinamentos";
 import PortalTreinamentos from "@/pages/PortalTreinamentos";
 import PortalRH from "@/pages/rh/PortalRH";
-import ComercialDashboard from "@/pages/comercial/ComercialDashboard";
-import Orcamentos from "@/pages/comercial/Orcamentos";
-import OrcamentoEditor from "@/pages/comercial/OrcamentoEditor";
-import Clientes from "@/pages/comercial/Clientes";
-import Catalogo from "@/pages/comercial/Catalogo";
 
 import Faturas from "@/pages/Faturas";
 import AsoModule from "@/pages/aso/AsoModule";
@@ -325,12 +320,6 @@ function ProtectedRoute() {
         <Route path="/exames" element={<Navigate to="/aso" replace />} />
         <Route path="/aso" element={<AsoModule />} />
         <Route path="/rh/asos" element={<PortalRH />} />
-        <Route path="/comercial" element={<ComercialDashboard />} />
-        <Route path="/comercial/orcamentos" element={<Orcamentos />} />
-        <Route path="/comercial/orcamentos/novo" element={<OrcamentoEditor />} />
-        <Route path="/comercial/orcamentos/:id" element={<OrcamentoEditor />} />
-        <Route path="/comercial/clientes" element={<Clientes />} />
-        <Route path="/comercial/catalogo" element={<Catalogo />} />
         <Route path="/pgr" element={<PgrModule />} />
         <Route path="/pgr/dashboard" element={<PgrDashboard />} />
         

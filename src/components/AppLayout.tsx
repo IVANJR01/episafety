@@ -108,13 +108,6 @@ export const inspecoesItems: NavItem[] = [
  */
 export const relatoriosNavItems: NavItem[] = [];
 
-// 💼 COMERCIAL: Orçamentos, clientes e catálogo
-export const comercialItems: NavItem[] = [
-  { path: "/comercial", label: "Dashboard Comercial", icon: LayoutDashboard, moduleKey: "comercial" },
-  { path: "/comercial/orcamentos", label: "Orçamentos e Cotações", icon: FileText, moduleKey: "comercial" },
-  { path: "/comercial/clientes", label: "Clientes", icon: Users, moduleKey: "comercial" },
-  { path: "/comercial/catalogo", label: "Catálogo de Serviços", icon: BookOpen, moduleKey: "comercial" },
-];
 
 // ⚙️ ADMINISTRAÇÃO: Acessos e permissões
 export const administracaoItems: NavItem[] = [
@@ -254,9 +247,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (path === "/aso") {
       return location.pathname.startsWith("/aso") || location.pathname.startsWith("/exames");
     }
-    if (path === "/comercial") {
-      return location.pathname === "/comercial";
-    }
     return location.pathname.startsWith(path);
   };
 
@@ -269,7 +259,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleTreinamentosItems = treinamentosItems.filter((i) => canAccess(i.moduleKey));
   const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
   const visibleRelatoriosItems = relatoriosNavItems.filter((i) => canAccess(i.moduleKey));
-  const visibleComercialItems = comercialItems.filter((i) => canAccess(i.moduleKey));
   const visibleAdministracaoItems = administracaoItems.filter((i) => canAccess(i.moduleKey));
 
   // Retrocompatibilidade para referências legadas
@@ -297,7 +286,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isTreinamentosActive = visibleTreinamentosItems.some((i) => isItemActive(i.path));
   const isInspecoesActive = visibleInspecoesItems.some((i) => isItemActive(i.path));
   const isRelatoriosActive = visibleRelatoriosItems.some((i) => isItemActive(i.path));
-  const isComercialActive = visibleComercialItems.some((i) => isItemActive(i.path));
   const isAdministracaoActive = visibleAdministracaoItems.some((i) => isItemActive(i.path));
 
   const [cadastroMestreOpen, setCadastroMestreOpen] = useState(isCadastroMestreActive);
@@ -306,7 +294,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [epiOpen, setEpiOpen] = useState(isEpiActive);
   const [treinamentosOpen, setTreinamentosOpen] = useState(isTreinamentosActive);
   const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
-  const [comercialOpen, setComercialOpen] = useState(isComercialActive);
   const [administracaoOpen, setAdministracaoOpen] = useState(isAdministracaoActive);
 
   // Auto-expande o grupo ativo sempre que a rota mudar
@@ -317,7 +304,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (isEpiActive) setEpiOpen(true);
     if (isTreinamentosActive) setTreinamentosOpen(true);
     if (isInspecoesActive) setInspecoesOpen(true);
-    if (isComercialActive) setComercialOpen(true);
     if (isAdministracaoActive) setAdministracaoOpen(true);
   }, [location.pathname, location.search]);
 
@@ -687,48 +673,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </Link>
                 );
               })}
-            </>
-          )}
-
-          {/* 💼 COMERCIAL */}
-          {visibleComercialItems.length > 0 && (
-            <>
-              <button
-                onClick={() => setComercialOpen(!comercialOpen)}
-                title="Comercial"
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isComercialActive
-                    ? "bg-sidebar-accent text-primary font-semibold"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}
-              >
-                <Briefcase className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Comercial</span>
-                <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${comercialOpen ? "rotate-180" : ""}`} />
-              </button>
-              {comercialOpen && (
-                <div className="ml-3 space-y-0.5 border-l border-sidebar-border/60 pl-2.5">
-                  {visibleComercialItems.map((item) => {
-                    const active = isItemActive(item.path);
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setMobileOpen(false)}
-                        title={item.label}
-                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] leading-snug font-medium transition-colors ${
-                          active
-                            ? "bg-sidebar-accent text-primary font-semibold"
-                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <item.icon className="w-4 h-4 shrink-0 opacity-80" />
-                        <span className="truncate">{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
             </>
           )}
 
