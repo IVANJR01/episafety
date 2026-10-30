@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, ShieldCheck, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText, Bell, Boxes, RefreshCw, Briefcase, Network, BookOpen, Flame, Zap } from "lucide-react";
+import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, ShieldCheck, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText, Bell, Boxes, RefreshCw, Briefcase, Network, BookOpen, Flame, Zap, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -47,10 +47,9 @@ export const cadastroMestreItems: NavItem[] = [
 
 // 📋 GESTÃO SST: Engenharia Ocupacional e Documentos Técnicos
 export const gestaoSstItems: NavItem[] = [
-  { path: "/documentacao-sst", label: "Documentação SST", icon: BookOpen, moduleKey: "pgr" },
-  { path: "/pgr", label: "PGR — Gerenciamento de Riscos", icon: FileText, moduleKey: "pgr" },
-  { path: "/ltcat", label: "LTCAT — Laudo Técnico", icon: ShieldCheck, moduleKey: "ltcat" },
-  { path: "/central-ppp", label: "PPP — Perfil Previdenciário", icon: ClipboardList, moduleKey: "ppp" },
+  { path: "/documentacao-sst", label: "Central de Documentação", icon: BookOpen, moduleKey: "pgr" },
+  { path: "/documentacao-sst?aba=emitidos", label: "Documentos Emitidos", icon: CheckCircle2, moduleKey: "pgr" },
+  { path: "/documentacao-sst?aba=vencimentos", label: "Painel de Vencimentos", icon: Clock, moduleKey: "pgr" },
 ];
 
 // 👥 COLABORADORES: Gestão do Quadro e Documentação Individual
@@ -231,7 +230,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         || (location.pathname.startsWith("/documentacao-sst") && location.search.includes("aba=ges"));
     }
     if (path === "/documentacao-sst") {
-      return location.pathname.startsWith("/documentacao-sst") && !location.search.includes("aba=ges");
+      return location.pathname.startsWith("/documentacao-sst")
+        && !location.search.includes("aba=ges")
+        && !location.search.includes("aba=emitidos")
+        && !location.search.includes("aba=vencimentos");
     }
     if (path === "/arquivo-digital") {
       return location.pathname.startsWith("/arquivo-digital") && !location.pathname.startsWith("/arquivo-digital/vencimentos");
