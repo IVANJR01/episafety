@@ -1,6 +1,9 @@
 import { useState, useRef } from "react";
 import * as XLSX from "xlsx";
-import { lerInventarioDaPlanilha } from "@/lib/importarPgrPlanilha";
+import {
+  textoDaCelula, notaDeRisco, codigoDoGes, grupoDoRisco,
+} from "@/lib/celulasDoInventario";
+import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -123,9 +126,32 @@ export default function PgrImportDialog({
     return "acidente";
   };
 
-  const processarPdfComIA = async (file: File) => {
-    if (file.size > 30 * 1024 * 1024) {
-      toast.error("O arquivo excede o limite de 30MB.");
+  const lerTextoDocx = async (file: File): Promise<string> => {
+    const zip = await JSZip.loadAsync(file);
+    const docXml = await zip.file("word/document.xml")?.async("string");
+    if (!docXml) throw new Error("Documento Word (.docx) inválido ou sem conteúdo textual.");
+
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(docXml, "application/xml");
+    const paragraphs = xmlDoc.getElementsByTagName("w:p");
+    const linhas: string[] = [];
+
+    for (let i = 0; i < paragraphs.length; i++) {
+      const p = paragraphs[i];
+      const textNodes = p.getElementsByTagName("w:t");
+      let linha = "";
+      for (let j = 0; j < textNodes.length; j++) {
+        linha += textNodes[j].textContent || "";
+      }
+      if (linha.trim()) linhas.push(linha.trim());
+    }
+
+    return linhas.join("\n");
+  };
+
+  const processarDocumentoComIA = async (file: File) => {
+    if (file.size > 35 * 1024 * 1024) {
+      toast.error("O arquivo excede o limite de 35MB.");
       return;
     }
 
@@ -133,6 +159,66 @@ export default function PgrImportDialog({
     setLoading(true);
 
     try {
+      const nomeLower = file.name.toLowerCase();
+
+      // Caso 1: Arquivo Word (.docx)
+      if (nomeLower.endsWith(".docx")) {
+        toast.info("Extraindo texto do documento Word...");
+        const textoDocx = await lerTextoDocx(file);
+        if (!textoDocx || textoDocx.length < 30) {
+          throw new Error("O documento Word não possui texto legível suficiente.");
+        }
+
+        const { data, error } = await supabase.functions.invoke("parse-pgr", {
+          body: { texto: textoDocx },
+        });
+
+        if (error) {
+          // Fallback para parse-pcmso com texto
+          const fb = await supabase.functions.invoke("parse-pcmso", { body: { texto: textoDocx } });
+          if (fb.error) throw new Error(error.message || "Erro no serviço de IA.");
+          if (fb.data) {
+            const ghesFb = fb.data.ghes || [];
+            const setoresMapeados = Array.from(new Set(ghesFb.map((g: any) => g.setor).filter(Boolean))).map((s) => ({ nome: s as string }));
+            const inventarioFb: any[] = [];
+            ghesFb.forEach((g: any) => {
+              (g.riscos || []).forEach((r: any) => {
+                inventarioFb.push({
+                  setor: g.setor,
+                  ges_codigo: g.codigo,
+                  grupo: normalizarGrupo(r.grupo),
+                  perigo_descricao: r.tipo_agente || "Risco ocupacional",
+                  tipo_agente: r.tipo_agente,
+                  controles_existentes: ["Acompanhamento e medidas de controle"],
+                  probabilidade: 3,
+                  severidade: 3,
+                });
+              });
+            });
+
+            setDadosExtraidos({
+              documento: {
+                data_emissao: new Date().toISOString().slice(0, 10),
+                data_vigencia_inicio: new Date().toISOString().slice(0, 10),
+                data_vigencia_fim: new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
+                metodologia_avaliacao: "Matriz 5x5 (NR-01)",
+              },
+              setores: setoresMapeados,
+              ghes: ghesFb,
+              inventario: inventarioFb,
+            });
+            toast.success("Documento Word (.docx) analisado com sucesso!");
+            return;
+          }
+        }
+
+        if (data?.error) throw new Error(data.error);
+        setDadosExtraidos(data);
+        toast.success("Documento Word interpretado com sucesso pela Inteligência Artificial!");
+        return;
+      }
+
+      // Caso 2: Arquivo PDF
       const pdf_base64 = await fileToBase64(file);
       
       // Tenta a Edge Function parse-pgr
@@ -147,7 +233,6 @@ export default function PgrImportDialog({
         });
         if (fb.error) throw new Error(error.message || "Erro ao conectar com serviço de IA.");
         if (fb.data) {
-          // Converte o retorno do parse-pcmso para o formato do PGR
           const ghesFb = fb.data.ghes || [];
           const setoresMapeados = Array.from(new Set(ghesFb.map((g: any) => g.setor).filter(Boolean))).map((s) => ({ nome: s as string }));
           const inventarioFb: any[] = [];
@@ -187,7 +272,7 @@ export default function PgrImportDialog({
       setDadosExtraidos(data);
       toast.success("PGR interpretado com sucesso pela Inteligência Artificial!");
     } catch (err: any) {
-      toast.error("Falha ao analisar o PDF: " + (err.message || String(err)));
+      toast.error("Falha ao analisar o documento: " + (err.message || String(err)));
     } finally {
       setLoading(false);
     }
@@ -364,72 +449,277 @@ export default function PgrImportDialog({
         }
       }
 
-      /*
-       * 3. Lê o inventário — ver src/lib/importarPgrPlanilha.ts.
-       *
-       * A leitura morava aqui dentro e errava três coisas na planilha
-       * real do cliente: tomava o TÍTULO por cabeçalho, lia o SETOR da
-       * coluna "DESCRIÇÃO DO AMBIENTE" e lia PROBABILIDADE/SEVERIDADE
-       * das colunas "PROCESSO" e "DESCRIÇÃO DO AMBIENTE" — porque
-       * procurava pelas letras soltas "p" e "s". As duas notas caíam no
-       * padrão 2 e 2, e a classificação do risco saía inventada.
-       */
-      const leitura = lerInventarioDaPlanilha(rawRows);
-      if (leitura.linhaCabecalho < 0) {
-        throw new Error(
-          "Não encontrei o cabeçalho do inventário nesta planilha. "
-          + "Ela precisa ter uma linha com SETOR, GES, FUNÇÃO e os campos de risco.",
-        );
+      // 3. Localiza dinamicamente a linha do cabeçalho por pontuação
+      const avaliarLinhaCabecalho = (row: any[]) => {
+        const normCols = row.map((c) => normalizarChave(String(c))).filter(Boolean);
+        if (normCols.length < 2) return 0;
+
+        let score = 0;
+        if (normCols.some((c) => c === "setor" || c.startsWith("setor") || c.includes("nomedosetor"))) score += 14;
+        else if (normCols.some((c) => c.includes("area") || c.includes("departamento") || c.includes("posto") || c.includes("secao"))) score += 6;
+
+        if (normCols.some((c) => c === "ges" || c === "ghe" || c.includes("grupodeexposicao"))) score += 10;
+        if (normCols.some((c) => c === "funcao" || c.includes("cargo") || c.includes("ocupacao"))) score += 10;
+        if (normCols.some((c) => c.includes("perigo") || c.includes("fator") || c.includes("risco"))) score += 10;
+        if (normCols.some((c) => c.includes("agente") || c.includes("grupoderisco"))) score += 8;
+        if (normCols.some((c) => c.includes("fonte") || c.includes("geradora"))) score += 6;
+        if (normCols.some((c) => c.includes("prob") || c.includes("sev") || c.includes("severidade"))) score += 6;
+        if (normCols.some((c) => c.includes("medida") || c.includes("controle") || c.includes("epi") || c.includes("epc"))) score += 6;
+
+        score += Math.min(normCols.length, 12);
+        return score;
+      };
+
+      let headerIdx = -1;
+      let maxScore = 0;
+      for (let i = 0; i < Math.min(rawRows.length, 25); i++) {
+        const sc = avaliarLinhaCabecalho(rawRows[i]);
+        if (sc > maxScore) {
+          maxScore = sc;
+          headerIdx = i;
+        }
       }
+
+      if (headerIdx === -1 || maxScore < 10) {
+        headerIdx = 0;
+      }
+
+      let headers = rawRows[headerIdx].map((c) => normalizarChave(String(c || "")));
+      let startRow = headerIdx + 1;
+
+      // Se a linha seguinte for sub-cabeçalho (EPC, EPI, Atenuação), combina
+      if (headerIdx + 1 < rawRows.length) {
+        const nextRow = rawRows[headerIdx + 1].map((c) => normalizarChave(String(c || "")));
+        const nextStr = nextRow.join(" ");
+        if (
+          nextStr.includes("epc") ||
+          nextStr.includes("epi") ||
+          nextStr.includes("atenuacao") ||
+          nextStr.includes("procedimento")
+        ) {
+          headers = headers.map((h, col) => {
+            const sub = nextRow[col] || "";
+            return sub ? `${h}_${sub}` : h;
+          });
+          startRow = headerIdx + 2;
+        }
+      }
+
+      const findExactOrIncludes = (exactTerms: string[], fallbackTerms: string[] = [], excludeTerms: string[] = []) => {
+        // 1. Correspondência exata
+        let idx = headers.findIndex((h) => exactTerms.some((t) => h === t));
+        if (idx >= 0) return idx;
+
+        // 2. Prefixo
+        idx = headers.findIndex((h) => exactTerms.some((t) => h.startsWith(t)) && !excludeTerms.some((e) => h.includes(e)));
+        if (idx >= 0) return idx;
+
+        // 3. Contém
+        idx = headers.findIndex((h) => exactTerms.some((t) => h.includes(t)) && !excludeTerms.some((e) => h.includes(e)));
+        if (idx >= 0) return idx;
+
+        // 4. Termos secundários de fallback
+        if (fallbackTerms.length > 0) {
+          idx = headers.findIndex((h) => fallbackTerms.some((t) => h.includes(t)) && !excludeTerms.some((e) => h.includes(e)));
+          if (idx >= 0) return idx;
+        }
+        return -1;
+      };
+
+      // Mapeamento prioritário e sem ambiguidades
+      const cSetor = findExactOrIncludes(
+        ["setor", "setores", "nomedosetor", "setorarea"],
+        ["area", "departamento", "secao", "posto", "unidade", "localdetrabalho", "postodetrabalho", "local"],
+        ["ambiente", "descricaodoambiente"] // NUNCA confundir Setor com Ambiente
+      );
+      const cAmbiente = findExactOrIncludes(["descricaodoambiente", "ambiente"], ["localizacao", "instalacao"]);
+      const cGes = findExactOrIncludes(["ges", "ghe", "codigoges", "codigoghe"], ["grupodeexposicao", "grupo", "homogeneo"]);
+      const cFuncao = findExactOrIncludes(["funcao", "funcoes", "cargo", "cargos"], ["ocupacao", "trabalhadores", "atividade"]);
+      const cAgente = findExactOrIncludes(["agente", "grupoderisco", "categoria", "natureza"], ["tipoagente", "tipo"]);
+      const cTipoAgente = findExactOrIncludes(["tipodeagente", "tipoagente"]);
+      const cPerigo = findExactOrIncludes(
+        ["perigo", "descricaodoperigo", "fator", "fatorederisco", "fatorrisco"],
+        ["evento", "causa", "situacaoperigosa", "risco"]
+      );
+      const cFonte = findExactOrIncludes(["fonte", "fontegeradora", "circunstancia", "origem"]);
+      const cLesoes = findExactOrIncludes(["lesoes", "possiveislesoes", "danos", "agravos", "efeito", "consequencia"]);
+      const cMedidas = findExactOrIncludes(["medidas", "controles", "prevencao", "epc", "procedimento"]);
+      const cEpi = findExactOrIncludes(["epi", "protecaoint", "equipamento"]);
+      const cProb = findExactOrIncludes(["prob", "probabilidade", "p"]);
+      const cSev = findExactOrIncludes(["sev", "severidade", "gravidade", "s"]);
+
+      /*
+       * Colunas que a planilha traz e a importação descartava.
+       *
+       * Na planilha real do cliente elas estão preenchidas em quase toda
+       * linha — ambiente, processo, limite, intensidade, tipo/tempo de
+       * exposição, técnica, atenuação —, e sem elas o inventário entra
+       * no sistema pela metade. A CLASSIFICAÇÃO é a mais importante: é a
+       * palavra que o técnico escreveu (TRIVIAL, TOLERÁVEL, MODERADO) e
+       * que decide a prioridade das ações; recalcular por fora é trocar
+       * o julgamento dele por uma conta.
+       */
+      const cProcesso = findExactOrIncludes(["processo"], [], ["agente", "perigo"]);
+      const cLimite = findExactOrIncludes(["limitedeexposicao", "limite"]);
+      const cIntensidade = findExactOrIncludes(["intens", "concentracao"]);
+      const cExposicao = findExactOrIncludes(
+        ["tipotempodeexposicao", "tempodeexposicao", "tipodeexposicao"], [], ["limite"],
+      );
+      const cTecnica = findExactOrIncludes(["tecnicautilizada", "tecnica"]);
+      const cAtenuacao = findExactOrIncludes(["atenuacao", "fatordeprotecao"]);
+      const cClassificacao = findExactOrIncludes(["classificacaodorisco", "classificacao"]);
 
       const setoresSet = new Set<string>();
       const ghesMap = new Map<string, any>();
       const inventarioItens: any[] = [];
 
-      for (const item of leitura.itens) {
-        const setor = item.setor || "Geral";
-        const gesCodigo = item.ges_codigo || "01";
+      const ant = {
+        setor: "",
+        ges: "",
+        funcao: "",
+        ambiente: "",
+        /* "Agente" é mesclado como os outros — ver o uso adiante. */
+        agente: "",
+      };
+
+      for (let r = startRow; r < rawRows.length; r++) {
+        const row = rawRows[r];
+        if (!row || row.every((c) => !c || String(c).trim() === "")) continue;
+
+        // Detecta linhas de separação que anunciam novo setor (ex: "SETOR: COSTURA" ou "ÁREA OPERACIONAL")
+        for (const c of row) {
+          const str = String(c || "").trim();
+          const matchSetor = str.match(/^(?:setor|area|departamento)\s*[:\-]\s*(.+)$/i);
+          if (matchSetor && matchSetor[1] && matchSetor[1].length < 60) {
+            ant.setor = matchSetor[1].trim();
+            break;
+          }
+        }
+
+        const val = (idx: number) => (idx >= 0 && row[idx] != null ? String(row[idx]).trim() : "");
+        /*
+         * A nota, como o Excel a grava.
+         *
+         * Aqui se tirava tudo que não fosse dígito: o "1.0" que o Excel
+         * guarda virava "10", caía fora da faixa de 1 a 5 e voltava para
+         * o padrão. Na planilha real do cliente TODAS as notas estão
+         * assim — ou seja, probabilidade e severidade eram sempre o
+         * padrão, e a classificação do risco saía inventada.
+         */
+        const num = (idx: number, defVal: number) =>
+          (idx < 0 ? defVal : (notaDeRisco(row[idx]) ?? defVal));
+
+        let setor = val(cSetor);
+        /* "1.0" do Excel vira "01"; "3.1" é subgrupo e continua "3.1". */
+        let gesCodigo = codigoDoGes(val(cGes));
+        let funcaoStr = val(cFuncao);
+        let ambiente = val(cAmbiente);
+        let perigoDesc = val(cPerigo) || val(cTipoAgente);
+        let agenteStr = val(cAgente);
+        let fonte = val(cFonte);
+        let lesoes = val(cLesoes);
+        let medidas = val(cMedidas);
+        let epi = val(cEpi);
+
+        // Descarta linhas que sejam cabeçalhos residuais (ex: se o "perigo" for palavras como "FUNÇÃO", "IDENTIFICAÇÃO DE PERIGOS", etc.)
+        const pNorm = normalizarChave(perigoDesc);
+        if (
+          pNorm === "funcao" ||
+          pNorm === "cargo" ||
+          pNorm === "perigo" ||
+          pNorm === "agente" ||
+          pNorm === "identificacaodeperigos" ||
+          pNorm.startsWith("identificacaodeper") ||
+          pNorm === "fatoresderisco" ||
+          pNorm === "fontesgeradoras" ||
+          pNorm === "possiveislesoes"
+        ) {
+          continue;
+        }
+
+        // Herança de campos agrupados da linha anterior
+        if (!setor && ant.setor) setor = ant.setor;
+        if (!gesCodigo && ant.ges) gesCodigo = ant.ges;
+        if (!funcaoStr && ant.funcao) funcaoStr = ant.funcao;
+        if (!ambiente && ant.ambiente) ambiente = ant.ambiente;
+
+        // Se a linha não tem nenhum indicador de risco nem de perigo, pula
+        if (!perigoDesc && !agenteStr && !fonte && !lesoes && !medidas) {
+          continue;
+        }
+
+        // Atualiza estado anterior
+        if (setor) ant.setor = setor;
+        if (gesCodigo) ant.ges = gesCodigo;
+        if (funcaoStr) ant.funcao = funcaoStr;
+        if (ambiente) ant.ambiente = ambiente;
+
+        // Se o setor ainda for vazio, mas a empresa tiver o nome da unidade ou estabelecimento
+        setor = setor || ant.setor || "Operacional";
+        gesCodigo = gesCodigo || "GES 01";
+        perigoDesc = perigoDesc || agenteStr || "Risco ocupacional identificado";
+
         setoresSet.add(setor);
+
+        // Desmembra funções separadas por vírgula, barra ou quebra de linha
+        const funcoesArr = funcaoStr
+          ? funcaoStr
+              .split(/[\n,;/]+/)
+              .map((f) => f.trim())
+              .filter(Boolean)
+          : [];
 
         if (!ghesMap.has(gesCodigo)) {
           ghesMap.set(gesCodigo, {
             codigo: gesCodigo,
-            nome: setor,
-            setor,
-            funcoes: [...item.funcoes],
+            nome: gesCodigo.toLowerCase().startsWith("ges") ? gesCodigo : `GES ${gesCodigo}`,
+            setor: setor,
+            funcoes: funcoesArr,
           });
         } else {
           const g = ghesMap.get(gesCodigo);
-          item.funcoes.forEach((f) => { if (!g.funcoes.includes(f)) g.funcoes.push(f); });
+          funcoesArr.forEach((f) => {
+            if (!g.funcoes.includes(f)) g.funcoes.push(f);
+          });
         }
+
+        /*
+         * O grupo sai da coluna "Agente", que é mesclada como as demais:
+         * vazia, o valor da linha de cima ainda vale. Deduzir pelo tipo
+         * de agente punha "Postura Inadequada" em "outro" quando a
+         * planilha diz Ergonômico duas linhas acima.
+         */
+        if (agenteStr) ant.agente = agenteStr;
+        const grupo = grupoDoRisco(agenteStr || ant.agente || perigoDesc);
+        const P = num(cProb, 2);
+        const S = num(cSev, 2);
+
+        const controlesArr: string[] = [];
+        if (medidas && medidas !== "N.A" && medidas !== "-") controlesArr.push(medidas);
+        if (epi && epi !== "N.A" && epi !== "-") controlesArr.push(`EPI: ${epi}`);
 
         inventarioItens.push({
           setor,
           ges_codigo: gesCodigo,
-          grupo: item.grupo,
-          tipo_agente: item.tipo_agente,
-          perigo_descricao: item.perigo_descricao,
-          fonte_geradora: item.fonte_geradora,
-          lesoes: item.lesoes,
-          descricao_ambiente: item.descricao_ambiente,
-          processo: item.processo,
-          funcoes_snapshot: item.funcoes,
-          limite_tolerancia: item.limite_tolerancia,
-          intensidade: item.intensidade,
-          tipo_exposicao: item.tipo_exposicao,
-          tecnica_utilizada: item.tecnica_utilizada,
-          controles_existentes: item.controles_existentes.length > 0
-            ? item.controles_existentes
-            : ["Medidas preventivas gerais"],
-          epi: item.epi,
-          atenuacao: item.atenuacao,
-          /*
-           * Sem nota na planilha, o padrão 2 continua — mas agora é
-           * exceção, e não a regra que valia para todo o inventário.
-           */
-          probabilidade: item.probabilidade ?? 2,
-          severidade: item.severidade ?? 2,
-          classificacao: item.classificacao,
+          grupo,
+          tipo_agente: agenteStr || perigoDesc,
+          perigo_descricao: perigoDesc,
+          fonte_geradora: fonte && fonte !== "N.A" ? fonte : null,
+          lesoes: lesoes && lesoes !== "N.A" ? lesoes : null,
+          controles_existentes: controlesArr.length > 0 ? controlesArr : ["Medidas preventivas gerais"],
+          epi: epi || null,
+          probabilidade: P,
+          severidade: S,
+          /* Ver o bloco de colunas acima. */
+          descricao_ambiente: textoDaCelula(ambiente),
+          processo: textoDaCelula(val(cProcesso)),
+          funcoes_snapshot: funcoesArr,
+          limite_tolerancia: textoDaCelula(val(cLimite)),
+          intensidade: textoDaCelula(val(cIntensidade)),
+          tipo_exposicao: textoDaCelula(val(cExposicao)),
+          tecnica_utilizada: textoDaCelula(val(cTecnica)),
+          atenuacao: textoDaCelula(val(cAtenuacao)),
+          classificacao: textoDaCelula(val(cClassificacao)),
         });
       }
 
@@ -853,17 +1143,17 @@ export default function PgrImportDialog({
             <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
               <TabsList className="grid grid-cols-3 w-full">
                 <TabsTrigger value="pdf" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                  <FileText className="w-4 h-4" /> Arquivo PDF (IA)
+                  <FileText className="w-4 h-4" /> PDF ou Word (.docx)
+                </TabsTrigger>
+                <TabsTrigger value="xlsx" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                  <FileSpreadsheet className="w-4 h-4" /> Planilha Excel (GRO)
                 </TabsTrigger>
                 <TabsTrigger value="texto" className="flex items-center gap-1.5 text-xs sm:text-sm">
                   <FileText className="w-4 h-4" /> Colar Texto
                 </TabsTrigger>
-                <TabsTrigger value="xlsx" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                  <FileSpreadsheet className="w-4 h-4" /> Planilha Excel
-                </TabsTrigger>
               </TabsList>
 
-              {/* ABA 1: UPLOAD DE PDF */}
+              {/* ABA 1: UPLOAD DE PDF OU WORD */}
               <TabsContent value="pdf" className="mt-4 space-y-4">
                 <div
                   onClick={() => fileInputPdfRef.current?.click()}
@@ -872,11 +1162,11 @@ export default function PgrImportDialog({
                   <input
                     ref={fileInputPdfRef}
                     type="file"
-                    accept=".pdf,application/pdf"
+                    accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     className="hidden"
                     onChange={(e) => {
                       const f = e.target.files?.[0];
-                      if (f) processarPdfComIA(f);
+                      if (f) processarDocumentoComIA(f);
                     }}
                   />
                   <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center mx-auto text-indigo-600">
@@ -884,10 +1174,10 @@ export default function PgrImportDialog({
                   </div>
                   <div>
                     <p className="font-semibold text-slate-800 text-sm sm:text-base">
-                      {arquivo ? arquivo.name : "Clique para selecionar o PDF do PGR"}
+                      {arquivo ? arquivo.name : "Clique para selecionar o PDF ou Word (.docx) do PGR"}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Arquivos PDF até 30MB. A Inteligência Artificial fará a leitura e classificação automática.
+                    <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                      Arquivos PDF ou Word (.docx) até 35MB. A Inteligência Artificial fará a leitura e classificação automática.
                     </p>
                   </div>
                 </div>
@@ -1050,6 +1340,33 @@ export default function PgrImportDialog({
                   {(dadosExtraidos.acoes?.length || 0) + (dadosExtraidos.inventario?.filter((i) => i.plano_acao_sugerido)?.length || 0)}
                 </span>
                 <p className="text-xs text-muted-foreground font-medium mt-0.5">Ações 5W2H</p>
+              </div>
+            </div>
+
+            {/* Setores Identificados em Destaque */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                  Setores Identificados ({dadosExtraidos.setores?.length || 0}):
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {(dadosExtraidos.setores || []).map((s, idx) => {
+                  const qtdRiscos = (dadosExtraidos.inventario || []).filter((i) => i.setor === s.nome).length;
+                  return (
+                    <Badge
+                      key={idx}
+                      variant="secondary"
+                      className="text-xs font-medium bg-white border border-slate-300 text-slate-800 shadow-xs flex items-center gap-1.5 py-1 px-2.5"
+                    >
+                      <span className="font-semibold">{s.nome}</span>
+                      <span className="text-[10px] text-muted-foreground bg-slate-100 rounded-full px-1.5 py-0.2">
+                        {qtdRiscos} riscos
+                      </span>
+                    </Badge>
+                  );
+                })}
               </div>
             </div>
 
