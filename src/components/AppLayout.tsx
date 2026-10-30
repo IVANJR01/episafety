@@ -48,8 +48,6 @@ export const cadastroMestreItems: NavItem[] = [
 // 📋 GESTÃO SST: Engenharia Ocupacional e Documentos Técnicos
 export const gestaoSstItems: NavItem[] = [
   { path: "/documentacao-sst", label: "Central de Documentação", icon: BookOpen, moduleKey: "pgr" },
-  { path: "/documentacao-sst?aba=emitidos", label: "Documentos Emitidos", icon: CheckCircle2, moduleKey: "pgr" },
-  { path: "/documentacao-sst?aba=vencimentos", label: "Painel de Vencimentos", icon: Clock, moduleKey: "pgr" },
 ];
 
 // 👥 COLABORADORES: Gestão do Quadro e Documentação Individual
@@ -230,10 +228,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         || (location.pathname.startsWith("/documentacao-sst") && location.search.includes("aba=ges"));
     }
     if (path === "/documentacao-sst") {
-      return location.pathname.startsWith("/documentacao-sst")
-        && !location.search.includes("aba=ges")
-        && !location.search.includes("aba=emitidos")
-        && !location.search.includes("aba=vencimentos");
+      return location.pathname.startsWith("/documentacao-sst") && !location.search.includes("aba=ges");
     }
     if (path === "/arquivo-digital") {
       return location.pathname.startsWith("/arquivo-digital") && !location.pathname.startsWith("/arquivo-digital/vencimentos");
