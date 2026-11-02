@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import {
   Check, ShieldCheck, Fingerprint, QrCode, PackageSearch, AlertTriangle,
   FileCheck2, ArrowRight, Clock, RotateCcw, BarChart3, Boxes,
-  CheckCircle2, XCircle, ShieldAlert, Sparkles, UserCheck, Search,
-  FileText, ChevronRight, ChevronDown, Laptop, Smartphone, Eye,
-  Building2, Users, FileSpreadsheet, Lock, ArrowUpRight, Zap
+  CheckCircle2, XCircle, ShieldAlert, UserCheck, Search,
+  FileText, ChevronDown, Building2, HardHat, FileSpreadsheet,
+  AlertCircle, ArrowUpRight, Scale, Briefcase
 } from "lucide-react";
 import logo from "@/assets/logo-episafety.png";
 import fichaExemplo from "/marca/ficha-epi-exemplo.png";
+import mobileOfflineReal from "/marca/mobile-entrega-offline-real.jpg";
 import {
   PLANOS, precoFormatado, linkDoWhatsapp, algumPrecoDefinido,
   descontoPercentual, totalMensal, CONTATO,
@@ -18,108 +19,88 @@ import {
 /**
  * PÁGINA PÚBLICA DE VENDAS — SAFETY SOLUÇÕES
  *
- * Design B2B SaaS de Alto Padrão (Dark Tech Studio & Clean Authority)
- * Posicionamento Comercial Central:
+ * Posicionamento Comercial Pé no Chão e com Tom de Realidade:
  * "O EPI sai do estoque com CA conferido. A entrega sai assinada. A ficha fica pronta para auditoria."
+ *
+ * Focado na realidade operacional de canteiros de obras, fábricas, almoxarifados
+ * e departamentos de SST que precisam se defender de multas do MTE e passivos trabalhistas.
  */
 
-const PROBLEMAS = [
+// Cenários reais de quem vive o dia a dia de SST e Almoxarifado
+const CENARIOS_REAIS = [
   {
-    titulo: "Fichas de papel preenchidas à mão",
-    descricao: "Pastas físicas que rasgam, molham no canteiro ou ficam com caligrafia ilegível e sem valor probatório.",
-    impacto: "Incerteza jurídica",
+    momento: "Cenário 1: O fiscal do trabalho chega de surpresa",
+    situacao: "O auditor fiscal do Ministério do Trabalho entra na empresa e solicita as fichas de entrega de EPI dos últimos 12 meses de 30 trabalhadores de um setor operacional.",
+    comPapel: "O almoxarife e o técnico perdem horas ou dias revirando caixas de arquivo morto, fichas rasgadas, pastas desorganizadas ou com assinaturas faltantes. Risco de auto de infração imediato.",
+    comSafety: "Você abre o sistema no computador ou celular, busca os nomes e baixa todos os PDFs em 10 segundos, com código de conferência e assinaturas registradas.",
   },
   {
-    titulo: "Dificuldade para achar comprovantes",
-    descricao: "Horas de desespero procurando papéis em caixas e arquivos mortos quando o fiscal chega na empresa.",
-    impacto: "Perda de produtividade",
+    momento: "Cenário 2: A reclamação trabalhista com pedido de insalubridade",
+    situacao: "Um ex-colaborador entra na Justiça do Trabalho alegando que trabalhava exposto a ruído ou produtos químicos sem nunca ter recebido o EPI adequado da empresa.",
+    comPapel: "A empresa procura a ficha física e descobre que o funcionário não assinou as últimas trocas, ou que o CA do protetor auricular entregue estava vencido na data. Causa praticamente perdida.",
+    comSafety: "O advogado anexa ao processo a ficha eletrônica completa, com cada entrega assinada com data e hora exatas, texto do art. 166 da CLT e o CA válido na época. Prova documental sólida.",
   },
   {
-    titulo: "Falta de rastreabilidade por pessoa",
-    descricao: "Sem histórico centralizado de quem recebeu qual item, em qual quantidade, data ou unidade de trabalho.",
-    impacto: "Descontrole operacional",
-  },
-  {
-    titulo: "Risco de entregar com CA vencido",
-    descricao: "EPI entregue com Certificado de Aprovação vencido é considerado inexistente pelo auditor e gera autuação.",
-    impacto: "Autuação e multa MTE",
-  },
-  {
-    titulo: "Correria em dias de auditoria",
-    descricao: "Tentativas de colher assinaturas atrasadas quando a fiscalização notifica, gerando inconsistências graves.",
-    impacto: "Passivo trabalhista",
-  },
-  {
-    titulo: "Estoque separado das entregas",
-    descricao: "Controle em cadernos ou planilhas desconexas onde o saldo físico nunca bate com quem realmente recebeu.",
-    impacto: "Prejuízo e extravios",
+    momento: "Cenário 3: A rotina diária no balcão do almoxarifado",
+    situacao: "Fila de 15 trabalhadores às 07h da manhã para retirar botas, luvas e capacetes antes de iniciar o turno de trabalho.",
+    comPapel: "Caneta falhando, papel molhado com suor ou poeira, caligrafia ilegível e ninguém confere se o lote de EPIs da caixa ainda tem CA dentro da validade.",
+    comSafety: "O almoxarife seleciona o colaborador no celular ou tablet, o sistema checa o CA na hora, o trabalhador assina com o dedo na tela em 5 segundos e o saldo baixa do estoque automaticamente.",
   },
 ];
 
-const ETAPAS_INTERATIVAS = [
+// As 6 dores operacionais reais
+const PROBLEMAS_REAIS = [
   {
-    id: "cadastro",
-    numero: "01",
-    titulo: "Cadastro Organizado",
-    chamada: "Centralize colaboradores, cargos e filiais",
-    descricao: "Cadastre seus trabalhadores com dados organizados por setor e função. Na hora da entrega, o sistema já sabe o histórico e os equipamentos indicados.",
-    icone: UserCheck,
-    tag: "Organização",
+    titulo: "Fichas de papel que somem ou se degradam",
+    descricao: "Em obras e indústrias, papel amassa, molha, rasga e pega poeira. Quando o perito pede a folha de 2 anos atrás, ninguém sabe em qual caixa está arquivada.",
   },
   {
-    id: "ca",
-    numero: "02",
-    titulo: "Conferência do CA",
-    chamada: "Bloqueio automático de itens vencidos",
-    descricao: "Antes da liberação do estoque, o sistema confere o Certificado de Aprovação (CA) do equipamento. Se estiver vencido, a saída é bloqueada na hora.",
-    icone: Search,
-    tag: "Blindagem",
+    titulo: "Colaborador que recebe e não assina",
+    descricao: "Na correria do balcão, o trabalhador pega a luva nova e sai com a promessa de 'assinar depois'. Esse 'depois' nunca acontece e a empresa fica desprotegida.",
   },
   {
-    id: "entrega",
-    numero: "03",
-    titulo: "Entrega e Assinatura",
-    chamada: "Assinatura na tela do celular ou tablet",
-    descricao: "O trabalhador assina digitalmente no ato da entrega, com o dedo ou biometria. O registro recebe carimbo de data, hora e código de conferência.",
-    icone: Fingerprint,
-    tag: "Validade",
+    titulo: "Entregar EPI com CA vencido sem perceber",
+    descricao: "A caixa do fornecedor é igual, mas o lote tem CA que venceu semana passada. Para a fiscalização, entregar EPI com CA vencido equivale a não entregar nada.",
   },
   {
-    id: "ficha",
-    numero: "04",
-    titulo: "Ficha Individual em PDF",
-    chamada: "Pronta em 10 segundos para a fiscalização",
-    descricao: "Gere o documento oficial completo com a declaração do art. 166 da CLT, todo o histórico de entregas e trocas, e código QR para auditoria imediata.",
-    icone: FileCheck2,
-    tag: "Auditoria",
+    titulo: "Estoque no caderno que não bate com as fichas",
+    descricao: "Divergência entre o que o financeiro comprou, o que consta no estoque do almoxarifado e o que realmente foi entregue na mão de cada funcionário.",
+  },
+  {
+    titulo: "Desespero antes de auditorias de clientes ou órgãos",
+    descricao: "Equipes de RH e SST passando noites e fins de semana tentando regularizar assinaturas e documentos atrasados às vésperas de fiscalizações.",
+  },
+  {
+    titulo: "Falta de histórico individual nas trocas e devoluções",
+    descricao: "Sem controle de durabilidade por função: você não sabe se o colaborador gasta um par de luvas por semana ou por mês, nem se devolveu o item avariado.",
   },
 ];
 
-const DIFERENCIAIS_CHAVE = [
+// As 4 etapas do fluxo real
+const ETAPAS_FLUXO = [
   {
-    icone: Search,
-    badge: "Segurança Documental",
-    titulo: "CA conferido antes da saída",
-    texto: "O sistema bloqueia e alerta caso o Certificado de Aprovação esteja vencido ou inapropriado antes de o item sair do estoque.",
-    destaque: "Zero risco de entregar EPI irregular",
+    numero: "1",
+    titulo: "Cadastro simples no sistema",
+    descricao: "Colaboradores organizados por função e setor de trabalho, com dados prontos para entrega.",
   },
   {
-    icone: Fingerprint,
-    badge: "Comprovação Imediata",
-    titulo: "Assinatura no ato da entrega",
-    texto: "O colaborador assina na tela do celular, tablet ou computador com registro de data, hora e código de conferência.",
-    destaque: "Assinatura digital e biometria rápida",
+    numero: "2",
+    titulo: "Conferência do CA na saída",
+    descricao: "Ao selecionar o EPI, o sistema verifica a situação do Certificado de Aprovação antes de liberar.",
   },
   {
-    icone: FileCheck2,
-    badge: "Pronta para Fiscalização",
-    titulo: "Ficha individual em PDF",
-    texto: "Em 10 segundos você gera a ficha oficial com todas as entregas, trocas, devoluções e texto legal do art. 166 da CLT.",
-    destaque: "Conferência por QR Code sem login",
+    numero: "3",
+    titulo: "Assinatura na tela na hora da entrega",
+    descricao: "O trabalhador assina no celular ou tablet do almoxarife com o dedo ou biometria. Registro com data e hora.",
+  },
+  {
+    numero: "4",
+    titulo: "Ficha em PDF gerada em 10 segundos",
+    descricao: "Histórico completo por colaborador com termos do art. 166 da CLT e QR Code de conferência.",
   },
 ];
 
-const RECURSOS_SISTEMA = [
+const RECURSOS = [
   {
     icone: PackageSearch,
     titulo: "Cadastro de EPI e consulta de CA",
@@ -162,25 +143,6 @@ const RECURSOS_SISTEMA = [
   },
 ];
 
-const FAQS = [
-  {
-    pergunta: "A ficha digital de EPI tem validade jurídica comprovada?",
-    resposta: "Sim. A ficha digital cumpre integralmente a Norma Regulamentadora NR-06 e a legislação trabalhista brasileira (Portaria MTP nº 671/2021). Cada entrega registra a declaração obrigatória do art. 166 da CLT, carimbo de data e hora e código único de conferência.",
-  },
-  {
-    pergunta: "O auditor fiscal precisa de cadastro ou senha para conferir a ficha?",
-    resposta: "Não. A ficha gerada pelo SafetySoluções possui código e QR Code de conferência pública. O fiscal do trabalho apenas lê o código com a câmera do celular ou digita no portal e visualiza a prova da entrega na hora.",
-  },
-  {
-    pergunta: "Preciso comprar leitores biométricos especiais ou computadores caros?",
-    resposta: "Não. O sistema funciona pelo navegador em qualquer celular, tablet ou computador. A assinatura pode ser feita diretamente na tela com o dedo ou caneta stylus, ou via biometria nativa do aparelho.",
-  },
-  {
-    pergunta: "Como funciona a implantação? Vocês ajudam a cadastrar minha equipe?",
-    resposta: "Sim! Nossa equipe auxilia você a cadastrar seus colaboradores, unidades e catálogo de EPIs no primeiro acesso. Você não começa com a tela vazia.",
-  },
-];
-
 export default function Planos() {
   const plano = PLANOS[0];
   const semPrecos = !algumPrecoDefinido();
@@ -191,12 +153,11 @@ export default function Planos() {
 
   const [vidas, setVidas] = useState(50);
   const total = precoFormatado(totalMensal(vidas, plano));
-  const [etapaAtiva, setEtapaAtiva] = useState(0);
-  const [faqAberto, setFaqAberto] = useState<number | null>(null);
+  const [cenarioAtivo, setCenarioAtivo] = useState(0);
 
   const Cta = ({
     grande = false,
-    texto = "Conhecer a solução",
+    texto = "Falar com Especialista no WhatsApp",
     variante = "default",
   }: {
     grande?: boolean;
@@ -208,10 +169,10 @@ export default function Planos() {
         size={grande ? "lg" : "default"}
         variant={variante}
         asChild
-        className={`font-semibold transition-all duration-200 ${
+        className={`font-semibold transition-all ${
           variante === "default"
-            ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400 hover:shadow-lg hover:shadow-emerald-500/25 active:scale-[0.98]"
-            : "border-slate-700 bg-slate-900/60 text-slate-200 hover:bg-slate-800 hover:text-white"
+            ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md hover:shadow-lg"
+            : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
         }`}
       >
         <a href={linkPlano} target="_blank" rel="noreferrer">
@@ -223,10 +184,10 @@ export default function Planos() {
         size={grande ? "lg" : "default"}
         variant={variante}
         asChild
-        className={`font-semibold transition-all duration-200 ${
+        className={`font-semibold transition-all ${
           variante === "default"
-            ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400 hover:shadow-lg hover:shadow-emerald-500/25 active:scale-[0.98]"
-            : "border-slate-700 bg-slate-900/60 text-slate-200 hover:bg-slate-800 hover:text-white"
+            ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md hover:shadow-lg"
+            : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
         }`}
       >
         <a href="#oferta">
@@ -236,158 +197,101 @@ export default function Planos() {
     );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
-      {/* ── HEADER GLASSMORPHISM PREMIUM ── */}
-      <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+    <div className="min-h-screen bg-slate-50 text-slate-900 antialiased selection:bg-emerald-100 selection:text-emerald-900">
+      {/* ── BARRA DE ALERTA REALISTA NO TOPO ── */}
+      <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-900 sm:text-[13px]">
+        <span>⚠️ Na Justiça do Trabalho e na fiscalização do MTE: <strong>quem não tem a ficha assinada com CA válido não entregou.</strong></span>
+      </div>
+
+      {/* ── HEADER CORPORATIVO LIMPO ── */}
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <img src={logo} alt="SafetySoluções" className="h-9 w-9 rounded-xl border border-slate-700/80 object-cover shadow-xs" />
-              <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-slate-950 bg-emerald-500" />
-            </div>
+            <img src={logo} alt="SafetySoluções" className="h-9 w-9 rounded-lg border border-slate-200 object-cover shadow-xs" />
             <div className="leading-tight">
-              <span className="text-base font-bold tracking-tight text-white">SafetySoluções</span>
-              <p className="text-[11px] font-medium text-emerald-400">Gestão e Ficha de EPIs</p>
+              <span className="text-base font-bold tracking-tight text-slate-900">SafetySoluções</span>
+              <p className="text-[11px] font-semibold text-emerald-700">Gestão e Ficha de EPIs</p>
             </div>
           </div>
 
-          <nav className="hidden items-center gap-7 text-xs font-medium text-slate-300 md:flex">
-            <a href="#fluxo" className="transition-colors hover:text-white">Como funciona</a>
-            <a href="#diferenciais" className="transition-colors hover:text-white">Diferenciais</a>
-            <a href="#sistema" className="transition-colors hover:text-white">O Sistema</a>
-            <a href="#oferta" className="transition-colors hover:text-white">Planos & Simulador</a>
-            <a href="#faq" className="transition-colors hover:text-white">Dúvidas</a>
+          <nav className="hidden items-center gap-6 text-xs font-medium text-slate-600 md:flex">
+            <a href="#cenarios" className="transition-colors hover:text-slate-900">Casos Reais</a>
+            <a href="#demonstracao" className="transition-colors hover:text-slate-900">Como Funciona</a>
+            <a href="#oferta" className="transition-colors hover:text-slate-900">Simulador de Custos</a>
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link
-              to="/login"
-              className="hidden text-xs font-medium text-slate-300 transition-colors hover:text-white sm:inline-block"
-            >
+            <Link to="/login" className="hidden text-xs font-medium text-slate-600 hover:text-slate-900 sm:inline-block">
               Entrar
             </Link>
-            <Cta texto="Conhecer a solução" />
+            <Cta texto="Solicitar Demonstração" />
           </div>
         </div>
       </header>
 
-      {/* ── 1. PRIMEIRA DOBRA — HERO COCKPIT DE ALTO IMPACTO ── */}
-      <section className="relative overflow-hidden pt-12 pb-20 sm:pt-20 sm:pb-28 lg:pt-24 lg:pb-32">
-        {/* Glow ambient background lights */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10"
-        >
-          <div className="absolute top-[-10%] left-[10%] h-[35rem] w-[35rem] rounded-full bg-emerald-600/15 blur-[120px]" />
-          <div className="absolute top-[5%] right-[5%] h-[30rem] w-[30rem] rounded-full bg-blue-600/15 blur-[120px]" />
-          <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-25" />
-        </div>
-
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
-            <div className="space-y-6 text-left">
-              {/* Badge oficial */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold text-emerald-300 shadow-inner">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                </span>
-                <span>NR-06 · art. 166 da CLT · Rastreabilidade Integral</span>
+      {/* ── 1. PRIMEIRA DOBRA — TOM DE REALIDADE & DOR OPERACIONAL ── */}
+      <section className="border-b border-slate-200 bg-white py-14 sm:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-14">
+            <div className="space-y-5 text-left">
+              <div className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-800">
+                <ShieldCheck className="h-4 w-4 text-emerald-700" />
+                <span>Norma Regulamentadora NR-06 · Art. 166 da CLT</span>
               </div>
 
-              {/* Headline definitiva */}
-              <h1 className="text-3xl font-black tracking-tight text-white sm:text-5xl sm:leading-[1.12] lg:text-[3.25rem]">
+              <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]">
                 Entrega de EPI controlada. CA conferido. Assinatura registrada.
-                <span className="mt-2 block bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-                  Ficha pronta para auditoria.
-                </span>
+                <span className="mt-2 block text-emerald-700">Ficha pronta para auditoria.</span>
               </h1>
 
-              {/* Subheadline com autoridade */}
-              <p className="max-w-xl text-base leading-relaxed text-slate-300 sm:text-lg">
+              <p className="max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
                 Organize a entrega de EPIs por colaborador, confira o Certificado de Aprovação,
                 registre as assinaturas e mantenha as fichas individuais em PDF — do jeito que o auditor pede.
               </p>
 
-              {/* CTAs */}
-              <div className="flex flex-wrap items-center gap-4 pt-2">
-                <Cta grande texto="Conhecer a solução" />
-                <Button
-                  size="lg"
-                  variant="outline"
-                  asChild
-                  className="border-slate-800 bg-slate-900/80 text-slate-200 backdrop-blur-md hover:border-slate-700 hover:bg-slate-800 hover:text-white"
-                >
-                  <a href="#fluxo">
-                    Solicitar demonstração <ChevronRight className="ml-1.5 h-4 w-4" />
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <Cta grande texto="Quero no WhatsApp" />
+                <Button size="lg" variant="outline" asChild className="border-slate-300 bg-white text-slate-800 hover:bg-slate-100">
+                  <a href="#demonstracao">
+                    Ver como funciona no balcão <ChevronDown className="ml-1 h-4 w-4" />
                   </a>
                 </Button>
               </div>
 
-              {/* Mini trust points */}
-              <div className="flex flex-wrap items-center gap-y-2 gap-x-6 border-t border-slate-800/80 pt-6 text-xs text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Sem taxa de implantação
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Sem fidelidade
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" /> 100% em nuvem segura
-                </span>
+              <div className="border-t border-slate-200 pt-5 text-xs text-slate-500">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 font-medium">
+                  <span className="flex items-center gap-1.5 text-slate-700">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Sem taxa de implantação
+                  </span>
+                  <span className="flex items-center gap-1.5 text-slate-700">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Sem contrato de fidelidade
+                  </span>
+                  <span className="flex items-center gap-1.5 text-slate-700">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Cadastramos seus dados com você
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* MOCKUP INTERATIVO DO SOFTWARE / FICHA */}
+            {/* A FICHA REAL GERADA PELO SISTEMA */}
             <div className="relative mx-auto w-full max-w-lg lg:max-w-none">
-              {/* Moldura de janela de aplicação SaaS */}
-              <div className="relative rounded-2xl border border-slate-800 bg-slate-900/90 p-3 shadow-2xl shadow-emerald-950/40 backdrop-blur-xl">
-                {/* Janela Header */}
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 px-2">
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-3 w-3 rounded-full bg-rose-500/80" />
-                    <div className="h-3 w-3 rounded-full bg-amber-500/80" />
-                    <div className="h-3 w-3 rounded-full bg-emerald-500/80" />
-                    <span className="ml-2 text-[11px] font-mono text-slate-400">safety-ficha-auditoria.pdf</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
-                    <CheckCircle2 className="h-3 w-3" /> Ficha Conforme
-                  </div>
+              <div className="rounded-2xl border border-slate-300 bg-slate-900 p-3 shadow-xl">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2 px-1 text-slate-300">
+                  <span className="text-xs font-mono font-medium">ficha_individual_epi.pdf</span>
+                  <span className="inline-flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                    <Check className="h-3 w-3" /> Ficha Pronta para Auditoria
+                  </span>
                 </div>
-
-                {/* Imagem Oficial da Ficha */}
-                <div className="relative mt-2 overflow-hidden rounded-xl border border-slate-800/60 bg-slate-950">
+                <div className="mt-2 overflow-hidden rounded-lg border border-slate-700 bg-white">
                   <img
                     src={fichaExemplo}
                     alt="Ficha de EPI gerada pelo sistema, com as entregas assinadas e o número do CA de cada equipamento"
-                    className="w-full object-contain shadow-inner"
+                    className="w-full object-contain"
                     loading="eager"
                   />
                 </div>
-
-                {/* Cards Flutuantes 3D de Demonstração dos 3 Pilares */}
-                <div className="absolute -top-4 -right-4 hidden sm:flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/95 p-3 shadow-xl backdrop-blur-md">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
-                    <Search className="h-4 w-4" />
-                  </div>
-                  <div className="text-left text-xs">
-                    <p className="font-bold text-white">CA 43.128 Conferido</p>
-                    <p className="text-[10px] text-emerald-400">Válido no MTE</p>
-                  </div>
-                </div>
-
-                <div className="absolute -bottom-4 -left-4 hidden sm:flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/95 p-3 shadow-xl backdrop-blur-md">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-blue-400">
-                    <Fingerprint className="h-4 w-4" />
-                  </div>
-                  <div className="text-left text-xs">
-                    <p className="font-bold text-white">Entrega Assinada</p>
-                    <p className="text-[10px] text-slate-300">Biometria & Carimbo de Tempo</p>
-                  </div>
-                </div>
               </div>
-
-              <p className="mt-4 text-center text-xs font-medium text-slate-400">
+              <p className="mt-3 text-center text-xs text-slate-500">
                 Ficha gerada pelo próprio sistema. Dados fictícios.
               </p>
             </div>
@@ -395,174 +299,209 @@ export default function Planos() {
         </div>
       </section>
 
-      {/* ── 2. SEÇÃO — OS PROBLEMAS QUE A EMPRESA ENFRENTA ── */}
-      <section className="border-t border-slate-850 bg-slate-900/40 py-20 sm:py-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="mx-auto max-w-3xl text-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-rose-400">
-              <ShieldAlert className="h-4 w-4" /> O Custo do Descontrole
+      {/* ── 2. CASOS REAIS DO DIA A DIA (PÉ NO CHÃO) ── */}
+      <section id="cenarios" className="border-b border-slate-200 bg-slate-100/60 py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="max-w-3xl">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+              Situações que Toda Empresa Enfrenta
             </span>
-            <h2 className="mt-4 text-2xl font-black tracking-tight text-white sm:text-4xl">
-              Os 6 gargalos operacionais que custam caro na auditoria
+            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Como a sua empresa responde nestas 3 situações reais?
             </h2>
-            <p className="mt-3 text-sm text-slate-300 sm:text-base">
-              A rotina em canteiros de obras, almoxarifados e indústrias costuma acumular falhas críticas na gestão de EPIs:
+            <p className="mt-2 text-sm text-slate-600 sm:text-base">
+              A diferença entre ter um controle digital organizado e continuar dependendo de papéis físicos no almoxarifado:
             </p>
           </div>
 
-          <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {PROBLEMAS.map((prob) => (
+          <div className="mt-10 grid gap-6 md:grid-cols-3">
+            {CENARIOS_REAIS.map((cenario, idx) => (
+              <div
+                key={cenario.momento}
+                className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-xs"
+              >
+                <div className="inline-flex self-start rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-800">
+                  {cenario.momento}
+                </div>
+                <p className="mt-4 text-xs font-medium leading-relaxed text-slate-700">
+                  {cenario.situacao}
+                </p>
+
+                <div className="mt-5 space-y-3 border-t border-slate-100 pt-4 text-xs">
+                  <div className="rounded-lg border border-red-200 bg-red-50/70 p-3 text-red-950">
+                    <span className="font-bold flex items-center gap-1.5 text-red-700">
+                      <XCircle className="h-4 w-4 shrink-0" /> Com ficha de papel:
+                    </span>
+                    <p className="mt-1 leading-normal text-slate-700">{cenario.comPapel}</p>
+                  </div>
+
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 text-emerald-950">
+                    <span className="font-bold flex items-center gap-1.5 text-emerald-700">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" /> Com o SafetySoluções:
+                    </span>
+                    <p className="mt-1 leading-normal text-slate-700">{cenario.comSafety}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 3. O QUE ACONTECE NA TELA DE ENTREGA (DEMONSTRAÇÃO REALISTA) ── */}
+      <section id="demonstracao" className="border-b border-slate-200 bg-white py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mx-auto max-w-3xl text-center">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+              Demonstração Prática do Balcão
+            </span>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              O EPI sai do estoque com CA conferido. A entrega sai assinada.
+            </h2>
+            <p className="mt-2 text-sm text-slate-600 sm:text-base">
+              Veja exatamente como o almoxarife faz a entrega no celular ou tablet em menos de 1 minuto:
+            </p>
+          </div>
+
+          {/* Demonstração Realista da Entrega no Mobile (100% Offline) */}
+          <div className="mx-auto mt-12 grid max-w-5xl items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
+            {/* O Celular com o Print Real no Ato da Entrega */}
+            <div className="flex justify-center">
+              <div className="relative w-full max-w-[320px] rounded-[2.5rem] border-[6px] border-slate-900 bg-slate-950 p-2 shadow-2xl shadow-slate-400/20">
+                <div className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-black">
+                  <img
+                    src={mobileOfflineReal}
+                    alt="Tela do aplicativo SafetySoluções no celular no ato da entrega de EPI com assinatura digital em modo offline"
+                    className="w-full object-contain"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Explicação Técnica e Operacional do Modo Offline */}
+            <div className="space-y-6 text-left">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3.5 py-1 text-xs font-bold text-amber-900">
+                <span>⚡ Funciona 100% Offline (Sem Sinal de Internet)</span>
+              </div>
+
+              <h3 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+                No canteiro de obras, no galpão ou no subsolo: a entrega não para.
+              </h3>
+
+              <p className="text-sm leading-relaxed text-slate-600 sm:text-base">
+                A internet caiu ou você está em uma área remota da obra? O almoxarife continua
+                entregando os EPIs e coletando a assinatura do trabalhador normalmente no celular ou tablet.
+              </p>
+
+              <div className="space-y-4 pt-2">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs">
+                    1
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Assinatura com o dedo na tela</h4>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      O colaborador assina diretamente na tela do celular no momento exato em que recebe o EPI.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs">
+                    2
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Conferência de CA gravada</h4>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      O sistema checa o Certificado de Aprovação e impede a entrega de itens com validade expirada.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs">
+                    3
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Sincronização automática</h4>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Cada entrega fica gravada com segurança no aparelho. Quando reconectar ao Wi-Fi ou 4G, tudo sobe sozinho para a nuvem.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200 pt-4">
+                <Cta texto="Testar no WhatsApp" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 4. OS 6 PROBLEMAS REAIS QUE CUSTAM CARO ── */}
+      <section className="border-b border-slate-200 bg-slate-50 py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="max-w-2xl">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-700">
+              O Risco Oculto do Papel
+            </span>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Três coisas custam caro na auditoria
+            </h2>
+            <p className="mt-2 text-sm text-slate-600 sm:text-base">
+              A rotina comum de preenchimento manual de fichas esconde vulnerabilidades jurídicas perigosas:
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {PROBLEMAS_REAIS.map((prob) => (
               <div
                 key={prob.titulo}
-                className="group relative rounded-2xl border border-slate-800 bg-slate-950/60 p-6 transition-all duration-300 hover:border-rose-500/40 hover:bg-slate-900/70 hover:shadow-lg hover:shadow-rose-950/20"
+                className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition-all hover:border-slate-300"
               >
-                <div className="flex items-center justify-between">
-                  <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400">
-                    <XCircle className="h-5 w-5" />
-                  </div>
-                  <span className="rounded-full bg-rose-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-rose-400">
-                    {prob.impacto}
-                  </span>
+                <div className="flex items-center gap-2 text-rose-600">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <h3 className="text-sm font-bold text-slate-900">{prob.titulo}</h3>
                 </div>
-                <h3 className="mt-4 text-base font-bold text-white">{prob.titulo}</h3>
-                <p className="mt-2 text-xs leading-relaxed text-slate-300 sm:text-sm">
+                <p className="mt-2 text-xs leading-relaxed text-slate-600">
                   {prob.descricao}
                 </p>
               </div>
             ))}
           </div>
-
-          <div className="mt-12 rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-slate-900/90 p-6 text-center">
-            <p className="text-sm font-semibold text-slate-200 sm:text-base">
-              Na Justiça do Trabalho e na fiscalização do Ministério do Trabalho, quem não tem a ficha assinada com CA válido não entregou.
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              A Safety Soluções substitui o papel por comprovação jurídica eletrônica blindada.
-            </p>
-          </div>
         </div>
       </section>
 
-      {/* ── 3. SEÇÃO — COMO A SOLUÇÃO FUNCIONA (FLUXO EM 4 ETAPAS) ── */}
-      <section id="fluxo" className="border-t border-slate-800 bg-slate-950 py-20 sm:py-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="mx-auto max-w-3xl text-center">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-              Rastreabilidade de Ponta a Ponta
-            </span>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-4xl">
-              Como a Safety Soluções funciona na prática
-            </h2>
-            <p className="mt-3 text-sm text-slate-300 sm:text-base">
-              Um fluxo claro, intuitivo e à prova de falhas em quatro etapas simples:
-            </p>
-          </div>
-
-          {/* Grid Interativo das 4 Etapas */}
-          <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {ETAPAS_INTERATIVAS.map((etapa, idx) => {
-              const Icone = etapa.icone;
-              return (
-                <div
-                  key={etapa.numero}
-                  className="group relative rounded-2xl border border-slate-800 bg-slate-900/60 p-6 transition-all duration-300 hover:border-emerald-500/50 hover:bg-slate-900 hover:shadow-xl hover:shadow-emerald-950/20"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-3xl font-black text-slate-700 transition-colors group-hover:text-emerald-500">
-                      {etapa.numero}
-                    </span>
-                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
-                      <Icone className="h-5 w-5" />
-                    </div>
-                  </div>
-
-                  <span className="mt-4 inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                    {etapa.tag}
-                  </span>
-                  <h3 className="mt-1 text-base font-bold text-white">{etapa.titulo}</h3>
-                  <p className="mt-1 text-xs font-medium text-slate-400">{etapa.chamada}</p>
-                  <p className="mt-3 text-xs leading-relaxed text-slate-300 border-t border-slate-800/80 pt-3">
-                    {etapa.descricao}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ── 4. SEÇÃO — TRÊS GRANDES DIFERENCIAIS (OS PILARES) ── */}
-      <section id="diferenciais" className="border-t border-slate-800 bg-slate-900/30 py-20 sm:py-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="mx-auto max-w-3xl text-center">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-              Pilares da Plataforma
-            </span>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-4xl">
-              Três grandes diferenciais que blindam a sua empresa
-            </h2>
-            <p className="mt-3 text-sm text-slate-300 sm:text-base">
-              O núcleo da segurança operacional e jurídica da Safety Soluções:
-            </p>
-          </div>
-
-          <div className="mt-14 grid gap-8 md:grid-cols-3">
-            {DIFERENCIAIS_CHAVE.map((dif) => {
-              const Icone = dif.icone;
-              return (
-                <div
-                  key={dif.titulo}
-                  className="relative rounded-3xl border border-slate-800 bg-slate-950 p-8 shadow-xl transition-all duration-300 hover:border-emerald-500/50 hover:shadow-emerald-950/30"
-                >
-                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400">
-                    <Icone className="h-6 w-6" />
-                  </div>
-                  <span className="mt-6 block text-xs font-bold uppercase tracking-wider text-emerald-400">
-                    {dif.badge}
-                  </span>
-                  <h3 className="mt-1 text-xl font-bold text-white">{dif.titulo}</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                    {dif.texto}
-                  </p>
-                  <div className="mt-6 border-t border-slate-850 pt-4 flex items-center gap-2 text-xs font-semibold text-emerald-400">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    <span>{dif.destaque}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ── 5. SEÇÃO — VISUALIZAÇÃO DO SISTEMA (RECURSOS COMPROVADOS) ── */}
-      <section id="sistema" className="border-t border-slate-800 bg-slate-950 py-20 sm:py-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      {/* ── 5. RECURSOS DO SISTEMA (O QUE VOCÊ PASSA A TER) ── */}
+      <section className="border-b border-slate-200 bg-white py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="max-w-2xl">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-              Tecnologia em Produção
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+              Ferramentas de Trabalho
             </span>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-4xl">
-              Recursos prontos e disponíveis hoje
+            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              O que você passa a ter
             </h2>
-            <p className="mt-3 text-sm text-slate-300 sm:text-base">
-              Todas as ferramentas que a sua equipe de SST e almoxarifado precisa para trabalhar sem papel:
+            <p className="mt-1.5 text-sm text-slate-600">
+              Tudo abaixo já está no ar e em uso hoje.
             </p>
           </div>
 
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {RECURSOS_SISTEMA.map((r) => {
+          <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {RECURSOS.map((r) => {
               const Icone = r.icone;
               return (
                 <div
                   key={r.titulo}
-                  className="group rounded-2xl border border-slate-800 bg-slate-900/60 p-5 transition-all hover:border-slate-700 hover:bg-slate-900 hover:shadow-md"
+                  className="rounded-xl border border-slate-200 bg-slate-50/50 p-5 transition-all hover:border-emerald-500/40 hover:bg-white hover:shadow-xs"
                 >
-                  <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 text-emerald-400 transition-colors group-hover:bg-emerald-500 group-hover:text-slate-950">
-                    <Icone className="h-5 w-5" />
+                  <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
+                    <Icone className="h-4 w-4" />
                   </div>
-                  <h3 className="mt-3.5 text-sm font-bold text-white leading-snug">{r.titulo}</h3>
-                  <p className="mt-1.5 text-xs leading-relaxed text-slate-300">{r.texto}</p>
+                  <h3 className="mt-3 text-sm font-bold text-slate-900">{r.titulo}</h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{r.texto}</p>
                 </div>
               );
             })}
@@ -570,61 +509,59 @@ export default function Planos() {
         </div>
       </section>
 
-      {/* ── 6. SEÇÃO — PLANOS E OFERTAS COM SIMULADOR REATIVO ── */}
-      <section id="oferta" className="border-t border-slate-800 bg-slate-900/40 py-20 sm:py-32">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6">
-          <div className="relative rounded-3xl border-2 border-emerald-500/60 bg-slate-950 p-7 shadow-2xl shadow-emerald-950/40 sm:p-12">
-            <span className="absolute -top-3.5 left-8 rounded-full bg-emerald-500 px-4 py-1 text-xs font-bold uppercase tracking-wider text-slate-950 shadow-md">
+      {/* ── 6. SEÇÃO DE OFERTA E SIMULADOR REALISTA (id="oferta") ── */}
+      <section id="oferta" className="border-b border-slate-200 bg-slate-100/60 py-16 sm:py-24">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6">
+          <div className="relative rounded-2xl border-2 border-emerald-600 bg-white p-7 shadow-xl sm:p-10">
+            <span className="absolute -top-3.5 left-7 rounded-full bg-emerald-700 px-3.5 py-1 text-xs font-bold text-white shadow-xs">
               Comece por aqui
             </span>
 
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-black tracking-tight text-white sm:text-4xl">{plano.nome}</h2>
-                <p className="mt-1 text-sm text-slate-300">{plano.publico}</p>
-              </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-950 sm:text-3xl">{plano.nome}</h2>
+              <p className="mt-1 text-sm text-slate-600">{plano.publico}</p>
             </div>
 
-            {/* Preço em Destaque */}
-            <div className="mt-8 flex flex-wrap items-baseline gap-3">
+            {/* Preço real */}
+            <div className="mt-6 flex flex-wrap items-baseline gap-3">
               {preco ? (
                 <>
                   {precoDe && (
-                    <span className="text-xl text-slate-400 line-through">{precoDe}</span>
+                    <span className="text-lg text-slate-400 line-through">{precoDe}</span>
                   )}
-                  <span className="text-4xl font-black tracking-tight text-white sm:text-5xl">
+                  <span className="text-4xl font-extrabold tracking-tight text-slate-950">
                     {preco}
                   </span>
-                  <span className="text-sm font-medium text-slate-300">{plano.unidade}</span>
+                  <span className="text-sm font-medium text-slate-600">{plano.unidade}</span>
                   {desconto != null && (
-                    <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-400">
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
                       −{desconto}%
                     </span>
                   )}
                 </>
               ) : (
                 <>
-                  <span className="text-3xl font-black text-white">Sob consulta</span>
-                  <span className="text-sm text-slate-300">{plano.unidade}</span>
+                  <span className="text-3xl font-bold text-slate-950">Sob consulta</span>
+                  <span className="text-sm text-slate-600">{plano.unidade}</span>
                 </>
               )}
             </div>
 
-            {/* Simulador Interativo de Vidas */}
+            {/* Simulador de Vidas */}
             {semPrecos ? (
-              <p className="mt-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4 text-xs leading-relaxed text-slate-300">
+              <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed text-slate-600">
                 O valor é fechado no contato: ele muda conforme o número de colaboradores e de unidades atendidas.
               </p>
             ) : (
-              <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 sm:p-8">
+              <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
                 <label
                   htmlFor="vidas"
-                  className="block text-sm font-bold text-white"
+                  className="block text-sm font-bold text-slate-900"
                 >
                   Quantos colaboradores você tem?
                 </label>
 
-                <div className="mt-4 flex flex-wrap items-center gap-4">
+                <div className="mt-3 flex flex-wrap items-center gap-4">
                   <input
                     id="vidas"
                     type="number"
@@ -632,31 +569,31 @@ export default function Planos() {
                     max={100000}
                     value={vidas}
                     onChange={(e) => setVidas(Math.trunc(Number(e.target.value)))}
-                    className="h-12 w-32 rounded-xl border border-slate-700 bg-slate-950 px-4 text-xl font-black text-white shadow-inner focus:border-emerald-500 focus:outline-hidden"
+                    className="h-11 w-28 rounded-lg border border-slate-300 bg-white px-3 text-lg font-bold text-slate-900 shadow-xs focus:border-emerald-600 focus:outline-hidden"
                   />
                   <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-medium text-slate-400">fica</span>
-                    <span className="text-3xl font-black tracking-tight text-emerald-400 sm:text-4xl">
+                    <span className="text-sm text-slate-600">fica</span>
+                    <span className="text-3xl font-extrabold tracking-tight text-emerald-700">
                       {total ?? "—"}
                     </span>
-                    <span className="text-sm font-medium text-slate-300">
+                    <span className="text-sm text-slate-600">
                       {total ? "por mês" : "informe de 1 a 100.000"}
                     </span>
                   </div>
                 </div>
 
-                {/* Seletores rápidos de porte */}
-                <div className="mt-5 flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-slate-400">Porte rápido:</span>
+                {/* Atalhos de colaboradores */}
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-slate-500">Selecione rápido:</span>
                   {[25, 50, 100, 250, 500].map((qtd) => (
                     <button
                       key={qtd}
                       type="button"
                       onClick={() => setVidas(qtd)}
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
+                      className={`rounded-md border px-2.5 py-1 text-xs font-semibold transition-all ${
                         vidas === qtd
-                          ? "border-emerald-500 bg-emerald-500 text-slate-950 shadow-sm"
-                          : "border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-700 hover:text-white"
+                          ? "border-emerald-700 bg-emerald-700 text-white"
+                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                       }`}
                     >
                       {qtd} colaboradores
@@ -664,184 +601,110 @@ export default function Planos() {
                   ))}
                 </div>
 
-                <p className="mt-4 text-xs leading-relaxed text-slate-400">
+                <p className="mt-3 text-xs text-slate-500">
                   Sem taxa de implantação, sem contrato de fidelidade e sem cobrança por unidade: você paga pelas vidas que estão no sistema.
                 </p>
               </div>
             )}
 
             {/* O que está incluso */}
-            <div className="mt-8 border-t border-slate-800 pt-6">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Tudo incluso na contratação:
+            <div className="mt-7 border-t border-slate-200 pt-6">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Tudo incluso no plano:
               </span>
-              <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              <ul className="mt-3 grid gap-2.5 sm:grid-cols-2">
                 {plano.inclui.map((item) => (
-                  <li key={item} className="flex items-start gap-2.5 text-xs leading-snug sm:text-sm text-slate-200">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                  <li key={item} className="flex items-start gap-2 text-xs text-slate-800 sm:text-sm">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                     <span>{item}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
-            {/* CTAs */}
-            <div className="mt-8 flex flex-wrap items-center gap-4">
+            {/* Ações */}
+            <div className="mt-8 flex flex-wrap items-center gap-3">
               <Cta grande texto="Quero no WhatsApp" />
               {CONTATO.email && (
-                <Button size="lg" variant="outline" asChild className="border-slate-700 bg-slate-900 text-white hover:bg-slate-800">
+                <Button size="lg" variant="outline" asChild className="border-slate-300">
                   <a href={`mailto:${CONTATO.email}`}>{CONTATO.email}</a>
                 </Button>
               )}
             </div>
 
-            <p className="mt-4 text-xs text-slate-400">
+            <p className="mt-4 text-xs text-slate-500">
               A gente cadastra seus EPIs e seus colaboradores junto com você. Você não começa com a tela vazia.
             </p>
           </div>
         </div>
       </section>
 
-      {/* ── 7. SEÇÃO — CONFIANÇA E SEGURANÇA ── */}
-      <section className="border-t border-slate-800 bg-slate-950 py-20 sm:py-28 text-center">
+      {/* ── 7. TRÊS PASSOS E ESTÁ RODANDO ── */}
+      <section className="border-b border-slate-200 bg-white py-14 sm:py-20">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-            Conformidade & Tranquilidade
-          </span>
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-4xl">
-            Segurança jurídica de ponta a ponta
-          </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-300 sm:text-base">
-            O SafetySoluções foi desenvolvido estritamente de acordo com os requisitos da NR-06 e da legislação trabalhista:
-          </p>
-
-          <div className="mt-12 grid gap-6 sm:grid-cols-3 text-left">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 text-base font-bold text-white">Texto Legal da NR-06</h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-300">
-                A ficha sai com a declaração expressa de guarda, conservação e uso obrigatório prevista no art. 166 da CLT.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
-                <QrCode className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 text-base font-bold text-white">Autenticidade por QR Code</h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-300">
-                O auditor confere a autenticidade do documento em tempo real sem precisar de senha ou cadastro no sistema.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
-                <Zap className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 text-base font-bold text-white">Implantação Assistida</h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-300">
-                Carregamos seus colaboradores, funções e estoque inicial junto com a sua equipe no primeiro dia.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 8. SEÇÃO — FAQ (DÚVIDAS FREQUENTES) ── */}
-      <section id="faq" className="border-t border-slate-800 bg-slate-900/30 py-20 sm:py-28">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <div className="text-center">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-              Perguntas Frequentes
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+              Como Começa
             </span>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-4xl">
-              Tire suas dúvidas antes de começar
+            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Três passos e está rodando
             </h2>
-            <p className="mt-3 text-sm text-slate-300">
-              Esclarecimentos sobre a substituição da ficha física pelo controle digital:
-            </p>
           </div>
 
-          <div className="mt-12 space-y-3">
-            {FAQS.map((faq, idx) => {
-              const aberto = faqAberto === idx;
-              return (
-                <div
-                  key={faq.pergunta}
-                  className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 transition-all duration-200"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setFaqAberto(aberto ? null : idx)}
-                    className="flex w-full items-center justify-between p-5 text-left text-sm font-semibold text-white transition-colors hover:bg-slate-900/80 sm:text-base"
-                  >
-                    <span>{faq.pergunta}</span>
-                    <ChevronDown
-                      className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ${
-                        aberto ? "rotate-180 text-emerald-400" : ""
-                      }`}
-                    />
-                  </button>
-                  {aberto && (
-                    <div className="border-t border-slate-800/80 px-5 pb-5 pt-3 text-xs leading-relaxed text-slate-300 sm:text-sm">
-                      {faq.resposta}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+            {[
+              { n: "1", t: "Você chama no WhatsApp", d: "A gente entende quantos colaboradores e unidades você tem." },
+              { n: "2", t: "A gente carrega seus dados", d: "Colaboradores, EPIs e estoque entram no sistema com você." },
+              { n: "3", t: "A primeira entrega é assinada", d: "E a ficha dela já sai pronta, com código de conferência." },
+            ].map((p) => (
+              <div key={p.n} className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white">
+                  {p.n}
+                </span>
+                <h3 className="mt-3 text-sm font-bold text-slate-900">{p.t}</h3>
+                <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{p.d}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── 9. SEÇÃO — CTA FINAL DE FECHAMENTO ── */}
-      <section className="relative overflow-hidden border-t border-slate-800 bg-slate-950 py-24 sm:py-32 text-center">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10"
-        >
-          <div className="absolute bottom-0 left-1/2 h-64 w-[36rem] -translate-x-1/2 rounded-full bg-emerald-500/10 blur-[100px]" />
-        </div>
-
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 space-y-5">
-          <h2 className="text-3xl font-black tracking-tight text-white sm:text-5xl">
-            Chega de procurar ficha de EPI quando o auditor solicita.
+      {/* ── 8. FECHO REALISTA ── */}
+      <section className="border-b border-slate-200 bg-slate-100 py-16 sm:py-24 text-center">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 space-y-3">
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+            Da próxima auditoria, a ficha já existe.
           </h2>
-          <p className="mx-auto max-w-xl text-base leading-relaxed text-slate-300 sm:text-lg">
-            Tenha as entregas registradas, os CA conferidos e o histórico individual dos colaboradores organizado.
+          <p className="mx-auto max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
+            A gente mostra o sistema com os seus EPIs e os seus colaboradores, não com dados de exemplo.
           </p>
-          <div className="pt-4 flex flex-wrap justify-center gap-4">
+          <div className="pt-4 flex justify-center">
             <Cta grande texto="Conhecer a Safety Soluções" />
           </div>
-          <p className="text-xs text-slate-400">
-            Atendimento imediato e demonstração prática com os dados da sua empresa.
-          </p>
         </div>
       </section>
 
-      {/* ── RODAPÉ INSTITUCIONAL ── */}
-      <footer className="border-t border-slate-850 bg-slate-950">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-xs text-slate-400 sm:flex-row sm:px-6">
-          <div className="flex items-center gap-2.5">
+      {/* ── RODAPÉ ── */}
+      <footer className="bg-white py-8">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-xs text-slate-500 sm:flex-row sm:px-6">
+          <div className="flex items-center gap-2">
             <img src={logo} alt="SafetySoluções" className="h-6 w-6 rounded" />
-            <span>SafetySoluções — Gestão e Ficha de EPIs</span>
+            <span>SafetySoluções — Segurança e Saúde no Trabalho</span>
           </div>
-          <div className="flex gap-6">
-            <Link to="/termos" className="hover:text-white transition-colors">Termos</Link>
-            <Link to="/privacidade" className="hover:text-white transition-colors">Privacidade</Link>
-            <Link to="/login" className="hover:text-white transition-colors">Entrar</Link>
+          <div className="flex gap-5">
+            <Link to="/termos" className="hover:text-slate-900">Termos</Link>
+            <Link to="/privacidade" className="hover:text-slate-900">Privacidade</Link>
+            <Link to="/login" className="hover:text-slate-900">Entrar</Link>
           </div>
         </div>
       </footer>
 
-      {/* ── BARRA FIXA FLUTUANTE NO CELULAR (CRO) ── */}
-      <div className="sticky bottom-0 z-50 border-t border-slate-800 bg-slate-950/95 p-3.5 backdrop-blur-xl sm:hidden shadow-2xl">
+      {/* ── BARRA FIXA MOBILE ── */}
+      <div className="sticky bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 backdrop-blur-md sm:hidden shadow-lg">
         <div className="flex items-center justify-between gap-3">
           <div className="leading-tight">
-            <p className="text-xs font-bold text-white">{plano.nome}</p>
-            <p className="text-[11px] font-semibold text-emerald-400">
+            <p className="text-xs font-bold text-slate-900">{plano.nome}</p>
+            <p className="text-[11px] font-medium text-slate-500">
               {preco ? `${preco} ${plano.unidade}` : "Sob consulta"}
             </p>
           </div>
