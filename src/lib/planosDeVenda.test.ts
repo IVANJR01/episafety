@@ -29,10 +29,20 @@ describe("o preço", () => {
 describe("o botão de contato", () => {
   it("sem número cadastrado, não há link", () => {
     /* Botão que leva a lugar nenhum é pior que botão nenhum. */
-    const semNumero = { ...CONTATO };
-    expect(CONTATO.whatsapp === "" ? linkDoWhatsapp() : "tem numero")
-      .toBe(CONTATO.whatsapp === "" ? null : "tem numero");
-    expect(semNumero).toBeTruthy();
+    const original = CONTATO.whatsapp;
+    CONTATO.whatsapp = "";
+    try {
+      expect(linkDoWhatsapp()).toBeNull();
+      expect(linkDoWhatsapp(PLANOS[0])).toBeNull();
+    } finally {
+      CONTATO.whatsapp = original;
+    }
+  });
+
+  it("o número cadastrado é discável: DDI 55, DDD e 9 dígitos", () => {
+    /* Um dígito a menos no número e a página inteira vira enfeite. */
+    expect(CONTATO.whatsapp, "falta cadastrar o WhatsApp").not.toBe("");
+    expect(CONTATO.whatsapp).toMatch(/^55\d{2}9\d{8}$/);
   });
 
   it("com número, monta o link com a mensagem pronta", () => {

@@ -57,7 +57,7 @@ export const PLANOS: PlanoDeVenda[] = [
 /** Contato que aparece nos botões da página. */
 export const CONTATO = {
   /** Só números, com DDI. Ex.: "5588996536252". Vazio esconde o botão. */
-  whatsapp: "",
+  whatsapp: "5588996349359",
   /** Mensagem que já vai escrita na conversa. */
   mensagem: "Olá! Vi a página de Gestão de EPIs do SafetySoluções e quero começar.",
   email: "",
