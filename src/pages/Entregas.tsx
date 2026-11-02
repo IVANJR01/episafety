@@ -34,6 +34,13 @@ import {
   planejarDevolucao, planejarEstorno, localizarEntregaDeOrigem,
   lerAuditoriaDaDevolucao, DESTINOS_DE_DEVOLUCAO, type DestinoDevolucao,
 } from "@/lib/entregaDevolucao";
+import {
+  impedimentoParaSalvar, statusDaEntrega, registroDeEntrega, registroOffline,
+  linhaDoCache, entregaAtivaParaSubstituir, descarteDaSubstituicao,
+  /* Era uma cópia idêntica aqui dentro; duas cópias da mesma regra é o
+     jeito mais fácil de uma divergir da outra sem ninguém perceber. */
+  normalizarTipo as normalizeEntregaTipo,
+} from "@/lib/entregaRegistro";
 
 const tipoTone: Record<string, StatusTone> = {
   entrega: "info",
@@ -94,20 +101,6 @@ const fmtData = (d?: string | null): string => {
 };
 
 
-
-const normalizeEntregaTipo = (value?: string | null): keyof typeof tipoLabels => {
-  const normalized = (value || "")
-    .trim()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
-  if (normalized.includes("substit")) return "substituicao";
-  if (normalized.includes("perda")) return "perda";
-  if (normalized.includes("dano")) return "dano";
-  if (normalized.includes("devolu")) return "devolucao";
-  return "entrega";
-};
 
 export default function Entregas() {
   const { data: entregas, loading: loadingEntregas, verificado: assinaturasConferidas, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
@@ -668,22 +661,21 @@ export default function Entregas() {
 
   const handleSave = async () => {
     if (saving) return;
-    if (!form.funcionario_id || epiList.length === 0) {
-      toast({ title: "Preencha funcionário e adicione ao menos um EPI", variant: "destructive" });
+
+    /* Quem decide o que falta e o que gravar é src/lib/entregaRegistro.ts. */
+    const impedimento = impedimentoParaSalvar({ form, itens: epiList, empresaId });
+    if (impedimento) {
+      toast({
+        title: impedimento.titulo,
+        description: impedimento.descricao,
+        variant: "destructive",
+      });
       return;
     }
-    if (!form.unidade_origem_id) {
-      toast({ title: "Selecione o Local de Baixa", description: "Informe de qual unidade o EPI está saindo.", variant: "destructive" });
-      return;
-    }
-    if (!empresaId) {
-      toast({ title: "Erro de sessão", description: "Empresa não identificada. Faça logout e entre novamente.", variant: "destructive" });
-      return;
-    }
+
     setSaving(true);
     const normalizedTipo = normalizeEntregaTipo(form.tipo);
-    const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
-    const status = statusMap[normalizedTipo] || "ativo";
+    const status = statusDaEntrega(normalizedTipo);
 
 
     if (!isOnline()) {
@@ -692,18 +684,9 @@ export default function Entregas() {
 
       for (const item of epiList) {
         const tempId = crypto.randomUUID();
-        const payload = {
-          id: tempId,
-          funcionario_id: form.funcionario_id,
-          epi_id: item.epi.source_epi_id || item.epi.id,
-          quantidade: item.quantidade,
-          data: form.data,
-          tipo: normalizedTipo,
-          status,
-          observacao: form.observacao || null,
-          empresa_id: empresaId,
-          unidade_origem_id: form.unidade_origem_id || null,
-        };
+        const payload = registroOffline({
+          form, item, status, empresaId, idProvisorio: tempId,
+        });
 
         const queued = addToSyncQueue({ table: "entregas", type: "insert", payload });
         if (!queued) {
@@ -716,19 +699,7 @@ export default function Entregas() {
         }
 
         insertedIds.push(tempId);
-        cached.unshift({
-          id: tempId,
-          funcionario_id: form.funcionario_id,
-          epi_id: item.epi.id,
-          quantidade: item.quantidade,
-          data: form.data,
-          tipo: normalizedTipo,
-          status,
-          observacao: form.observacao || null,
-          created_at: new Date().toISOString(),
-          assinatura_colaborador: null,
-          foto_reconhecimento: null,
-        } as Entrega);
+        cached.unshift(linhaDoCache({ form, item, status, idProvisorio: tempId }) as Entrega);
       }
 
       if (insertedIds.length === 0) {
@@ -768,18 +739,9 @@ export default function Entregas() {
     const results = await Promise.allSettled(
       epiList.map(async (item) => {
         const insertResult = await (supabase.from as any)("entregas")
-          .insert({
-            funcionario_id: form.funcionario_id,
-            epi_id: item.epi.source_epi_id || item.epi.id,
-            quantidade: item.quantidade,
-            data: form.data,
-            tipo: normalizedTipo,
-            status,
-            observacao: form.observacao || null,
-            empresa_id: empresaId,
-            created_by: currentUserId,
-            unidade_origem_id: form.unidade_origem_id || null,
-          })
+          .insert(registroDeEntrega({
+            form, item, status, empresaId, usuarioId: currentUserId,
+          }))
           .select("id")
           .single();
 
@@ -819,33 +781,13 @@ export default function Entregas() {
         const cached = getCachedData<Entrega>("entregas") || [];
         for (const item of epiList) {
           const tempId = crypto.randomUUID();
-          const payload = {
-            id: tempId,
-            funcionario_id: form.funcionario_id,
-            epi_id: item.epi.source_epi_id || item.epi.id,
-            quantidade: item.quantidade,
-            data: form.data,
-            tipo: normalizedTipo,
-            status,
-            observacao: form.observacao || null,
-            empresa_id: empresaId,
-            unidade_origem_id: form.unidade_origem_id || null,
-          };
-          addToSyncQueue({ table: "entregas", type: "insert", payload });
+          addToSyncQueue({
+            table: "entregas",
+            type: "insert",
+            payload: registroOffline({ form, item, status, empresaId, idProvisorio: tempId }),
+          });
           insertedIds.push(tempId);
-          cached.unshift({
-            id: tempId,
-            funcionario_id: form.funcionario_id,
-            epi_id: item.epi.id,
-            quantidade: item.quantidade,
-            data: form.data,
-            tipo: normalizedTipo,
-            status,
-            observacao: form.observacao || null,
-            created_at: new Date().toISOString(),
-            assinatura_colaborador: null,
-            foto_reconhecimento: null,
-          } as Entrega);
+          cached.unshift(linhaDoCache({ form, item, status, idProvisorio: tempId }) as Entrega);
         }
         setCachedData("entregas", cached);
         toast({
@@ -869,51 +811,61 @@ export default function Entregas() {
       return;
     }
 
-    // Auto-discard old items when discard is enabled and employee has active items
+    /*
+     * Descarte automático: quando o EPI novo substitui um que o
+     * colaborador já tinha, o antigo é encerrado. O antigo NÃO volta ao
+     * estoque, porque foi trocado por ter acabado, rasgado ou vencido.
+     */
+    const substituicoesComErro: string[] = [];
     if (descarteSubstituicao && insertedIds.length > 0) {
       for (const item of epiList) {
         const epiId = item.epi.source_epi_id || item.epi.id;
-        // Find the active delivery for same employee + same EPI
-        const activeEntrega = entregas.find(e =>
-          e.funcionario_id === form.funcionario_id &&
-          e.epi_id === epiId &&
-          e.status === "ativo" &&
-          e.tipo !== "devolucao"
+        const entregaAntiga = entregaAtivaParaSubstituir(
+          entregas, form.funcionario_id, epiId,
         );
+        if (!entregaAntiga) continue;
 
-        if (activeEntrega) {
-          const obsDescarte = [
-            `Descarte automático por substituição em ${form.data}`,
-            `Entrega origem: ${activeEntrega.id}`,
-            `Status anterior: ${activeEntrega.status}`,
-            `Processado por: ${user?.email || "usuário autenticado"}`,
-            "[DESCARTE/AVARIA - não retornado ao estoque]",
-            descarteDescricao.trim() ? `Estado: ${descarteDescricao.trim()}` : null,
-          ].filter(Boolean).join(" • ");
+        const plano = descarteDaSubstituicao({
+          entregaAntiga,
+          data: form.data,
+          operador: user?.email || null,
+          descricaoDoEstado: descarteDescricao,
+          empresaId,
+          usuarioId: currentUserId,
+        });
 
-          try {
-            // Create devolução record with qty 0 (descarte = não retorna ao estoque)
-            await (supabase.from as any)("entregas").insert({
-              funcionario_id: activeEntrega.funcionario_id,
-              epi_id: activeEntrega.epi_id,
-              quantidade: 0,
-              data: form.data,
-              tipo: "devolucao",
-              status: "devolvido",
-              observacao: obsDescarte,
-              empresa_id: (activeEntrega as any).empresa_id || empresaId,
-              created_by: currentUserId,
-            });
+        /*
+         * Uma chamada só. Antes eram duas gravações soltas — criar o
+         * descarte e marcar a antiga como substituída — e falhar na
+         * segunda deixava o colaborador com DOIS EPIs ativos do mesmo
+         * tipo na ficha. Pior: o erro era só impresso no console, então
+         * o técnico nunca sabia.
+         */
+        const { error: erroSubstituicao } = await (supabase.rpc as any)("substituir_entrega_epi", {
+          _entrega_antiga_id: entregaAntiga.id,
+          _data: plano.registro.data,
+          _observacao: plano.registro.observacao,
+          _empresa_id: plano.registro.empresa_id,
+        });
 
-            // Mark old delivery as "substituido"
-            await (supabase.from as any)("entregas")
-              .update({ status: "substituido" })
-              .eq("id", activeEntrega.id);
-          } catch (err) {
-            console.error("Erro ao descartar item antigo automaticamente:", err);
-          }
+        if (erroSubstituicao) {
+          console.error("Erro ao descartar item antigo automaticamente:", erroSubstituicao);
+          substituicoesComErro.push(item.epi.nome);
         }
       }
+    }
+
+    /*
+     * A entrega nova foi gravada; o que falhou foi encerrar a antiga. O
+     * técnico precisa saber, porque a ficha vai mostrar os dois EPIs até
+     * alguém corrigir.
+     */
+    if (substituicoesComErro.length > 0) {
+      toast({
+        title: "EPI novo registrado, mas o antigo continua ativo",
+        description: `Não foi possível encerrar o EPI anterior de: ${substituicoesComErro.join(", ")}. Encerre pela devolução.`,
+        variant: "destructive",
+      });
     }
 
     setPendingEntrega({ funcionario_id: form.funcionario_id, entrega_ids: insertedIds });

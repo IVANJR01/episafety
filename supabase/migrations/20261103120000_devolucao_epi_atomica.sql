@@ -174,3 +174,77 @@ REVOKE EXECUTE ON FUNCTION public.devolver_entrega_epi(uuid, integer, date, text
 REVOKE EXECUTE ON FUNCTION public.estornar_devolucao_epi(uuid, uuid, text, text, integer) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.devolver_entrega_epi(uuid, integer, date, text, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.estornar_devolucao_epi(uuid, uuid, text, text, integer) TO authenticated;
+
+-- ---------------------------------------------------------------------
+-- 4) Substituir EPI (descarte automático da entrega anterior)
+-- ---------------------------------------------------------------------
+-- Mesmo problema dos anteriores, no caminho que o técnico mais usa:
+-- quando o EPI novo substitui um que o colaborador já tinha, o antigo era
+-- encerrado em duas gravações soltas (criar o descarte e marcar a antiga
+-- como substituída). Falhar na segunda deixava o colaborador com DOIS
+-- EPIs ativos do mesmo tipo na ficha — e o erro só ia para o console, de
+-- modo que o técnico nunca ficava sabendo.
+--
+-- O antigo vira 'substituido', não 'devolvido': o colaborador não
+-- devolveu nada, ele trocou. E a devolução de descarte entra com
+-- quantidade zero, porque peça trocada não volta ao estoque.
+CREATE OR REPLACE FUNCTION public.substituir_entrega_epi(
+  _entrega_antiga_id uuid,
+  _data date,
+  _observacao text,
+  _empresa_id uuid DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  _antiga public.entregas;
+  _empresa_alvo uuid;
+  _descarte_id uuid;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Não autenticado';
+  END IF;
+
+  SELECT * INTO _antiga FROM public.entregas WHERE id = _entrega_antiga_id;
+  IF _antiga.id IS NULL THEN
+    RAISE EXCEPTION 'Entrega anterior não encontrada';
+  END IF;
+
+  _empresa_alvo := COALESCE(_antiga.empresa_id, _empresa_id);
+  IF NOT (public.is_super_admin(auth.uid())
+          OR public.is_principal(auth.uid())
+          OR public.is_in_user_company_tree(auth.uid(), _empresa_alvo)) THEN
+    RAISE EXCEPTION 'Sem permissão para substituir EPI desta empresa';
+  END IF;
+
+  IF _antiga.status <> 'ativo' THEN
+    RAISE EXCEPTION 'Só entrega ativa pode ser substituída';
+  END IF;
+
+  IF _antiga.tipo = 'devolucao' THEN
+    RAISE EXCEPTION 'Devolução não pode ser substituída';
+  END IF;
+
+  INSERT INTO public.entregas (
+    funcionario_id, epi_id, quantidade, data, tipo, status,
+    observacao, empresa_id, created_by
+  ) VALUES (
+    _antiga.funcionario_id, _antiga.epi_id, 0, _data,
+    'devolucao'::public.tipo_entrega, 'devolvido'::public.status_entrega,
+    _observacao, _empresa_alvo, auth.uid()
+  )
+  RETURNING id INTO _descarte_id;
+
+  UPDATE public.entregas
+     SET status = 'substituido'::public.status_entrega
+   WHERE id = _entrega_antiga_id;
+
+  RETURN _descarte_id;
+END;
+$function$;
+
+REVOKE EXECUTE ON FUNCTION public.substituir_entrega_epi(uuid, date, text, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.substituir_entrega_epi(uuid, date, text, uuid) TO authenticated;
