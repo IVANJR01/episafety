@@ -141,8 +141,15 @@ describe("o simulador de vidas", () => {
     await montar(comPreco, "5588996349359");
     const campo = screen.getByLabelText(/Quantos colaboradores/i);
     fireEvent.change(campo, { target: { value: "200" } });
-    expect(textoDaPagina()).toMatch(/R\$\s500,00/);
-    expect(textoDaPagina(), "ficou o total antigo na tela").not.toMatch(/R\$\s125,00/);
+    /*
+      * Olha só o resultado do simulador, não a página inteira: a primeira
+      * dobra mostra "50 colaboradores = R$ 125,00" como exemplo fixo, e
+      * ele continua lá de propósito depois de simular outro número.
+      */
+    const total = screen.getByTestId("total-simulado");
+    expect(total.textContent).toMatch(/R\$\s500,00/);
+    expect(total.textContent, "o total do simulador não acompanhou o número")
+      .not.toMatch(/125,00/);
   });
 
   it("número impossível não vira R$ NaN na cara do cliente", async () => {
@@ -157,5 +164,89 @@ describe("o simulador de vidas", () => {
   it("sem preço definido não existe simulador", async () => {
     await montar(PLANO);
     expect(screen.queryByLabelText(/Quantos colaboradores/i)).toBeNull();
+  });
+});
+
+describe("a página não promete o que o sistema não faz", () => {
+  /*
+   * Página pública de venda é OFERTA: o que estiver escrito ali, o cliente
+   * vai cobrar. A página dizia que "o sistema checa o CA na hora" e que
+   * "impede a entrega de itens com validade expirada". Conferido no
+   * código: o número do CA e a validade são cadastrados e saem impressos
+   * na ficha, mas NADA checa, avisa ou bloqueia no momento da entrega.
+   * Prometer barreira de segurança que não existe, para quem compra
+   * justamente segurança, é o pior defeito que esta página podia ter.
+   */
+  const comPreco = { ...PLANO, precoPorVida: 2.5, unidade: "por vida / mês" };
+
+  it("não diz que bloqueia entrega de EPI com CA vencido", async () => {
+    await montar(comPreco, "5588996349359");
+    const texto = textoDaPagina();
+    expect(texto, "voltou a prometer bloqueio de CA vencido")
+      .not.toMatch(/impede a entrega/i);
+    expect(texto, "voltou a prometer conferência de CA no ato")
+      .not.toMatch(/checa o CA/i);
+    expect(texto).not.toMatch(/verifica a situação do Certificado de Aprovação/i);
+  });
+
+  it("continua falando do CA pelo que ele realmente faz", async () => {
+    /* Corrigir não é apagar: o CA cadastrado e impresso é um argumento real. */
+    await montar(comPreco, "5588996349359");
+    expect(textoDaPagina()).toMatch(/CA/);
+  });
+});
+
+describe("o preço aparece antes de rolar a página", () => {
+  const comPreco = { ...PLANO, precoPorVida: 2.5, unidade: "por vida / mês" };
+
+  it("a primeira dobra mostra o valor e um exemplo pronto", async () => {
+    /*
+     * Preço por vida levanta sempre a mesma dúvida — "no meu caso dá
+     * quanto?". Quem precisa rolar oito seções para descobrir não rola.
+     */
+    await montar(comPreco, "5588996349359");
+    /*
+      * Olha o bloco da primeira dobra, não a página toda: os mesmos valores
+      * aparecem lá embaixo na oferta, então procurar no texto inteiro dava
+      * teste verde mesmo com a primeira dobra sem preço nenhum.
+      */
+    const bloco = screen.getByTestId("preco-primeira-dobra");
+    expect(bloco.textContent).toMatch(/R\$\s2,50/);
+    expect(bloco.textContent, "sumiu o exemplo de 50 colaboradores da primeira dobra")
+      .toMatch(/R\$\s125,00/);
+    expect(bloco.getAttribute("href"), "o preço do topo não leva ao simulador")
+      .toBe("#oferta");
+  });
+
+  it("sem preço definido, a primeira dobra não inventa valor", async () => {
+    await montar(PLANO);
+    expect(screen.queryByTestId("preco-primeira-dobra")).toBeNull();
+    expect(textoDaPagina()).not.toMatch(/R\$\s?\d/);
+  });
+});
+
+describe("os botões falam a mesma língua", () => {
+  it("todo botão de contato diz a mesma coisa", async () => {
+    /*
+     * Eram cinco rótulos para a mesma ação ("Solicitar Demonstração",
+     * "Testar no WhatsApp", "Conhecer a Safety Soluções"...). Cinco
+     * promessas diferentes para o mesmo clique fazem hesitar, e hesitar
+     * é não clicar.
+     */
+    await montar({ ...PLANO, precoPorVida: 2.5 }, "5588996349359");
+    const rotulos = new Set(
+      Array.from(document.querySelectorAll("a[href]"))
+        .filter((a) => (a.getAttribute("href") || "").includes("wa.me"))
+        .map((a) => (a.textContent || "").trim()),
+    );
+    expect(rotulos.size, `rótulos diferentes: ${[...rotulos].join(" | ")}`).toBe(1);
+  });
+});
+
+describe("título da aba", () => {
+  it("a página põe o próprio nome na aba", async () => {
+    /* O link desta página circula sozinho; a aba não pode dizer só "Sistema". */
+    await montar({ ...PLANO, precoPorVida: 2.5 }, "5588996349359");
+    expect(document.title).toContain("EPIs");
   });
 });

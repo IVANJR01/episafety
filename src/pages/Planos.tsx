@@ -1,12 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Check, ShieldCheck, Fingerprint, QrCode, PackageSearch, AlertTriangle,
-  FileCheck2, ArrowRight, Clock, RotateCcw, BarChart3, Boxes,
-  CheckCircle2, XCircle, ShieldAlert, UserCheck, Search,
-  FileText, ChevronDown, Building2, HardHat, FileSpreadsheet,
-  AlertCircle, ArrowUpRight, Scale, Briefcase
+  FileCheck2, ArrowRight, RotateCcw, BarChart3, Boxes,
+  CheckCircle2, XCircle, ChevronDown,
 } from "lucide-react";
 import logo from "@/assets/logo-episafety.png";
 import fichaExemplo from "/marca/ficha-epi-exemplo.png";
@@ -44,7 +42,7 @@ const CENARIOS_REAIS = [
     momento: "Cenário 3: A rotina diária no balcão do almoxarifado",
     situacao: "Fila de 15 trabalhadores às 07h da manhã para retirar botas, luvas e capacetes antes de iniciar o turno de trabalho.",
     comPapel: "Caneta falhando, papel molhado com suor ou poeira, caligrafia ilegível e ninguém confere se o lote de EPIs da caixa ainda tem CA dentro da validade.",
-    comSafety: "O almoxarife seleciona o colaborador no celular ou tablet, o sistema checa o CA na hora, o trabalhador assina com o dedo na tela em 5 segundos e o saldo baixa do estoque automaticamente.",
+    comSafety: "O almoxarife seleciona o colaborador no celular ou tablet, escolhe o EPI com o número do CA já cadastrado, o trabalhador assina com o dedo na tela em segundos e o saldo baixa do estoque automaticamente.",
   },
 ];
 
@@ -73,30 +71,6 @@ const PROBLEMAS_REAIS = [
   {
     titulo: "Falta de histórico individual nas trocas e devoluções",
     descricao: "Sem controle de durabilidade por função: você não sabe se o colaborador gasta um par de luvas por semana ou por mês, nem se devolveu o item avariado.",
-  },
-];
-
-// As 4 etapas do fluxo real
-const ETAPAS_FLUXO = [
-  {
-    numero: "1",
-    titulo: "Cadastro simples no sistema",
-    descricao: "Colaboradores organizados por função e setor de trabalho, com dados prontos para entrega.",
-  },
-  {
-    numero: "2",
-    titulo: "Conferência do CA na saída",
-    descricao: "Ao selecionar o EPI, o sistema verifica a situação do Certificado de Aprovação antes de liberar.",
-  },
-  {
-    numero: "3",
-    titulo: "Assinatura na tela na hora da entrega",
-    descricao: "O trabalhador assina no celular ou tablet do almoxarife com o dedo ou biometria. Registro com data e hora.",
-  },
-  {
-    numero: "4",
-    titulo: "Ficha em PDF gerada em 10 segundos",
-    descricao: "Histórico completo por colaborador com termos do art. 166 da CLT e QR Code de conferência.",
   },
 ];
 
@@ -144,6 +118,32 @@ const RECURSOS = [
 ];
 
 export default function Planos() {
+  /*
+   * Título e descrição próprios da página.
+   *
+   * O index.html serve o sistema inteiro e diz "Sistema de gestão de EPIs
+   * e segurança do trabalho" — texto de produto, não de venda. Quem abre
+   * esta página via link vê a aba com o nome certo e o navegador guarda o
+   * favorito com ele.
+   */
+  useEffect(() => {
+    const tituloAnterior = document.title;
+    document.title = "Gestão e Ficha de EPIs — SafetySoluções";
+
+    const meta = document.querySelector('meta[name="description"]');
+    const descricaoAnterior = meta?.getAttribute("content") ?? null;
+    meta?.setAttribute(
+      "content",
+      "Entrega de EPI assinada pelo colaborador, com o CA registrado e a ficha individual em PDF pronta para a fiscalização. NR-06 e art. 166 da CLT.",
+    );
+
+    /* Sai da página, devolve o que era: isto aqui é o documento do app todo. */
+    return () => {
+      document.title = tituloAnterior;
+      if (descricaoAnterior != null) meta?.setAttribute("content", descricaoAnterior);
+    };
+  }, []);
+
   const plano = PLANOS[0];
   const semPrecos = !algumPrecoDefinido();
   const linkPlano = linkDoWhatsapp(plano);
@@ -151,13 +151,21 @@ export default function Planos() {
   const precoDe = precoFormatado(plano.precoDe ?? null);
   const desconto = descontoPercentual(plano);
 
+  /* O exemplo da primeira dobra sai da mesma conta do simulador. */
+  const exemploDeTotal = precoFormatado(totalMensal(50, plano));
+
   const [vidas, setVidas] = useState(50);
   const total = precoFormatado(totalMensal(vidas, plano));
-  const [cenarioAtivo, setCenarioAtivo] = useState(0);
 
+  /*
+   * Um botão só, com um texto só. A página tinha cinco rótulos diferentes
+   * para a mesma ação ("Solicitar Demonstração", "Testar no WhatsApp",
+   * "Conhecer a Safety Soluções"...). Quem lê cinco promessas diferentes
+   * não sabe o que vai acontecer ao clicar, e hesitar é não clicar.
+   */
   const Cta = ({
     grande = false,
-    texto = "Falar com Especialista no WhatsApp",
+    texto = "Falar no WhatsApp",
     variante = "default",
   }: {
     grande?: boolean;
@@ -224,7 +232,7 @@ export default function Planos() {
             <Link to="/login" className="hidden text-xs font-medium text-slate-600 hover:text-slate-900 sm:inline-block">
               Entrar
             </Link>
-            <Cta texto="Solicitar Demonstração" />
+            <Cta />
           </div>
         </div>
       </header>
@@ -249,8 +257,39 @@ export default function Planos() {
                 registre as assinaturas e mantenha as fichas individuais em PDF — do jeito que o auditor pede.
               </p>
 
+              {/*
+                * O preço na primeira dobra. Vender por vida levanta sempre a
+                * mesma dúvida — "no meu caso dá quanto?" — e quem precisa
+                * rolar a página inteira para descobrir costuma não rolar.
+                * O valor sai das mesmas funções do simulador lá embaixo, para
+                * não existir um segundo lugar com preço escrito à mão.
+                */}
+              {preco && (
+                <a
+                  href="#oferta"
+                  data-testid="preco-primeira-dobra"
+                  className="group flex w-full max-w-md items-center justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 transition-colors hover:border-emerald-400 hover:bg-emerald-100"
+                >
+                  <span className="text-sm text-slate-700">
+                    <strong className="text-lg font-extrabold text-emerald-800">{preco}</strong>
+                    <span className="ml-1.5 text-xs font-medium text-slate-600">{plano.unidade}</span>
+                  </span>
+                  <span className="text-right text-xs font-medium text-slate-600">
+                    {exemploDeTotal && (
+                      <>
+                        50 colaboradores ={" "}
+                        <strong className="text-slate-900">{exemploDeTotal}</strong>/mês
+                      </>
+                    )}
+                    <span className="block text-emerald-700 group-hover:underline">
+                      simular com o meu número →
+                    </span>
+                  </span>
+                </a>
+              )}
+
               <div className="flex flex-wrap items-center gap-3 pt-2">
-                <Cta grande texto="Quero no WhatsApp" />
+                <Cta grande />
                 <Button size="lg" variant="outline" asChild className="border-slate-300 bg-white text-slate-800 hover:bg-slate-100">
                   <a href="#demonstracao">
                     Ver como funciona no balcão <ChevronDown className="ml-1 h-4 w-4" />
@@ -412,9 +451,9 @@ export default function Planos() {
                     2
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">Conferência de CA gravada</h4>
+                    <h4 className="text-sm font-bold text-slate-900">CA gravado na entrega</h4>
                     <p className="text-xs text-slate-600 mt-0.5">
-                      O sistema checa o Certificado de Aprovação e impede a entrega de itens com validade expirada.
+                      O número do Certificado de Aprovação e a validade cadastrada do EPI ficam gravados na entrega e saem impressos na ficha.
                     </p>
                   </div>
                 </div>
@@ -433,7 +472,7 @@ export default function Planos() {
               </div>
 
               <div className="border-t border-slate-200 pt-4">
-                <Cta texto="Testar no WhatsApp" />
+                <Cta />
               </div>
             </div>
           </div>
@@ -448,7 +487,7 @@ export default function Planos() {
               O Risco Oculto do Papel
             </span>
             <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Três coisas custam caro na auditoria
+              Seis pontos que custam caro na auditoria
             </h2>
             <p className="mt-2 text-sm text-slate-600 sm:text-base">
               A rotina comum de preenchimento manual de fichas esconde vulnerabilidades jurídicas perigosas:
@@ -573,7 +612,16 @@ export default function Planos() {
                   />
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm text-slate-600">fica</span>
-                    <span className="text-3xl font-extrabold tracking-tight text-emerald-700">
+                    {/*
+                      * aria-live: quem usa leitor de tela troca o número de
+                      * colaboradores e ouve o total novo. Sem isso, o valor
+                      * muda em silêncio e a pessoa não sabe quanto deu.
+                      */}
+                    <span
+                      data-testid="total-simulado"
+                      aria-live="polite"
+                      className="text-3xl font-extrabold tracking-tight text-emerald-700"
+                    >
                       {total ?? "—"}
                     </span>
                     <span className="text-sm text-slate-600">
@@ -624,7 +672,7 @@ export default function Planos() {
 
             {/* Ações */}
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Cta grande texto="Quero no WhatsApp" />
+              <Cta grande />
               {CONTATO.email && (
                 <Button size="lg" variant="outline" asChild className="border-slate-300">
                   <a href={`mailto:${CONTATO.email}`}>{CONTATO.email}</a>
@@ -679,7 +727,7 @@ export default function Planos() {
             A gente mostra o sistema com os seus EPIs e os seus colaboradores, não com dados de exemplo.
           </p>
           <div className="pt-4 flex justify-center">
-            <Cta grande texto="Conhecer a Safety Soluções" />
+            <Cta grande />
           </div>
         </div>
       </section>
@@ -708,7 +756,7 @@ export default function Planos() {
               {preco ? `${preco} ${plano.unidade}` : "Sob consulta"}
             </p>
           </div>
-          <Cta texto="Quero no WhatsApp" />
+          <Cta />
         </div>
       </div>
     </div>
