@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  PLANOS, precoFormatado, linkDoWhatsapp, algumPrecoDefinido, CONTATO,
+  PLANOS, precoFormatado, linkDoWhatsapp, algumPrecoDefinido,
+  descontoPercentual, CONTATO,
 } from "./planosDeVenda";
 
 /**
@@ -10,17 +11,18 @@ import {
 
 describe("o preço", () => {
   it("sai em reais, no formato brasileiro", () => {
-    expect(precoFormatado({ ...PLANOS[0], precoMensal: 149.9 })).toContain("149,90");
-    expect(precoFormatado({ ...PLANOS[0], precoMensal: 1250 })).toContain("1.250,00");
+    expect(precoFormatado(149.9)).toContain("149,90");
+    expect(precoFormatado(1250)).toContain("1.250,00");
   });
 
   it("sem valor definido, devolve null — a página não inventa número", () => {
-    expect(precoFormatado({ ...PLANOS[0], precoMensal: null })).toBeNull();
+    expect(precoFormatado(null)).toBeNull();
+    expect(precoFormatado(undefined)).toBeNull();
   });
 
   it("zero é um preço, e não 'sob consulta'", () => {
     /* Plano gratuito existe; confundir com "não definido" esconderia. */
-    expect(precoFormatado({ ...PLANOS[0], precoMensal: 0 })).toContain("0,00");
+    expect(precoFormatado(0)).toContain("0,00");
   });
 });
 
@@ -36,14 +38,20 @@ describe("o botão de contato", () => {
   it("com número, monta o link com a mensagem pronta", () => {
     const original = CONTATO.whatsapp;
     CONTATO.whatsapp = "55 (88) 99999-9999";
-    const link = linkDoWhatsapp(PLANOS[1])!;
+    const link = linkDoWhatsapp(PLANOS[0])!;
     expect(link).toContain("https://wa.me/5588999999999");
-    expect(decodeURIComponent(link)).toContain(PLANOS[1].nome);
+    expect(decodeURIComponent(link)).toContain(PLANOS[0].nome);
     CONTATO.whatsapp = original;
   });
 });
 
 describe("os planos", () => {
+  it("a oferta de hoje é Gestão de EPIs", () => {
+    /* O foco da página é um só; dois produtos dividem a atenção. */
+    expect(PLANOS.length).toBe(1);
+    expect(PLANOS[0].id).toBe("epi");
+  });
+
   it("cada plano tem nome, público e o que inclui", () => {
     for (const p of PLANOS) {
       expect(p.nome, "plano sem nome").toBeTruthy();
@@ -64,5 +72,27 @@ describe("os planos", () => {
   it("a página sabe quando nenhum preço foi definido", () => {
     expect(algumPrecoDefinido([{ ...PLANOS[0], precoMensal: null }])).toBe(false);
     expect(algumPrecoDefinido([{ ...PLANOS[0], precoMensal: 100 }])).toBe(true);
+  });
+});
+
+describe("o desconto", () => {
+  const base = { ...PLANOS[0] };
+
+  it("sai da diferença entre os dois preços", () => {
+    expect(descontoPercentual({ ...base, precoDe: 200, precoMensal: 150 })).toBe(25);
+  });
+
+  it("sem os dois preços, não há desconto nenhum", () => {
+    /*
+     * Desconto calculado sobre preço inventado é a propaganda enganosa
+     * mais comum da internet. Aqui ele simplesmente não aparece.
+     */
+    expect(descontoPercentual({ ...base, precoDe: null, precoMensal: 150 })).toBeNull();
+    expect(descontoPercentual({ ...base, precoDe: 200, precoMensal: null })).toBeNull();
+  });
+
+  it("'de' menor ou igual ao 'por' não vira desconto", () => {
+    expect(descontoPercentual({ ...base, precoDe: 100, precoMensal: 150 })).toBeNull();
+    expect(descontoPercentual({ ...base, precoDe: 150, precoMensal: 150 })).toBeNull();
   });
 });

@@ -1,241 +1,303 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
-  Check, ShieldCheck, FileText, Stethoscope, HardHat, GraduationCap,
-  ClipboardCheck, QrCode, Bell, ArrowRight, Flame, Package,
+  Check, ShieldCheck, Fingerprint, QrCode, PackageSearch, AlertTriangle,
+  FileCheck2, ArrowRight, Clock, RotateCcw, BarChart3, Boxes,
 } from "lucide-react";
 import logo from "@/assets/logo-episafety.png";
+import fichaExemplo from "/marca/ficha-epi-exemplo.png";
 import {
-  PLANOS, precoFormatado, linkDoWhatsapp, algumPrecoDefinido, CONTATO,
+  PLANOS, precoFormatado, linkDoWhatsapp, algumPrecoDefinido,
+  descontoPercentual, CONTATO,
 } from "@/lib/planosDeVenda";
 
 /**
- * Página pública de planos.
+ * Página pública de vendas — Gestão de EPIs.
  *
- * Fica fora do sistema de propósito: sem login, sem menu lateral, sem
- * empresa ativa. Quem chega aqui ainda não é cliente.
+ * Fica fora do sistema: sem login, sem menu lateral, sem empresa ativa.
+ * Quem chega aqui ainda não é cliente.
  *
- * Preço, prazo e contato não moram nesta página — moram em
- * src/lib/planosDeVenda.ts. Quem for mexer em valor não precisa abrir
- * código de tela, e preço espalhado por uma página sai errado numa hora
- * dessas.
+ * A página é toda construída em cima de UMA pergunta — "cadê a ficha
+ * assinada?" —, porque é a pergunta que o auditor fiscal faz e a que o
+ * advogado da outra parte faz. Vender gestão de EPI é vender a resposta
+ * a ela.
  *
- * O que está escrito sobre o sistema descreve o que ele faz hoje. Página
- * de venda que promete o que o produto não entrega volta como reclamação
- * do cliente que assinou.
+ * Preço e contato não moram aqui: moram em src/lib/planosDeVenda.ts.
+ *
+ * A imagem da ficha NÃO é um desenho: foi gerada pelo próprio código do
+ * sistema (src/lib/gerarFichaEPI.ts), com dados fictícios. Página de
+ * venda com mockup bonito que o produto não entrega volta como
+ * reclamação de quem assinou.
  */
 
-const MODULOS = [
+const DORES = [
   {
-    icone: FileText, titulo: "Documentos de SST",
-    texto: "PGR, PCMSO, LTCAT, PPP, Ordem de Serviço e os laudos de Insalubridade "
-      + "e Periculosidade, com inventário de riscos e plano de ação integrados.",
+    icone: AlertTriangle,
+    titulo: "Entrega sem assinatura",
+    texto: "O EPI saiu do estoque e ninguém assinou. Na reclamação trabalhista, "
+      + "quem não tem a ficha assinada não entregou.",
   },
   {
-    icone: Stethoscope, titulo: "Saúde ocupacional",
-    texto: "ASO por tipo de exame, matriz de exames por GES e portal para o RH "
-      + "emitir, com a periodicidade que a NR-07 manda.",
+    icone: Clock,
+    titulo: "CA vencido",
+    texto: "EPI com Certificado de Aprovação vencido é o mesmo que EPI nenhum "
+      + "para a fiscalização — e ninguém percebe olhando a caixa.",
   },
   {
-    icone: Package, titulo: "EPIs",
-    texto: "Cadastro com CA, estoque por unidade, entregas e ficha assinada — "
-      + "a prova que a fiscalização pede.",
+    icone: Boxes,
+    titulo: "Estoque no caderno",
+    texto: "Ninguém sabe quanto tem, em qual unidade, nem quando acaba. "
+      + "Aí compra errado ou falta na hora.",
+  },
+];
+
+const RECURSOS = [
+  {
+    icone: PackageSearch, titulo: "Cadastro com o CA preenchido sozinho",
+    texto: "Digite o número do CA e o sistema busca fabricante, validade e para "
+      + "o que ele é aprovado.",
   },
   {
-    icone: ClipboardCheck, titulo: "Inspeções e apontamentos",
-    texto: "Registro em campo com foto do antes e do depois, norma enquadrada "
-      + "e ação corretiva, por obra ou local.",
+    icone: Fingerprint, titulo: "Entrega assinada na hora",
+    texto: "Assinatura na tela ou biometria, com data, hora e código de "
+      + "conferência em cada entrega.",
   },
   {
-    icone: GraduationCap, titulo: "Treinamentos",
-    texto: "Controle por NR, validade, certificados e o que está vencendo.",
+    icone: FileCheck2, titulo: "Ficha pronta para a fiscalização",
+    texto: "Um PDF por colaborador, com a declaração do art. 166 da CLT, todas "
+      + "as entregas, devoluções e assinaturas.",
   },
   {
-    icone: Flame, titulo: "Extintores (NR-23)",
-    texto: "Inspeção mensal, selo digital e histórico que o Corpo de Bombeiros "
-      + "lê pelo QR Code.",
+    icone: QrCode, titulo: "Conferência sem login",
+    texto: "O fiscal digita o código impresso na ficha e confere a entrega na "
+      + "hora, com o papel na mão.",
   },
   {
-    icone: Bell, titulo: "Vencimentos",
-    texto: "Painel do que vence — documento, exame, treinamento e EPI — antes "
-      + "de virar autuação.",
+    icone: Boxes, titulo: "Estoque por unidade",
+    texto: "Quanto tem em cada obra ou filial, com estoque mínimo avisando "
+      + "antes de faltar.",
   },
   {
-    icone: QrCode, titulo: "Conferência pública",
-    texto: "Cada documento emitido leva um QR Code. O fiscal confere a validade "
-      + "na hora, com o papel na mão, sem pedir login a ninguém.",
+    icone: RotateCcw, titulo: "Devolução e troca",
+    texto: "Entrou, saiu, trocou: tudo no mesmo histórico do colaborador.",
+  },
+  {
+    icone: BarChart3, titulo: "Relatórios",
+    texto: "Quanto foi entregue, de quê e para quem — por período, unidade e "
+      + "colaborador.",
+  },
+  {
+    icone: ShieldCheck, titulo: "NR-06 e art. 166 da CLT",
+    texto: "A ficha sai com o texto legal que a norma exige, não com um recibo "
+      + "qualquer.",
   },
 ];
 
 export default function Planos() {
+  const plano = PLANOS[0];
   const semPrecos = !algumPrecoDefinido();
   const whatsapp = linkDoWhatsapp();
+  const linkPlano = linkDoWhatsapp(plano);
+  const preco = precoFormatado(plano.precoMensal);
+  const precoDe = precoFormatado(plano.precoDe ?? null);
+  const desconto = descontoPercentual(plano);
+
+  const Cta = ({ grande = false }: { grande?: boolean }) =>
+    linkPlano ? (
+      <Button size={grande ? "lg" : "default"} asChild className="shadow-lg">
+        <a href={linkPlano} target="_blank" rel="noreferrer">
+          Quero no WhatsApp <ArrowRight className="ml-1.5 h-4 w-4" />
+        </a>
+      </Button>
+    ) : (
+      <Button size={grande ? "lg" : "default"} asChild className="shadow-lg">
+        <a href="#oferta">Ver a oferta <ArrowRight className="ml-1.5 h-4 w-4" /></a>
+      </Button>
+    );
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ── Topo ── */}
-      <header className="border-b">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
+      <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-2.5">
-            <img src={logo} alt="SafetySoluções" className="h-9 w-9 rounded" />
+            <img src={logo} alt="SafetySoluções" className="h-8 w-8 rounded" />
             <div className="leading-tight">
               <p className="text-sm font-bold">SafetySoluções</p>
-              <p className="text-[11px] text-muted-foreground">Segurança e Saúde no Trabalho</p>
+              <p className="text-[10px] text-muted-foreground">Gestão de EPIs</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/login">Entrar no sistema</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link to="/login" className="hidden text-xs text-muted-foreground hover:text-foreground sm:block">
+              Entrar
+            </Link>
+            <Cta />
+          </div>
         </div>
       </header>
 
-      {/* ── Chamada ── */}
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
-        <div className="max-w-3xl">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            NR-01 · NR-06 · NR-07 · NR-23 · eSocial
-          </span>
-          <h1 className="mt-5 text-3xl font-bold leading-tight sm:text-5xl">
-            A documentação de SST da sua empresa, em um sistema só.
-          </h1>
-          <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-            PGR, PCMSO, ASO, EPIs, treinamentos e inspeções ligados entre si: o risco
-            que você levanta no PGR é o mesmo que entra no ASO, na Ordem de Serviço e
-            na ficha de EPI. Sem redigitar, sem planilha solta, sem documento
-            contando história diferente do outro.
-          </p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Button size="lg" asChild>
-              <a href="#planos">Ver os planos <ArrowRight className="ml-1.5 h-4 w-4" /></a>
-            </Button>
-            {whatsapp && (
-              <Button size="lg" variant="outline" asChild>
-                <a href={whatsapp} target="_blank" rel="noreferrer">Falar com a gente</a>
-              </Button>
-            )}
+      {/* ── Chamada: a pergunta que vende ── */}
+      <section className="relative overflow-hidden border-b bg-slate-950 text-white">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-40
+            [background:radial-gradient(60rem_30rem_at_20%_-10%,#1e3a8a,transparent),radial-gradient(40rem_24rem_at_90%_10%,#0f766e,transparent)]"
+        />
+        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 lg:grid-cols-[1.05fr_1fr] lg:py-20">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/90">
+              <ShieldCheck className="h-3.5 w-3.5" /> NR-06 · art. 166 da CLT
+            </span>
+            <h1 className="mt-5 text-3xl font-bold leading-[1.1] sm:text-5xl">
+              “Cadê a ficha assinada?”
+              <span className="mt-2 block text-emerald-400">Você responde em 10 segundos.</span>
+            </h1>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
+              Entrega de EPI assinada na hora, CA conferido antes de o equipamento
+              sair do estoque, e a ficha de cada colaborador pronta em PDF — do
+              jeito que o auditor pede.
+            </p>
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              <Cta grande />
+              <a href="#oferta" className="text-sm text-white/70 underline-offset-4 hover:text-white hover:underline">
+                ver o que está incluído
+              </a>
+            </div>
+            <p className="mt-5 text-xs text-white/50">
+              Sem fidelidade · Sem taxa de implantação · Cancela quando quiser
+            </p>
           </div>
+
+          {/* A prova: a ficha que o sistema gera */}
+          <figure className="relative">
+            <img
+              src={fichaExemplo}
+              alt="Ficha de EPI gerada pelo sistema, com as entregas assinadas e o número do CA de cada equipamento"
+              className="w-full rounded-lg border border-white/10 shadow-2xl"
+              loading="eager"
+            />
+            <figcaption className="mt-2.5 text-center text-[11px] text-white/45">
+              Ficha gerada pelo próprio sistema. Dados fictícios.
+            </figcaption>
+          </figure>
         </div>
       </section>
 
-      {/* ── O que tem dentro ── */}
+      {/* ── A dor ── */}
+      <section className="mx-auto max-w-6xl px-4 py-14">
+        <h2 className="text-center text-2xl font-bold sm:text-3xl">
+          Três coisas custam caro na auditoria
+        </h2>
+        <div className="mt-9 grid gap-5 md:grid-cols-3">
+          {DORES.map((d) => (
+            <div key={d.titulo} className="rounded-xl border border-destructive/20 bg-destructive/5 p-5">
+              <d.icone className="h-5 w-5 text-destructive" />
+              <h3 className="mt-3 text-sm font-semibold">{d.titulo}</h3>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{d.texto}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-muted-foreground">
+          As três têm a mesma origem: a entrega não ficou registrada do jeito que
+          vale como prova.
+        </p>
+      </section>
+
+      {/* ── O que resolve ── */}
       <section className="border-y bg-muted/30">
         <div className="mx-auto max-w-6xl px-4 py-14">
-          <h2 className="text-2xl font-bold">O que o sistema faz</h2>
+          <h2 className="text-2xl font-bold sm:text-3xl">O que você passa a ter</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Tudo abaixo já está no ar e em uso.
+            Tudo abaixo já está no ar e em uso hoje.
           </p>
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {MODULOS.map((m) => (
-              <div key={m.titulo} className="rounded-xl border bg-background p-5">
-                <m.icone className="h-5 w-5 text-primary" />
-                <h3 className="mt-3 text-sm font-semibold">{m.titulo}</h3>
-                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                  {m.texto}
-                </p>
+          <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {RECURSOS.map((r) => (
+              <div key={r.titulo} className="rounded-xl border bg-background p-5">
+                <r.icone className="h-5 w-5 text-primary" />
+                <h3 className="mt-3 text-sm font-semibold leading-snug">{r.titulo}</h3>
+                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{r.texto}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Planos ── */}
-      <section id="planos" className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
-        <h2 className="text-2xl font-bold">Planos</h2>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Sem fidelidade e sem taxa de implantação. Você cancela quando quiser.
-        </p>
+      {/* ── Oferta ── */}
+      <section id="oferta" className="mx-auto max-w-3xl px-4 py-16">
+        <div className="relative rounded-2xl border-2 border-primary bg-background p-7 shadow-xl sm:p-9">
+          <span className="absolute -top-3.5 left-7 rounded-full bg-primary px-3 py-1 text-[11px] font-semibold text-primary-foreground">
+            Comece por aqui
+          </span>
 
-        {semPrecos && (
-          /*
-            * Aviso honesto enquanto os valores não foram definidos. Melhor
-            * dizer "fale com a gente" do que exibir um número que ninguém
-            * combinou — ele vira promessa que alguém vai cobrar.
-            */
-          <p className="mt-5 rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
-            Os valores destes planos são passados no contato — eles variam com o
-            número de empresas e de colaboradores atendidos.
-          </p>
-        )}
+          <h2 className="text-2xl font-bold">{plano.nome}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{plano.publico}</p>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-3">
-          {PLANOS.map((plano) => {
-            const preco = precoFormatado(plano);
-            const link = linkDoWhatsapp(plano);
-            return (
-              <div
-                key={plano.id}
-                className={`relative flex flex-col rounded-2xl border p-6 ${
-                  plano.destaque ? "border-primary shadow-lg" : ""
-                }`}
-              >
-                {plano.destaque && (
-                  <span className="absolute -top-3 left-6 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-semibold text-primary-foreground">
-                    Mais escolhido
+          <div className="mt-6 flex flex-wrap items-end gap-3">
+            {preco ? (
+              <>
+                {precoDe && (
+                  <span className="text-lg text-muted-foreground line-through">{precoDe}</span>
+                )}
+                <span className="text-4xl font-bold tracking-tight">{preco}</span>
+                <span className="pb-1.5 text-sm text-muted-foreground">{plano.unidade}</span>
+                {desconto != null && (
+                  <span className="mb-1.5 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                    −{desconto}%
                   </span>
                 )}
+              </>
+            ) : (
+              <>
+                <span className="text-3xl font-bold">Sob consulta</span>
+                <span className="pb-1 text-sm text-muted-foreground">{plano.unidade}</span>
+              </>
+            )}
+          </div>
 
-                <h3 className="text-lg font-bold">{plano.nome}</h3>
-                <p className="mt-1 text-xs text-muted-foreground">{plano.publico}</p>
+          {semPrecos && (
+            /*
+              * Enquanto o valor não foi definido, a página diz por que não há
+              * número — em vez de exibir um que ninguém combinou.
+              */
+            <p className="mt-3 rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+              O valor é fechado no contato: ele muda conforme o número de
+              colaboradores e de unidades atendidas.
+            </p>
+          )}
 
-                <div className="mt-5">
-                  {preco ? (
-                    <>
-                      <span className="text-3xl font-bold">{preco}</span>
-                      <span className="ml-1.5 text-xs text-muted-foreground">
-                        {plano.unidade}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-2xl font-bold">Sob consulta</span>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {plano.unidade}
-                      </p>
-                    </>
-                  )}
-                </div>
+          <ul className="mt-7 grid gap-2.5 sm:grid-cols-2">
+            {plano.inclui.map((item) => (
+              <li key={item} className="flex gap-2 text-sm">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
 
-                <ul className="mt-6 flex-1 space-y-2.5">
-                  {plano.inclui.map((item) => (
-                    <li key={item} className="flex gap-2 text-sm">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                  {(plano.naoInclui || []).map((item) => (
-                    <li key={item} className="flex gap-2 text-sm text-muted-foreground line-through">
-                      <span className="mt-0.5 w-4 shrink-0 text-center">—</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Button
-                  className="mt-7"
-                  variant={plano.destaque ? "default" : "outline"}
-                  asChild={!!link}
-                  disabled={!link}
-                >
-                  {link
-                    ? <a href={link} target="_blank" rel="noreferrer">Quero este plano</a>
-                    : <span>Fale com a gente</span>}
-                </Button>
-              </div>
-            );
-          })}
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Cta grande />
+            {CONTATO.email && (
+              <Button size="lg" variant="outline" asChild>
+                <a href={`mailto:${CONTATO.email}`}>{CONTATO.email}</a>
+              </Button>
+            )}
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            A gente cadastra seus EPIs e seus colaboradores junto com você. Você não
+            começa com a tela vazia.
+          </p>
         </div>
       </section>
 
       {/* ── Como começa ── */}
       <section className="border-t bg-muted/30">
-        <div className="mx-auto max-w-6xl px-4 py-14">
-          <h2 className="text-2xl font-bold">Como começa</h2>
+        <div className="mx-auto max-w-5xl px-4 py-14">
+          <h2 className="text-2xl font-bold">Três passos e está rodando</h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
             {[
-              { n: "1", t: "Conversa", d: "A gente entende quantas empresas você atende e o que já existe de documentação." },
-              { n: "2", t: "Implantação", d: "Suas empresas, colaboradores e GES entram no sistema. PGR em Word ou planilha de inventário são importados." },
-              { n: "3", t: "Uso", d: "Você emite os documentos, e o sistema avisa o que está vencendo antes de virar problema." },
+              { n: "1", t: "Você chama no WhatsApp", d: "A gente entende quantos colaboradores e unidades você tem." },
+              { n: "2", t: "A gente carrega seus dados", d: "Colaboradores, EPIs e estoque entram no sistema com você." },
+              { n: "3", t: "A primeira entrega é assinada", d: "E a ficha dela já sai pronta, com código de conferência." },
             ].map((p) => (
               <div key={p.n} className="rounded-xl border bg-background p-5">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
@@ -250,23 +312,16 @@ export default function Planos() {
       </section>
 
       {/* ── Fecho ── */}
-      <section className="mx-auto max-w-6xl px-4 py-14 text-center">
-        <HardHat className="mx-auto h-8 w-8 text-primary" />
-        <h2 className="mt-4 text-2xl font-bold">Quer ver funcionando?</h2>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
-          A gente mostra o sistema com os seus documentos, não com dados de exemplo.
+      <section className="mx-auto max-w-3xl px-4 py-16 text-center">
+        <h2 className="text-2xl font-bold sm:text-3xl">
+          Da próxima auditoria, a ficha já existe.
+        </h2>
+        <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground">
+          A gente mostra o sistema com os seus EPIs e os seus colaboradores, não com
+          dados de exemplo.
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          {whatsapp && (
-            <Button size="lg" asChild>
-              <a href={whatsapp} target="_blank" rel="noreferrer">Chamar no WhatsApp</a>
-            </Button>
-          )}
-          {CONTATO.email && (
-            <Button size="lg" variant="outline" asChild>
-              <a href={`mailto:${CONTATO.email}`}>{CONTATO.email}</a>
-            </Button>
-          )}
+        <div className="mt-7 flex justify-center">
+          <Cta grande />
         </div>
       </section>
 
@@ -280,6 +335,19 @@ export default function Planos() {
           </div>
         </div>
       </footer>
+
+      {/* Barra fixa no celular: a oferta nunca sai da tela. */}
+      <div className="sticky bottom-0 z-30 border-t bg-background/95 p-3 backdrop-blur sm:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div className="leading-tight">
+            <p className="text-xs font-semibold">{plano.nome}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {preco ? `${preco} ${plano.unidade}` : "Sob consulta"}
+            </p>
+          </div>
+          <Cta />
+        </div>
+      </div>
     </div>
   );
 }
