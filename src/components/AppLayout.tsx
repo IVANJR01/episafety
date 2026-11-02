@@ -24,9 +24,15 @@ interface EmpresaSwitcherInfo {
   empresa_pai_id: string | null;
 }
 
-export const mainNavItems: NavItem[] = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard, moduleKey: "dashboard" },
-];
+/**
+ * Primeiro nível do menu lateral.
+ *
+ * Está vazio de propósito. O "Dashboard" que ficava aqui é o painel de
+ * EPIs — EPIs cadastrados, entregas, valor em estoque, gasto por EPI —
+ * e um painel de um módulo não é item de primeiro nível. Ele passou para
+ * dentro de Gestão de EPIs, em epiItems.
+ */
+export const mainNavItems: NavItem[] = [];
 
 // Bottom nav: key shortcuts for mobile
 export const mobileBottomItems: NavItem[] = [
@@ -75,6 +81,8 @@ export const saudeItems: NavItem[] = [
 
 // 🦺 GESTÃO DE EPIs: Ciclo de vida dos equipamentos e entregas
 export const epiItems: NavItem[] = [
+  /* O painel do módulo abre o grupo: é o resumo de tudo que vem abaixo. */
+  { path: "/", label: "Painel de EPIs", icon: LayoutDashboard, moduleKey: "dashboard" },
   { path: "/epis", label: "Cadastro de EPIs", icon: Package, moduleKey: "epis" },
   { path: "/epis/controle-contrato", label: "Estoque por Unidade", icon: Boxes, moduleKey: "estoque_contrato" },
   { path: "/epis/solicitacoes-materiais", label: "Solicitação de Materiais", icon: ClipboardList, moduleKey: "solicitacoes_materiais" },

@@ -105,3 +105,51 @@ describe("o PCMSO mora na Central de Documentação", () => {
     expect(paths).toContain("/arquivo-digital/vencimentos");
   });
 });
+
+describe("o painel de EPIs mora dentro de Gestão de EPIs", () => {
+  /*
+   * O item "Dashboard" ficava solto no primeiro nível do menu, acima de
+   * tudo. Mas a tela dele é o painel do módulo de EPI: EPIs cadastrados,
+   * entregas realizadas, valor em estoque, gasto por EPI. Painel de um
+   * módulo não é item de primeiro nível — é a primeira página do módulo.
+   */
+  it("está no grupo de EPIs", () => {
+    const item = menu.epiItems.find((i) => i.path === "/");
+    expect(item, "o painel sumiu do grupo de Gestão de EPIs").toBeTruthy();
+    expect(item?.label).toBe("Painel de EPIs");
+  });
+
+  it("é o primeiro do grupo", () => {
+    /* O resumo vem antes do que ele resume. */
+    expect(menu.epiItems[0].path).toBe("/");
+  });
+
+  it("não ficou solto no primeiro nível", () => {
+    expect(menu.mainNavItems.map((i) => i.path),
+      "o painel continua fora do módulo, no topo do menu")
+      .not.toContain("/");
+  });
+
+  it("não aparece duas vezes na árvore do menu lateral", () => {
+    /*
+     * A barra de atalhos do celular (mobileBottomItems) é outra coisa:
+     * são quatro botões fixos, não a árvore de módulos. Por isso ela fica
+     * de fora desta conferência.
+     */
+    const arvore = Object.entries(menu)
+      .filter(([nome, v]) => Array.isArray(v) && nome !== "mobileBottomItems")
+      .flatMap(([, v]) => v as { path: string }[])
+      .filter((i) => i && typeof i.path === "string");
+    expect(arvore.filter((i) => i.path === "/").length).toBe(1);
+  });
+
+  it("o grupo de EPIs continua inteiro", () => {
+    /* Pôr um item no grupo não pode empurrar os outros para fora. */
+    const paths = menu.epiItems.map((i) => i.path);
+    expect(paths).toContain("/epis");
+    expect(paths).toContain("/epis/controle-contrato");
+    expect(paths).toContain("/epis/solicitacoes-materiais");
+    expect(paths).toContain("/entregas");
+    expect(paths).toContain("/relatorios");
+  });
+});
