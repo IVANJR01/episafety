@@ -30,6 +30,10 @@ import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
 import { avaliarValidade } from "@/lib/validadeCertificado";
 import { garantirDocumento, publicarVersao } from "@/lib/arquivoDigital";
 import CameraCapture from "@/components/CameraCapture";
+import {
+  planejarDevolucao, planejarEstorno, localizarEntregaDeOrigem,
+  lerAuditoriaDaDevolucao, DESTINOS_DE_DEVOLUCAO, type DestinoDevolucao,
+} from "@/lib/entregaDevolucao";
 
 const tipoTone: Record<string, StatusTone> = {
   entrega: "info",
@@ -91,11 +95,6 @@ const fmtData = (d?: string | null): string => {
 
 
 
-const devolucaoDestinos = [
-  { value: "estoque", label: "Retornar ao estoque" },
-  { value: "descarte", label: "Descarte / Avaria" },
-] as const;
-
 const normalizeEntregaTipo = (value?: string | null): keyof typeof tipoLabels => {
   const normalized = (value || "")
     .trim()
@@ -109,21 +108,6 @@ const normalizeEntregaTipo = (value?: string | null): keyof typeof tipoLabels =>
   if (normalized.includes("devolu")) return "devolucao";
   return "entrega";
 };
-
-const parseDevolucaoAudit = (observacao?: string | null) => {
-  const sourceEntregaId = observacao?.match(/Entrega origem:\s*([0-9a-f-]{36})/i)?.[1] ?? null;
-  const previousStatus = observacao?.match(/Status anterior:\s*([a-z_]+)/i)?.[1] ?? null;
-  const processedBy = observacao?.match(/Processado por:\s*([^•]+)/i)?.[1]?.trim() ?? null;
-
-  return {
-    sourceEntregaId,
-    previousStatus,
-    processedBy,
-  };
-};
-
-const appendObservacao = (current: string | null | undefined, note: string) =>
-  [current?.trim(), note.trim()].filter(Boolean).join(" • ");
 
 export default function Entregas() {
   const { data: entregas, loading: loadingEntregas, verificado: assinaturasConferidas, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
@@ -194,7 +178,7 @@ export default function Entregas() {
   const [devolucaoDialogOpen, setDevolucaoDialogOpen] = useState(false);
   const [devolucaoTarget, setDevolucaoTarget] = useState<Entrega | null>(null);
   const [devolucaoObs, setDevolucaoObs] = useState("");
-  const [devolucaoDestino, setDevolucaoDestino] = useState<"estoque" | "descarte">("estoque");
+  const [devolucaoDestino, setDevolucaoDestino] = useState<DestinoDevolucao>("estoque");
   const [devolucaoSaving, setDevolucaoSaving] = useState(false);
   const [estornoDialogOpen, setEstornoDialogOpen] = useState(false);
   const [estornoTarget, setEstornoTarget] = useState<Entrega | null>(null);
@@ -961,32 +945,25 @@ export default function Entregas() {
     const entrega = devolucaoTarget;
     const epiObj = epis.find(ep => ep.id === entrega.epi_id);
     const funcObj = funcionarios.find(f => f.id === entrega.funcionario_id);
-    const obsText = [
-      `Devolução ref. entrega de ${entrega.data}`,
-      `Entrega origem: ${entrega.id}`,
-      `Status anterior: ${entrega.status || "ativo"}`,
-      `Processado por: ${user?.email || user?.id || "usuário autenticado"}`,
-      devolucaoDestino === "descarte" ? "[DESCARTE/AVARIA - não retornado ao estoque]" : null,
-      devolucaoObs.trim() || null,
-    ].filter(Boolean).join(" • ");
+
+    /* Quem decide o que gravar é src/lib/entregaDevolucao.ts. Aqui só grava. */
+    const plano = planejarDevolucao({
+      entrega,
+      destino: devolucaoDestino,
+      observacao: devolucaoObs,
+      operador: user?.email || user?.id || null,
+      empresaId,
+      usuarioId: user?.id || null,
+    });
 
     try {
-      const { data: devolucaoCriada, error: devolucaoError } = await (supabase.from as any)("entregas").insert({
-        funcionario_id: entrega.funcionario_id,
-        epi_id: entrega.epi_id,
-        quantidade: devolucaoDestino === "estoque" ? entrega.quantidade : 0,
-        data: new Date().toISOString().split("T")[0],
-        tipo: "devolucao",
-        status: "devolvido",
-        observacao: obsText,
-        empresa_id: (entrega as any).empresa_id || empresaId,
-        created_by: user?.id || null,
-      }).select("id").single();
+      const { data: devolucaoCriada, error: devolucaoError } = await (supabase.from as any)("entregas")
+        .insert(plano.registro).select("id").single();
 
       if (devolucaoError) throw devolucaoError;
 
       const { error: updateEntregaError } = await (supabase.from as any)("entregas")
-        .update({ status: "devolvido" })
+        .update({ status: plano.statusDaEntregaOriginal })
         .eq("id", entrega.id);
 
       if (updateEntregaError) {
@@ -1012,29 +989,10 @@ export default function Entregas() {
     }
   };
 
-  const resolveEntregaOrigem = useCallback((devolucao: Entrega) => {
-    const audit = parseDevolucaoAudit(devolucao.observacao);
-
-    if (audit.sourceEntregaId) {
-      const entregaOrigem = entregas.find((item) => item.id === audit.sourceEntregaId) || null;
-      if (entregaOrigem) {
-        return { entregaOrigem, audit };
-      }
-    }
-
-    const devolucaoTs = new Date(devolucao.created_at).getTime();
-    const entregaOrigem = [...entregas]
-      .filter((item) =>
-        item.id !== devolucao.id &&
-        item.tipo !== "devolucao" &&
-        item.funcionario_id === devolucao.funcionario_id &&
-        item.epi_id === devolucao.epi_id &&
-        new Date(item.created_at).getTime() <= devolucaoTs,
-      )
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] || null;
-
-    return { entregaOrigem, audit };
-  }, [entregas]);
+  const resolveEntregaOrigem = useCallback(
+    (devolucao: Entrega) => localizarEntregaDeOrigem(devolucao, entregas),
+    [entregas],
+  );
 
   const handleOpenEstorno = (devolucao: Entrega) => {
     if (!canEdit) return;
@@ -1049,9 +1007,9 @@ export default function Entregas() {
       return;
     }
 
-    const { entregaOrigem, audit } = resolveEntregaOrigem(estornoTarget);
+    const { entregaDeOrigem, auditoria } = resolveEntregaOrigem(estornoTarget);
 
-    if (!entregaOrigem) {
+    if (!entregaDeOrigem) {
       toast({ title: "Não foi possível localizar a entrega original", variant: "destructive" });
       return;
     }
@@ -1059,11 +1017,6 @@ export default function Entregas() {
     setEstornoSaving(true);
 
     try {
-      const restoredStatus = audit.previousStatus || "ativo";
-      const operadorDevolucao = audit.processedBy || (estornoTarget as any).created_by || "não identificado";
-      const operadorEstorno = user?.email || user?.id || "usuário autenticado";
-      const auditNote = `Estorno de devolução por erro em ${new Date().toLocaleDateString("pt-BR")} por ${operadorEstorno}. Devolução original: ${estornoTarget.data}${audit.processedBy ? `, processada por ${operadorDevolucao}` : ", sem operador identificado"}.`;
-
       const { data: contratoTarget, error: contratoTargetError } = await (supabase.rpc as any)("resolve_contrato_target_for_entrega", {
         _funcionario_id: estornoTarget.funcionario_id,
         _unidade_id: (estornoTarget as any).empresa_id,
@@ -1072,14 +1025,39 @@ export default function Entregas() {
 
       if (contratoTargetError) throw contratoTargetError;
 
-      const shouldAdjustUnitStock = !Array.isArray(contratoTarget) || !contratoTarget[0]?.contrato_epi_id;
+      const temContrato = Array.isArray(contratoTarget) && !!contratoTarget[0]?.contrato_epi_id;
+
+      /*
+       * O estoque só é lido quando pode haver desconto. Ler antes seria
+       * uma consulta a mais em todo estorno de EPI de contrato.
+       */
+      let estoqueAtual: number | null = null;
+      if (!temContrato && estornoTarget.quantidade > 0) {
+        const { data: epiRow, error: epiLoadError } = await (supabase.from as any)("epis")
+          .select("estoque")
+          .eq("id", estornoTarget.epi_id)
+          .maybeSingle();
+
+        if (epiLoadError) throw epiLoadError;
+        estoqueAtual = Number(epiRow?.estoque || 0);
+      }
+
+      /* Quem decide o que o estorno desfaz é src/lib/entregaDevolucao.ts. */
+      const plano = planejarEstorno({
+        devolucao: estornoTarget,
+        entregaDeOrigem,
+        auditoria,
+        operador: user?.email || user?.id || null,
+        temContrato,
+        estoqueAtual,
+      });
 
       const { error: restoreEntregaError } = await (supabase.from as any)("entregas")
         .update({
-          status: restoredStatus,
-          observacao: appendObservacao(entregaOrigem.observacao, auditNote),
+          status: plano.statusRestaurado,
+          observacao: plano.observacaoDaOrigem,
         })
-        .eq("id", entregaOrigem.id);
+        .eq("id", entregaDeOrigem.id);
 
       if (restoreEntregaError) throw restoreEntregaError;
 
@@ -1089,17 +1067,9 @@ export default function Entregas() {
 
       if (deleteDevolucaoError) throw deleteDevolucaoError;
 
-      if (shouldAdjustUnitStock && estornoTarget.quantidade > 0) {
-        const { data: epiRow, error: epiLoadError } = await (supabase.from as any)("epis")
-          .select("estoque")
-          .eq("id", estornoTarget.epi_id)
-          .maybeSingle();
-
-        if (epiLoadError) throw epiLoadError;
-
-        const nextStock = Math.max(Number(epiRow?.estoque || 0) - estornoTarget.quantidade, 0);
+      if (plano.novoEstoqueDaUnidade != null) {
         const { error: epiUpdateError } = await (supabase.from as any)("epis")
-          .update({ estoque: nextStock })
+          .update({ estoque: plano.novoEstoqueDaUnidade })
           .eq("id", estornoTarget.epi_id);
 
         if (epiUpdateError) throw epiUpdateError;
@@ -1990,7 +1960,7 @@ export default function Entregas() {
                   <Select value={devolucaoDestino} onValueChange={(v) => setDevolucaoDestino(v as "estoque" | "descarte")}>
                     <SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {devolucaoDestinos.map((d) => (
+                      {DESTINOS_DE_DEVOLUCAO.map((d) => (
                         <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -2440,7 +2410,7 @@ export default function Entregas() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {devolucaoDestinos.map((d) => (
+                    {DESTINOS_DE_DEVOLUCAO.map((d) => (
                       <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -2487,7 +2457,7 @@ export default function Entregas() {
                 <p className="text-sm"><span className="text-muted-foreground">Colaborador:</span> <strong>{getName(funcionarios, estornoTarget.funcionario_id)}</strong></p>
                 <p className="text-sm"><span className="text-muted-foreground">EPI:</span> <strong>{getName(epis, estornoTarget.epi_id)}</strong></p>
                 <p className="text-sm"><span className="text-muted-foreground">Quantidade:</span> <strong>{estornoTarget.quantidade}</strong></p>
-                <p className="text-sm"><span className="text-muted-foreground">Ação:</span> restaurar para <strong>{parseDevolucaoAudit(estornoTarget.observacao).previousStatus || "ativo"}</strong></p>
+                <p className="text-sm"><span className="text-muted-foreground">Ação:</span> restaurar para <strong>{lerAuditoriaDaDevolucao(estornoTarget.observacao).statusAnterior || "ativo"}</strong></p>
               </div>
 
               <p className="text-sm text-muted-foreground">
