@@ -6,6 +6,12 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/codebase-design/SKILL.md",
       "computedHash": "aa11a96c08451f4ff86052d5da94004a8c97bb4ea41b2ac8a4300c189f66c89c"
+    },
+    "shadcn": {
+      "source": "midudev/autoskills",
+      "sourceType": "github",
+      "skillPath": "packages/autoskills/skills-registry/shadcn/SKILL.md",
+      "computedHash": "2d7bf36e581289fdcc3ffc592c1ec1d7457572baa72ba0d440229ef34bd7f6dd"
     }
   }
 }
