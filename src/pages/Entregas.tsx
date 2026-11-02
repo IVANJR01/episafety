@@ -957,23 +957,25 @@ export default function Entregas() {
     });
 
     try {
-      const { data: devolucaoCriada, error: devolucaoError } = await (supabase.from as any)("entregas")
-        .insert(plano.registro).select("id").single();
+      /*
+       * Uma chamada só, uma transação só. Antes eram duas gravações em
+       * sequência e, quando a segunda falhava, o navegador tentava apagar
+       * a primeira na mão: internet caindo no meio deixava devolução
+       * registrada com o EPI ainda marcado como entregue. Agora o banco
+       * grava as duas ou não grava nenhuma.
+       */
+      const { error: devolucaoError } = await (supabase.rpc as any)("devolver_entrega_epi", {
+        _entrega_id: entrega.id,
+        _quantidade: plano.registro.quantidade,
+        _data: plano.registro.data,
+        _observacao: plano.registro.observacao,
+        _empresa_id: plano.registro.empresa_id,
+      });
 
       if (devolucaoError) throw devolucaoError;
 
-      const { error: updateEntregaError } = await (supabase.from as any)("entregas")
-        .update({ status: plano.statusDaEntregaOriginal })
-        .eq("id", entrega.id);
-
-      if (updateEntregaError) {
-        if (devolucaoCriada?.id) {
-          await (supabase.from as any)("entregas").delete().eq("id", devolucaoCriada.id);
-        }
-        throw updateEntregaError;
-      }
-
-      // Contract stock sync is now handled by DB trigger (trg_sync_contrato_stock)
+      // A sincronia com o estoque de contrato é feita pelo trigger do
+      // banco (trg_sync_contrato_stock).
 
       toast({
         title: devolucaoDestino === "estoque" ? "EPI devolvido ao estoque!" : "EPI registrado como descarte/avaria",
@@ -982,8 +984,16 @@ export default function Entregas() {
       setDevolucaoDialogOpen(false);
       refetch();
       refetchEpis();
-    } catch {
-      toast({ title: "Erro ao devolver EPI", variant: "destructive" });
+    } catch (erro: any) {
+      /*
+       * A função do banco recusa devolução repetida e empresa alheia com
+       * mensagem própria. Mostrar essa mensagem é melhor que o
+       * "Erro ao devolver EPI" genérico, que não diz o que fazer.
+       */
+      toast({
+        title: erro?.message || "Erro ao devolver EPI",
+        variant: "destructive",
+      });
     } finally {
       setDevolucaoSaving(false);
     }
@@ -1052,36 +1062,34 @@ export default function Entregas() {
         estoqueAtual,
       });
 
-      const { error: restoreEntregaError } = await (supabase.from as any)("entregas")
-        .update({
-          status: plano.statusRestaurado,
-          observacao: plano.observacaoDaOrigem,
-        })
-        .eq("id", entregaDeOrigem.id);
+      /*
+       * Desfazer uma devolução são três gravações: restaurar a entrega,
+       * apagar a devolução e descontar o estoque. Antes iam soltas e
+       * nenhuma era desfeita em caso de falha — falhar na segunda deixava
+       * a entrega restaurada E a devolução ainda no histórico, ou seja, o
+       * mesmo EPI aparecendo como entregue e como devolvido. Agora as três
+       * vão juntas numa transação do banco.
+       */
+      const { error: estornoError } = await (supabase.rpc as any)("estornar_devolucao_epi", {
+        _devolucao_id: estornoTarget.id,
+        _entrega_origem_id: entregaDeOrigem.id,
+        _status_restaurado: plano.statusRestaurado,
+        _observacao_origem: plano.observacaoDaOrigem,
+        _novo_estoque: plano.novoEstoqueDaUnidade,
+      });
 
-      if (restoreEntregaError) throw restoreEntregaError;
-
-      const { error: deleteDevolucaoError } = await (supabase.from as any)("entregas")
-        .delete()
-        .eq("id", estornoTarget.id);
-
-      if (deleteDevolucaoError) throw deleteDevolucaoError;
-
-      if (plano.novoEstoqueDaUnidade != null) {
-        const { error: epiUpdateError } = await (supabase.from as any)("epis")
-          .update({ estoque: plano.novoEstoqueDaUnidade })
-          .eq("id", estornoTarget.epi_id);
-
-        if (epiUpdateError) throw epiUpdateError;
-      }
+      if (estornoError) throw estornoError;
 
       toast({ title: "Devolução desfeita com sucesso" });
       setEstornoDialogOpen(false);
       setEstornoTarget(null);
       refetch();
       refetchEpis();
-    } catch {
-      toast({ title: "Erro ao desfazer devolução", variant: "destructive" });
+    } catch (erro: any) {
+      toast({
+        title: erro?.message || "Erro ao desfazer devolução",
+        variant: "destructive",
+      });
     } finally {
       setEstornoSaving(false);
     }
