@@ -58,8 +58,16 @@ export const colaboradoresItems: NavItem[] = [
 ];
 
 // 🩺 SAÚDE OCUPACIONAL: Gestão Médica, PCMSO, ASO, Exames e Vencimentos
+/*
+ * Saúde Ocupacional: o que se faz no dia a dia — exames, ASO,
+ * vencimentos.
+ *
+ * O PCMSO saiu daqui. Ele é DOCUMENTO, e o card dele na Central de
+ * Documentação leva para a mesma tela: /pcmso/dashboard aparecia duas
+ * vezes no sistema. Documento se elabora e se emite na Central, junto
+ * com PGR, LTCAT, PPP e os laudos; aqui ficam as operações de saúde.
+ */
 export const saudeItems: NavItem[] = [
-  { path: "/pcmso/dashboard", label: "PCMSO — Saúde Ocupacional", icon: Stethoscope, moduleKey: "pgr" },
   { path: "/aso", label: "Exames e ASO", icon: Stethoscope, moduleKey: "aso" },
   { path: "/rh/asos", label: "Portal RH — ASO", icon: Briefcase, moduleKey: "portal_rh" },
   { path: "/arquivo-digital/vencimentos", label: "Painel de Vencimentos", icon: Bell, moduleKey: "arquivo_digital" },

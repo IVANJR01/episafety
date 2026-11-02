@@ -78,3 +78,30 @@ describe("o módulo Comercial saiu do sistema", () => {
     expect(paths).toContain("/aso");
   });
 });
+
+describe("o PCMSO mora na Central de Documentação", () => {
+  it("não é item do menu Saúde Ocupacional", () => {
+    /*
+     * O card da Central leva para /pcmso/dashboard, e o item do menu
+     * levava para a MESMA tela: o mesmo destino em dois lugares.
+     * PCMSO é documento; se elabora e se emite na Central, junto com
+     * PGR, LTCAT, PPP e os laudos.
+     */
+    expect(menu.saudeItems.map((i) => i.path),
+      "o PCMSO voltou para o menu de Saúde Ocupacional")
+      .not.toContain("/pcmso/dashboard");
+  });
+
+  it("/pcmso/dashboard aparece no máximo uma vez no menu", () => {
+    const vezes = todosOsItens().filter((i) => i.path.startsWith("/pcmso"));
+    expect(vezes.length).toBeLessThanOrEqual(1);
+  });
+
+  it("Saúde Ocupacional continua com o que é operação", () => {
+    /* Tirar o documento não pode levar exames, ASO e vencimentos junto. */
+    const paths = menu.saudeItems.map((i) => i.path);
+    expect(paths).toContain("/aso");
+    expect(paths).toContain("/rh/asos");
+    expect(paths).toContain("/arquivo-digital/vencimentos");
+  });
+});
