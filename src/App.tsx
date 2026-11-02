@@ -34,6 +34,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import AdminEmpresas from "@/pages/AdminEmpresas";
 import Install from "@/pages/Install";
 import Privacidade from "@/pages/Privacidade";
+import Planos from "@/pages/Planos";
 import Termos from "@/pages/Termos";
 import DDS from "@/pages/DDS";
 import InspecoesModule from "@/pages/InspecoesModule";
@@ -420,6 +421,11 @@ const App = () => (
             <Route path="/login" element={<AuthPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/install" element={<Install />} />
+            {/* Página pública de vendas: sem login, sem menu, sem empresa
+                ativa — quem chega aqui ainda não é cliente. Os valores moram
+                em src/lib/planosDeVenda.ts. */}
+            <Route path="/planos" element={<Planos />} />
+            <Route path="/vendas" element={<Navigate to="/planos" replace />} />
             <Route path="/privacidade" element={<Privacidade />} />
             <Route path="/termos" element={<Termos />} />
             <Route path="/reset-password" element={<ResetPassword />} />
