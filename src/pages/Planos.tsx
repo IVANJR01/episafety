@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,7 +9,7 @@ import logo from "@/assets/logo-episafety.png";
 import fichaExemplo from "/marca/ficha-epi-exemplo.png";
 import {
   PLANOS, precoFormatado, linkDoWhatsapp, algumPrecoDefinido,
-  descontoPercentual, CONTATO,
+  descontoPercentual, totalMensal, CONTATO,
 } from "@/lib/planosDeVenda";
 
 /**
@@ -98,9 +99,17 @@ export default function Planos() {
   const semPrecos = !algumPrecoDefinido();
   const whatsapp = linkDoWhatsapp();
   const linkPlano = linkDoWhatsapp(plano);
-  const preco = precoFormatado(plano.precoMensal);
+  const preco = precoFormatado(plano.precoPorVida);
   const precoDe = precoFormatado(plano.precoDe ?? null);
   const desconto = descontoPercentual(plano);
+
+  /*
+   * O simulador. Quem vende por vida ouve sempre a mesma pergunta — "mas
+   * no meu caso dá quanto?" — e a página responde antes de ser perguntada.
+   * 50 é um palpite de partida; o visitante troca em dois segundos.
+   */
+  const [vidas, setVidas] = useState(50);
+  const total = precoFormatado(totalMensal(vidas, plano));
 
   const Cta = ({ grande = false }: { grande?: boolean }) =>
     linkPlano ? (
@@ -254,7 +263,7 @@ export default function Planos() {
             )}
           </div>
 
-          {semPrecos && (
+          {semPrecos ? (
             /*
               * Enquanto o valor não foi definido, a página diz por que não há
               * número — em vez de exibir um que ninguém combinou.
@@ -263,6 +272,44 @@ export default function Planos() {
               O valor é fechado no contato: ele muda conforme o número de
               colaboradores e de unidades atendidas.
             </p>
+          ) : (
+            <div className="mt-5 rounded-xl border bg-muted/40 p-4">
+              <label
+                htmlFor="vidas"
+                className="text-sm font-medium"
+              >
+                Quantos colaboradores você tem?
+              </label>
+              <div className="mt-3 flex flex-wrap items-center gap-4">
+                <input
+                  id="vidas"
+                  type="number"
+                  min={1}
+                  max={100000}
+                  value={vidas}
+                  onChange={(e) => setVidas(Math.trunc(Number(e.target.value)))}
+                  className="h-11 w-28 rounded-lg border bg-background px-3 text-lg font-semibold"
+                />
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm text-muted-foreground">fica</span>
+                  {/*
+                    * Sem total válido a página não mostra "R$ NaN": mostra o
+                    * que fazer para voltar a ter um número.
+                    */}
+                  <span className="text-3xl font-bold tracking-tight text-primary">
+                    {total ?? "—"}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {total ? "por mês" : "informe de 1 a 100.000"}
+                  </span>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Sem taxa de implantação, sem contrato de fidelidade e sem
+                cobrança por unidade: você paga pelas vidas que estão no
+                sistema.
+              </p>
+            </div>
           )}
 
           <ul className="mt-7 grid gap-2.5 sm:grid-cols-2">

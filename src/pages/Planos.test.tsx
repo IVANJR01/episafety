@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 /**
@@ -15,7 +15,7 @@ vi.mock("/marca/ficha-epi-exemplo.png", () => ({ default: "ficha.png" }));
 const PLANO = {
   id: "epi", nome: "Gestão de EPIs",
   publico: "Para quem entrega EPI e precisa provar que entregou.",
-  precoMensal: null as number | null, precoDe: null as number | null,
+  precoPorVida: null as number | null, precoDe: null as number | null,
   unidade: "por empresa / mês", destaque: true,
   inclui: ["Cadastro de EPI com consulta automática do CA"],
 };
@@ -35,7 +35,7 @@ async function montar(plano: Record<string, unknown>, whatsapp = "") {
       ...real,
       PLANOS: planos,
       CONTATO: { ...real.CONTATO, whatsapp },
-      algumPrecoDefinido: () => plano.precoMensal != null,
+      algumPrecoDefinido: () => plano.precoPorVida != null,
       linkDoWhatsapp: (p?: any) => {
         const n = whatsapp.replace(/\D/g, "");
         return n ? `https://wa.me/${n}?text=${encodeURIComponent(p?.nome || "oi")}` : null;
@@ -61,7 +61,7 @@ describe("preço na página", () => {
   });
 
   it("com valor definido, o valor aparece", async () => {
-    await montar({ ...PLANO, precoMensal: 199.9 });
+    await montar({ ...PLANO, precoPorVida: 199.9 });
     expect(textoDaPagina()).toMatch(/199,90/);
     expect(screen.queryByText("Sob consulta")).toBeNull();
   });
@@ -72,10 +72,10 @@ describe("preço na página", () => {
   });
 
   it("desconto só aparece quando os dois preços existem", async () => {
-    await montar({ ...PLANO, precoMensal: 150, precoDe: 200 });
+    await montar({ ...PLANO, precoPorVida: 150, precoDe: 200 });
     expect(textoDaPagina()).toContain("−25%");
 
-    await montar({ ...PLANO, precoMensal: 150, precoDe: null });
+    await montar({ ...PLANO, precoPorVida: 150, precoDe: null });
     expect(textoDaPagina(), "inventou um desconto sem preço de referência")
       .not.toMatch(/−\d+%/);
   });
@@ -118,5 +118,44 @@ describe("o foco da página", () => {
     await montar(PLANO);
     expect(screen.getByAltText(/Ficha de EPI gerada pelo sistema/)).toBeTruthy();
     expect(textoDaPagina()).toContain("Dados fictícios");
+  });
+});
+
+describe("o simulador de vidas", () => {
+  /*
+   * Vender por vida significa que ninguém sabe o próprio preço só de ler
+   * "R$ 2,50". O simulador é o que transforma o preço em decisão.
+   */
+  const comPreco = { ...PLANO, precoPorVida: 2.5, unidade: "por vida / mês" };
+
+  it("já abre com uma conta feita", async () => {
+    await montar(comPreco, "5588996349359");
+    const campo = screen.getByLabelText(/Quantos colaboradores/i) as HTMLInputElement;
+    expect(campo.value).toBe("50");
+    /* O pt-BR separa "R$" do número com espaço fixo, não com espaço comum. */
+    expect(textoDaPagina(), "abriu sem mostrar o total de exemplo")
+      .toMatch(/R\$\s125,00/);
+  });
+
+  it("muda o total quando o visitante muda o número", async () => {
+    await montar(comPreco, "5588996349359");
+    const campo = screen.getByLabelText(/Quantos colaboradores/i);
+    fireEvent.change(campo, { target: { value: "200" } });
+    expect(textoDaPagina()).toMatch(/R\$\s500,00/);
+    expect(textoDaPagina(), "ficou o total antigo na tela").not.toMatch(/R\$\s125,00/);
+  });
+
+  it("número impossível não vira R$ NaN na cara do cliente", async () => {
+    await montar(comPreco, "5588996349359");
+    fireEvent.change(screen.getByLabelText(/Quantos colaboradores/i), {
+      target: { value: "0" },
+    });
+    expect(textoDaPagina()).not.toContain("NaN");
+    expect(textoDaPagina()).toContain("informe de 1 a 100.000");
+  });
+
+  it("sem preço definido não existe simulador", async () => {
+    await montar(PLANO);
+    expect(screen.queryByLabelText(/Quantos colaboradores/i)).toBeNull();
   });
 });

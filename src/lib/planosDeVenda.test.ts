@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  PLANOS, precoFormatado, linkDoWhatsapp, algumPrecoDefinido,
+  PLANOS, precoFormatado, linkDoWhatsapp, algumPrecoDefinido, totalMensal,
   descontoPercentual, CONTATO,
 } from "./planosDeVenda";
 
@@ -80,8 +80,8 @@ describe("os planos", () => {
   });
 
   it("a página sabe quando nenhum preço foi definido", () => {
-    expect(algumPrecoDefinido([{ ...PLANOS[0], precoMensal: null }])).toBe(false);
-    expect(algumPrecoDefinido([{ ...PLANOS[0], precoMensal: 100 }])).toBe(true);
+    expect(algumPrecoDefinido([{ ...PLANOS[0], precoPorVida: null }])).toBe(false);
+    expect(algumPrecoDefinido([{ ...PLANOS[0], precoPorVida: 100 }])).toBe(true);
   });
 });
 
@@ -89,7 +89,7 @@ describe("o desconto", () => {
   const base = { ...PLANOS[0] };
 
   it("sai da diferença entre os dois preços", () => {
-    expect(descontoPercentual({ ...base, precoDe: 200, precoMensal: 150 })).toBe(25);
+    expect(descontoPercentual({ ...base, precoDe: 200, precoPorVida: 150 })).toBe(25);
   });
 
   it("sem os dois preços, não há desconto nenhum", () => {
@@ -97,12 +97,47 @@ describe("o desconto", () => {
      * Desconto calculado sobre preço inventado é a propaganda enganosa
      * mais comum da internet. Aqui ele simplesmente não aparece.
      */
-    expect(descontoPercentual({ ...base, precoDe: null, precoMensal: 150 })).toBeNull();
-    expect(descontoPercentual({ ...base, precoDe: 200, precoMensal: null })).toBeNull();
+    expect(descontoPercentual({ ...base, precoDe: null, precoPorVida: 150 })).toBeNull();
+    expect(descontoPercentual({ ...base, precoDe: 200, precoPorVida: null })).toBeNull();
   });
 
   it("'de' menor ou igual ao 'por' não vira desconto", () => {
-    expect(descontoPercentual({ ...base, precoDe: 100, precoMensal: 150 })).toBeNull();
-    expect(descontoPercentual({ ...base, precoDe: 150, precoMensal: 150 })).toBeNull();
+    expect(descontoPercentual({ ...base, precoDe: 100, precoPorVida: 150 })).toBeNull();
+    expect(descontoPercentual({ ...base, precoDe: 150, precoPorVida: 150 })).toBeNull();
+  });
+});
+
+describe("a conta por vida", () => {
+  /*
+   * O preço é por colaborador. Errar essa multiplicação é cobrar errado
+   * do cliente ou prometer errado na página — os dois caros.
+   */
+  it("multiplica o preço pelas vidas", () => {
+    expect(totalMensal(1)).toBe(2.5);
+    expect(totalMensal(50)).toBe(125);
+    expect(totalMensal(73)).toBe(182.5);
+  });
+
+  it("não arredonda centavo para cima nem para baixo", () => {
+    const plano = { ...PLANOS[0], precoPorVida: 2.47 };
+    expect(totalMensal(3, plano)).toBe(7.41);
+  });
+
+  it("número de vidas que não dá para cobrar não vira total", () => {
+    expect(totalMensal(0)).toBeNull();
+    expect(totalMensal(-10)).toBeNull();
+    expect(totalMensal(1.5)).toBeNull();
+    expect(totalMensal(NaN)).toBeNull();
+    expect(totalMensal(100001)).toBeNull();
+  });
+
+  it("sem preço definido não há total", () => {
+    expect(totalMensal(50, { ...PLANOS[0], precoPorVida: null })).toBeNull();
+  });
+
+  it("o preço de hoje é R$ 2,50 por vida", () => {
+    /* Trava o combinado: mudar o valor sem querer quebra aqui. */
+    expect(PLANOS[0].precoPorVida).toBe(2.5);
+    expect(PLANOS[0].unidade).toContain("vida");
   });
 });

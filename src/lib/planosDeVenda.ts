@@ -5,7 +5,7 @@
  * quem mexe em preço não deveria precisar abrir o código da página, e
  * preço espalhado por uma tela sai errado numa hora dessas.
  *
- * `precoMensal: null` quer dizer "ainda não definido". A página mostra
+ * `precoPorVida: null` quer dizer "ainda não definido". A página mostra
  * "Sob consulta" e NÃO inventa número — preço numa página pública é
  * oferta, e vira promessa que alguém vai cobrar.
  */
@@ -15,30 +15,35 @@ export interface PlanoDeVenda {
   nome: string;
   /** Uma linha dizendo para quem é. */
   publico: string;
-  /** Em reais, por mês. null = "Sob consulta". */
-  precoMensal: number | null;
+  /**
+   * Em reais, por colaborador (vida), por mês. null = "Sob consulta".
+   *
+   * O nome é "por vida" de propósito: "precoMensal: 2.5" se lê como
+   * R$ 2,50 pela empresa inteira, e aí o preço da página sai errado.
+   */
+  precoPorVida: number | null;
   /** Riscado ao lado do preço, quando existe. null = sem "de/por". */
   precoDe?: number | null;
-  /** Texto embaixo do preço: "por empresa", "até 50 colaboradores"... */
+  /** Texto ao lado do preço: "por vida / mês". */
   unidade: string;
   inclui: string[];
   destaque?: boolean;
 }
 
 /**
- * ====== PREENCHA AQUI ======
+ * ====== O PREÇO MORA AQUI ======
  *
- * Troque o `null` pelo valor de verdade. Enquanto estiver null, a página
- * mostra "Sob consulta" e o texto explicando que o valor vem no contato.
+ * Mexer no valor é mexer nesta linha e em nenhum outro lugar. Se voltar
+ * para null, a página sozinha passa a mostrar "Sob consulta".
  */
 export const PLANOS: PlanoDeVenda[] = [
   {
     id: "epi",
     nome: "Gestão de EPIs",
     publico: "Para quem entrega EPI e precisa provar que entregou.",
-    precoMensal: null,
+    precoPorVida: 2.5,
     precoDe: null,
-    unidade: "por empresa / mês",
+    unidade: "por vida / mês",
     destaque: true,
     inclui: [
       "Cadastro de EPI com consulta automática do CA",
@@ -83,7 +88,7 @@ export function linkDoWhatsapp(plano?: PlanoDeVenda): string | null {
 
 /** Algum plano já tem preço definido? A página avisa quando nenhum tem. */
 export function algumPrecoDefinido(planos: PlanoDeVenda[] = PLANOS): boolean {
-  return planos.some((p) => p.precoMensal != null);
+  return planos.some((p) => p.precoPorVida != null);
 }
 
 /**
@@ -95,7 +100,26 @@ export function algumPrecoDefinido(planos: PlanoDeVenda[] = PLANOS): boolean {
  */
 export function descontoPercentual(plano: PlanoDeVenda): number | null {
   const de = plano.precoDe;
-  const por = plano.precoMensal;
+  const por = plano.precoPorVida;
   if (de == null || por == null || de <= por || de <= 0) return null;
   return Math.round(((de - por) / de) * 100);
+}
+
+/**
+ * Quanto a empresa paga por mês com `vidas` colaboradores.
+ *
+ * Devolve null quando não há preço definido ou quando o número de vidas
+ * não serve para cobrar (zero, negativo, quebrado ou absurdo). Melhor a
+ * página não mostrar total nenhum do que mostrar "R$ NaN" para quem
+ * estava decidindo comprar.
+ */
+export function totalMensal(
+  vidas: number,
+  plano: PlanoDeVenda = PLANOS[0],
+): number | null {
+  const porVida = plano.precoPorVida;
+  if (porVida == null) return null;
+  if (!Number.isInteger(vidas) || vidas < 1 || vidas > 100000) return null;
+  /* Centavos arredondados na conta, não na exibição. */
+  return Math.round(porVida * vidas * 100) / 100;
 }
