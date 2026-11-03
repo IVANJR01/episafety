@@ -287,3 +287,73 @@ describe("o print do celular é tela de verdade", () => {
     expect(textoDaPagina()).not.toMatch(/aprovado e v[áa]lido/i);
   });
 });
+
+describe("as seções que decidem a compra", () => {
+  const comPreco = { ...PLANO, precoPorVida: 2.5, unidade: "por vida / mês" };
+
+  it("os três pilares estão na página, cada um com o seu custo de não ter", async () => {
+    /*
+     * A página listava recursos demais e nenhum ficava. Estes três são o
+     * que o comprador precisa levar embora da leitura.
+     */
+    await montar(comPreco, "5588996349359");
+    const texto = textoDaPagina();
+    expect(texto).toMatch(/CA registrado em cada entrega/i);
+    expect(texto).toMatch(/assinatura de quem recebeu/i);
+    expect(texto).toMatch(/ficha individual em PDF/i);
+  });
+
+  it("a página responde quem cuida dos dados do colaborador", async () => {
+    /* Quem compra para a empresa pergunta isso antes de assinar. */
+    await montar(comPreco, "5588996349359");
+    const texto = textoDaPagina();
+    expect(texto).toMatch(/Segurança e proteção de dados/i);
+    expect(texto).toMatch(/Cada empresa vê só o que é dela/i);
+    expect(texto).toMatch(/[Bb]ackup/);
+  });
+
+  it("o FAQ cobre as perguntas que travam a decisão", async () => {
+    await montar(comPreco, "5588996349359");
+    /*
+      * Só dentro do FAQ. Procurar na página inteira dava verde mesmo com a
+      * pergunta apagada, porque as mesmas palavras aparecem nos recursos.
+      */
+    const faq = screen.getByTestId("lista-faq").textContent || "";
+    for (const assunto of [
+      /como é feita uma entrega/i,
+      /CA do equipamento/i,
+      /colaborador assina/i,
+      /histórico/i,
+      /controle de estoque/i,
+      /contratação/i,
+    ]) {
+      expect(faq, `o FAQ não responde ${assunto}`).toMatch(assunto);
+    }
+  });
+
+  it("não cita número de item da NR que pode estar desatualizado", async () => {
+    /*
+     * A resposta citava "item 6.6.1, alínea h" — numeração anterior à
+     * revisão da NR-06. Errar o número da norma numa página vendida para
+     * técnico de segurança custa mais credibilidade do que o número dá.
+     * O conteúdo da regra continua: livro, ficha OU sistema eletrônico.
+     */
+    await montar(comPreco, "5588996349359");
+    expect(textoDaPagina()).not.toMatch(/6\.6\.1/);
+    expect(textoDaPagina()).toMatch(/sistema eletrônico/i);
+  });
+});
+
+describe("a página não inventa prova social", () => {
+  it("não há depoimento assinado por cliente nenhum", async () => {
+    /*
+     * Depoimento inventado é o jeito mais rápido de perder a venda e de
+     * criar problema jurídico. Enquanto não houver cliente real querendo
+     * aparecer, a página não finge que tem.
+     */
+    await montar({ ...PLANO, precoPorVida: 2.5 }, "5588996349359");
+    const texto = textoDaPagina();
+    expect(texto).not.toMatch(/depoimento/i);
+    expect(texto, "apareceu aspas de cliente fictício").not.toMatch(/—\s*(Diretor|Gerente|Eng\.|Técnico)\s+de/i);
+  });
+});

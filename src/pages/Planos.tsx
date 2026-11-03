@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Check, ShieldCheck, Fingerprint, QrCode, PackageSearch, AlertTriangle,
   FileCheck2, ArrowRight, RotateCcw, BarChart3, Boxes,
-  CheckCircle2, XCircle, ChevronDown, Smartphone, WifiOff, FileText,
+  CheckCircle2, XCircle, ChevronDown, Building2, UserCheck, DatabaseBackup, Smartphone, WifiOff, FileText,
   Clock, ShieldAlert, Award, HelpCircle
 } from "lucide-react";
 import logo from "@/assets/logo-episafety.png";
@@ -120,11 +120,72 @@ const RECURSOS_MODULO = [
   },
 ];
 
+/*
+ * Os três pilares. O texto de cada um descreve o que o sistema faz hoje:
+ * o CA é cadastrado, gravado na entrega e impresso na ficha — ele não é
+ * conferido automaticamente contra a data no momento da entrega, e a
+ * página não pode dizer que é.
+ */
+const PILARES = [
+  {
+    numero: "01",
+    icone: ShieldCheck,
+    titulo: "O CA registrado em cada entrega",
+    texto:
+      "Você cadastra o EPI uma vez e o sistema busca os dados do certificado pelo número do CA — fabricante, validade e proteção aprovada. A partir daí o CA acompanha toda entrega daquele equipamento e sai impresso na ficha.",
+    semIsso: "Sem o CA no registro, a entrega não prova proteção adequada.",
+  },
+  {
+    numero: "02",
+    icone: Fingerprint,
+    titulo: "A assinatura de quem recebeu",
+    texto:
+      "Quem recebeu, qual equipamento, quantas unidades e em que data. O colaborador assina com o dedo na tela ou por reconhecimento facial, e cada entrega ganha um código de conferência próprio.",
+    semIsso: "Sem assinatura, a empresa não tem como provar a entrega.",
+  },
+  {
+    numero: "03",
+    icone: FileCheck2,
+    titulo: "A ficha individual em PDF",
+    texto:
+      "Todas as entregas, trocas e devoluções do colaborador num documento só, com o texto do art. 166 da CLT e o código que permite conferir cada assinatura sem login.",
+    semIsso: "Sem a ficha pronta, a auditoria vira corrida contra o relógio.",
+  },
+];
+
+/* Só o que existe no sistema hoje; conferido antes de escrever. */
+const SEGURANCA = [
+  {
+    icone: Building2,
+    titulo: "Cada empresa vê só o que é dela",
+    texto:
+      "A separação é feita no banco de dados, não apenas na tela: mesmo um acesso indevido ao sistema não alcança os dados de outra empresa.",
+  },
+  {
+    icone: UserCheck,
+    titulo: "Acesso por perfil",
+    texto:
+      "Você define o que cada pessoa abre. O almoxarife da obra não precisa enxergar o que o RH enxerga.",
+  },
+  {
+    icone: QrCode,
+    titulo: "Conferência sem expor o sistema",
+    texto:
+      "O fiscal confere uma entrega pelo código impresso na ficha, numa página pública que mostra só aquela entrega — e nada mais.",
+  },
+  {
+    icone: DatabaseBackup,
+    titulo: "Backup automático",
+    texto:
+      "As informações são copiadas de forma automática e periódica, sem depender de alguém lembrar de fazer.",
+  },
+];
+
 // Perguntas frequentes para quebra de objeções
 const PERGUNTAS_FREQUENTES = [
   {
     pergunta: "A ficha de EPI digital tem validade jurídica perante o MTE e a Justiça do Trabalho?",
-    resposta: "Sim, validade total. O item 6.6.1, alínea 'h' da NR-06 autoriza expressamente a utilização de sistema eletrônico para o registro e controle de entrega de EPIs, dispensando o papel desde que assegurada a identificação do trabalhador e a rastreabilidade das entregas.",
+    resposta: "Sim. A própria NR-06 admite expressamente que o registro do fornecimento de EPI seja feito em livro, ficha OU sistema eletrônico, inclusive biométrico — desde que o sistema permita extrair relatórios e identificar o trabalhador e o equipamento entregue. É exatamente o que a ficha individual em PDF faz, com o número do CA, a data e a assinatura de cada entrega.",
   },
   {
     pergunta: "Como funciona a entrega em locais sem sinal de internet (modo offline)?",
@@ -141,6 +202,34 @@ const PERGUNTAS_FREQUENTES = [
   {
     pergunta: "Há taxa de implantação ou contrato de fidelidade com multa?",
     resposta: "Nenhuma taxa de implantação e zero fidelidade contratual. Você utiliza o sistema com tranquilidade e só paga pelo número de colaboradores cadastrados.",
+  },
+  {
+    pergunta: "Na prática, como é feita uma entrega de EPI?",
+    resposta: "Você busca o colaborador pelo nome, CPF ou matrícula, escolhe o EPI e a quantidade, informa de qual unidade o material está saindo e passa o aparelho para o trabalhador assinar na tela. O saldo do estoque baixa na mesma hora e a entrega já entra na ficha dele.",
+  },
+  {
+    pergunta: "Como o CA do equipamento entra no registro?",
+    resposta: "O CA é cadastrado uma vez por EPI — e o sistema busca os dados do certificado automaticamente a partir do número, preenchendo fabricante, validade e proteção aprovada. A partir daí, o número do CA fica gravado em cada entrega daquele equipamento e sai impresso na ficha do colaborador, que é onde o fiscal procura.",
+  },
+  {
+    pergunta: "O colaborador assina como? Precisa de papel em algum momento?",
+    resposta: "Ele assina com o dedo na tela do celular ou tablet, ou por reconhecimento facial com foto. A assinatura fica gravada na entrega com data e hora, e cada uma recebe um código de conferência. Em nenhum momento é preciso imprimir para colher assinatura.",
+  },
+  {
+    pergunta: "Consigo baixar a ficha individual e consultar o histórico depois?",
+    resposta: "Sim. A ficha de cada colaborador sai em PDF com todas as entregas, devoluções e trocas, o CA de cada equipamento e o texto do art. 166 da CLT. O histórico fica disponível na tela a qualquer momento, por colaborador, por EPI e por período.",
+  },
+  {
+    pergunta: "O fiscal consegue conferir se a ficha é verdadeira?",
+    resposta: "Consegue, e sem precisar de login. Cada entrega assinada leva um código impresso na ficha. Quem tiver o papel na mão digita esse código numa página pública do sistema e vê se aquela entrega existe mesmo — é a diferença entre um PDF qualquer e um documento conferível.",
+  },
+  {
+    pergunta: "Tem controle de estoque? E se eu tiver várias obras ou filiais?",
+    resposta: "Tem. O estoque é por unidade: você vê quanto cada obra ou filial tem de cada EPI, define um estoque mínimo e é avisado antes de faltar. As unidades também podem pedir material pelo próprio sistema. Não há limite de colaboradores nem de unidades.",
+  },
+  {
+    pergunta: "Como funciona a contratação e qual plano atende a minha empresa?",
+    resposta: "Hoje existe um plano único de Gestão de EPIs, cobrado por colaborador cadastrado por mês — sem taxa de implantação e sem fidelidade. Não há versão limitada: quem tem 20 colaboradores e quem tem 500 usam o mesmo sistema completo, pagando proporcionalmente. Use o simulador acima para ver o seu valor e chame no WhatsApp para começar.",
   },
 ];
 
@@ -254,9 +343,11 @@ export default function Planos() {
           <nav className="hidden items-center gap-7 text-[13px] font-semibold text-slate-600 md:flex">
             <a href="#comparativo" className="transition-colors hover:text-slate-950">Por que Digitalizar</a>
             <a href="#mobile-offline" className="transition-colors hover:text-slate-950">App 100% Offline</a>
+            <a href="#pilares" className="transition-colors hover:text-slate-950">Os 3 Pilares</a>
             <a href="#recursos" className="transition-colors hover:text-slate-950">Recursos</a>
             <a href="#como-funciona" className="transition-colors hover:text-slate-950">Como Funciona</a>
             <a href="#oferta" className="transition-colors hover:text-slate-950">Preços</a>
+            <a href="#seguranca" className="transition-colors hover:text-slate-950">Segurança</a>
             <a href="#faq" className="transition-colors hover:text-slate-950">Dúvidas</a>
           </nav>
 
@@ -436,6 +527,59 @@ export default function Planos() {
                 Para Baixar a Ficha em PDF
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/*
+        * ── OS TRÊS PILARES ──
+        *
+        * A página explicava muitos recursos e nenhum deles ficava na
+        * cabeça. Estes três são o que o comprador precisa levar embora: é
+        * o que ele vai ter de mostrar quando o fiscal chegar. O texto de
+        * cada um diz só o que o sistema faz hoje.
+        */}
+      <section id="pilares" className="border-b border-slate-200 bg-white py-16 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mx-auto max-w-3xl text-center">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+              O que o fiscal pede
+            </span>
+            <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+              Três coisas sustentam a entrega de um EPI
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+              Faltando qualquer uma delas, para a fiscalização e para a Justiça do
+              Trabalho é como se o equipamento não tivesse sido entregue.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {PILARES.map((pilar) => {
+              const Icone = pilar.icone;
+              return (
+                <div
+                  key={pilar.numero}
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 p-7 transition-all hover:border-emerald-500/50 hover:bg-white hover:shadow-lg"
+                >
+                  <span className="absolute -right-3 -top-4 text-7xl font-extrabold text-slate-200/70 transition-colors group-hover:text-emerald-100">
+                    {pilar.numero}
+                  </span>
+                  <div className="relative">
+                    <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+                      <Icone className="h-5 w-5" />
+                    </div>
+                    <h3 className="mt-4 text-lg font-bold text-slate-950">{pilar.titulo}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                      {pilar.texto}
+                    </p>
+                    <p className="mt-4 border-t border-slate-200 pt-3 text-xs font-semibold text-emerald-700">
+                      {pilar.semIsso}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -868,6 +1012,56 @@ export default function Planos() {
         </div>
       </section>
 
+      {/*
+        * ── SEGURANÇA DOS DADOS ──
+        *
+        * Quem compra para a empresa pergunta isso antes de assinar, e a
+        * página não respondia. Cada item aqui é coisa que já existe no
+        * sistema — separação por empresa feita no banco, perfis de acesso
+        * por módulo, conferência pública por código e backup automático.
+        * Nada sobre localização de servidor, que eu não tenho como
+        * afirmar.
+        */}
+      <section id="seguranca" className="border-b border-slate-200 bg-slate-50 py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="grid gap-10 lg:grid-cols-[1fr_1.3fr] lg:items-center lg:gap-16">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                Segurança e proteção de dados
+              </span>
+              <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+                Dado de colaborador é dado pessoal.
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+                A ficha de EPI guarda nome, função, assinatura e, às vezes, a foto
+                do trabalhador. O sistema foi montado tratando isso como o que é:
+                informação que precisa ficar guardada e separada.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {SEGURANCA.map((item) => {
+                const Icone = item.icone;
+                return (
+                  <div
+                    key={item.titulo}
+                    className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs"
+                  >
+                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white">
+                      <Icone className="h-4 w-4" />
+                    </div>
+                    <h3 className="mt-3 text-sm font-bold text-slate-950">{item.titulo}</h3>
+                    <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
+                      {item.texto}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── 9. PERGUNTAS FREQUENTES (FAQ) ── */}
       <section id="faq" className="border-b border-slate-200 bg-white py-16 sm:py-24">
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
@@ -880,7 +1074,7 @@ export default function Planos() {
             </h2>
           </div>
 
-          <div className="mt-10 space-y-4">
+          <div className="mt-10 space-y-4" data-testid="lista-faq">
             {PERGUNTAS_FREQUENTES.map((faq, idx) => {
               const aberto = faqAberto === idx;
               return (
