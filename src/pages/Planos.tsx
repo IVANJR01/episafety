@@ -153,6 +153,27 @@ const PILARES = [
   },
 ];
 
+/*
+ * ====== DEPOIMENTOS: PREENCHA AQUI ======
+ *
+ * Está vazio de propósito, e a seção inteira some da página enquanto
+ * estiver assim. Depoimento inventado é o jeito mais rápido de perder a
+ * venda — o comprador é técnico de segurança e conhece o mercado — e
+ * ainda cria problema jurídico.
+ *
+ * Para publicar um, peça autorização ao cliente e preencha:
+ *
+ *   { texto: "...", nome: "...", cargo: "...", empresa: "..." }
+ *
+ * Um depoimento real vale mais que dez escritos por nós.
+ */
+const DEPOIMENTOS: {
+  texto: string;
+  nome: string;
+  cargo: string;
+  empresa: string;
+}[] = [];
+
 /* Só o que existe no sistema hoje; conferido antes de escrever. */
 const SEGURANCA = [
   {
@@ -1061,6 +1082,47 @@ export default function Planos() {
           </div>
         </div>
       </section>
+
+      {/*
+        * ── O QUE OS CLIENTES DIZEM ──
+        *
+        * A seção só existe quando há depoimento de verdade em
+        * DEPOIMENTOS. Página de venda sem prova social é mais fraca —
+        * mas página com prova social inventada é pior.
+        */}
+      {DEPOIMENTOS.length > 0 && (
+        <section id="depoimentos" className="border-b border-slate-200 bg-white py-16 sm:py-24">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                Quem já usa
+              </span>
+              <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+                O que dizem os técnicos que fazem a entrega
+              </h2>
+            </div>
+
+            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {DEPOIMENTOS.map((dep) => (
+                <figure
+                  key={`${dep.nome}-${dep.empresa}`}
+                  className="flex flex-col rounded-2xl border border-slate-200 bg-slate-50/60 p-6"
+                >
+                  <blockquote className="flex-1 text-sm leading-relaxed text-slate-700">
+                    “{dep.texto}”
+                  </blockquote>
+                  <figcaption className="mt-5 border-t border-slate-200 pt-4">
+                    <p className="text-sm font-bold text-slate-950">{dep.nome}</p>
+                    <p className="text-xs text-slate-600">
+                      {dep.cargo} · {dep.empresa}
+                    </p>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── 9. PERGUNTAS FREQUENTES (FAQ) ── */}
       <section id="faq" className="border-b border-slate-200 bg-white py-16 sm:py-24">

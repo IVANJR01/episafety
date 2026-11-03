@@ -346,6 +346,18 @@ describe("as seções que decidem a compra", () => {
 });
 
 describe("a página não inventa prova social", () => {
+  it("a seção de depoimentos não aparece enquanto estiver vazia", async () => {
+    /*
+     * A estrutura existe e fica pronta: no dia em que houver um cliente
+     * real autorizando, é uma linha. Até lá a seção não ocupa espaço com
+     * título sem conteúdo embaixo.
+     */
+    await montar({ ...PLANO, precoPorVida: 2.5 }, "5588996349359");
+    expect(document.querySelector("#depoimentos"),
+      "apareceu seção de depoimentos sem depoimento nenhum").toBeNull();
+    expect(textoDaPagina()).not.toMatch(/O que dizem os técnicos/i);
+  });
+
   it("não há depoimento assinado por cliente nenhum", async () => {
     /*
      * Depoimento inventado é o jeito mais rápido de perder a venda e de

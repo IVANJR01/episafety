@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { execSync } from "child_process";
 import { writeFileSync, mkdirSync, readFileSync, readdirSync, statSync } from "fs";
+import { aplicarMetaDaPaginaDeVendas } from "./src/lib/metaDaPaginaDeVendas";
 
 /*
  * Identidade da versão publicada, gerada pelo build.
@@ -106,6 +107,31 @@ function listarArquivosDoPacote(raiz: string): string[] {
  * projeto — dá para ler e testar — e só o que ele não tem como saber sozinho
  * vem do build.
  */
+/**
+ * Gera dist/planos.html: o HTML próprio da página de vendas, com título,
+ * descrição e imagem que o WhatsApp lê ao colar o link. A troca das
+ * marcações é regra e mora em src/lib/metaDaPaginaDeVendas.ts, onde o
+ * teste alcança; aqui só se lê o arquivo, aplica e grava.
+ */
+function pluginPaginaDeVendas(id: string) {
+  return {
+    name: "episafety-pagina-de-vendas",
+    closeBundle() {
+      try {
+        const html = readFileSync(path.resolve(__dirname, "dist/index.html"), "utf-8");
+        writeFileSync(
+          path.resolve(__dirname, "dist/planos.html"),
+          aplicarMetaDaPaginaDeVendas(html, id),
+          "utf-8",
+        );
+        console.log("[episafety] dist/planos.html gerado para a prévia de link");
+      } catch (e) {
+        console.warn("[episafety] não foi possível gerar a página de vendas:", e);
+      }
+    },
+  };
+}
+
 function pluginServiceWorker(id: string) {
   return {
     name: "episafety-service-worker",
@@ -159,7 +185,12 @@ export default defineConfig(() => ({
       overlay: false,
     },
   },
-  plugins: [react(), pluginVersao(BUILD_ID), pluginServiceWorker(BUILD_ID)],
+  plugins: [
+    react(),
+    pluginVersao(BUILD_ID),
+    pluginPaginaDeVendas(BUILD_ID),
+    pluginServiceWorker(BUILD_ID),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
