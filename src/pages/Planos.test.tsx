@@ -11,7 +11,7 @@ import { MemoryRouter } from "react-router-dom";
 
 vi.mock("@/assets/logo-episafety.png", () => ({ default: "logo.png" }));
 vi.mock("/marca/ficha-epi-exemplo.png", () => ({ default: "ficha.png" }));
-vi.mock("/marca/mobile-entregas-tela-real.png", () => ({ default: "tela.png" }));
+vi.mock("/marca/mobile-entregas-real.png", () => ({ default: "tela.png" }));
 
 const PLANO = {
   id: "epi", nome: "Gestão de EPIs",
@@ -277,7 +277,7 @@ describe("o print do celular é tela de verdade", () => {
     const alts = Array.from(document.querySelectorAll("img"))
       .map((i) => i.getAttribute("alt") || "");
     expect(alts.some((a) => /ficha/i.test(a)), "a ficha ficou sem alt").toBe(true);
-    expect(alts.some((a) => /tela de entregas/i.test(a)), "o print ficou sem alt")
+    expect(alts.some((a) => /entregas de EPI/i.test(a)), "o print ficou sem alt")
       .toBe(true);
     expect(alts.every((a) => a.length > 0), "alguma imagem ficou sem alt").toBe(true);
   });

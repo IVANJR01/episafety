@@ -1,11 +1,35 @@
 {
   "version": 1,
   "skills": {
+    "artisan": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/artisan/SKILL.md",
+      "computedHash": "89eaf1be43f14c02134bbfe8ddec4192156bc9f3877ef5480bce6fc9ce7b2f8f"
+    },
+    "builder": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/builder/SKILL.md",
+      "computedHash": "dc927569699642b42d0bfa4099a6019a9c07e5320e112b219a1ebd47bf7119e0"
+    },
     "codebase-design": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/codebase-design/SKILL.md",
       "computedHash": "aa11a96c08451f4ff86052d5da94004a8c97bb4ea41b2ac8a4300c189f66c89c"
+    },
+    "darwin": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/darwin/SKILL.md",
+      "computedHash": "e879f6ca2d0f362d632c83faabea937ce79f3d88485359edb8338cabde49a9e8"
+    },
+    "flow": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/flow/SKILL.md",
+      "computedHash": "ec43907f63a075c5718005c6a4c4aa5d88a716d027f98922ccfec419a2e8db16"
     },
     "frontend-design": {
       "source": "anthropics/skills",
@@ -13,11 +37,77 @@
       "skillPath": "skills/frontend-design/SKILL.md",
       "computedHash": "106acf230014cbb43ca34e6410371321b56ca742f9ee0442e8ec05bf02eb0384"
     },
+    "frontend-desing": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/frontend-desing/SKILL.md",
+      "computedHash": "0fd4f6eff04267deb80daac3261ea6437feb44c5e88ce7887be31824cb603cb8"
+    },
+    "muse": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/muse/SKILL.md",
+      "computedHash": "828d05eb3129ebdc0f9a591695fb7af92f6263956d5877cf01d33c37e32b1020"
+    },
+    "nexus": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/nexus/SKILL.md",
+      "computedHash": "fffc78f17ce32cc1dab7c116a3363dd87f294dc4caf15411704a155bbfcbcb35"
+    },
+    "palette": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/palette/SKILL.md",
+      "computedHash": "a708e30c386660555b9a9408a439b9c2671007b06d909a1e7e1a07c5061e445a"
+    },
+    "radar": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/radar/SKILL.md",
+      "computedHash": "f4ec2dbf4a61b8daaffeb5757e6033e6a3c7d11b0753a8f2eca57c6de2e7dfc0"
+    },
+    "ripple": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/ripple/SKILL.md",
+      "computedHash": "6740a74ed9ba499900ac591f02876c5aeba54b23ef8e67207a23d9561f14d250"
+    },
+    "scout": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/scout/SKILL.md",
+      "computedHash": "97005a583195eb5dea6b1d9fcb524949d2030046b2c74d73aaf57275c4053a6e"
+    },
     "shadcn": {
       "source": "midudev/autoskills",
       "sourceType": "github",
       "skillPath": "packages/autoskills/skills-registry/shadcn/SKILL.md",
       "computedHash": "2d7bf36e581289fdcc3ffc592c1ec1d7457572baa72ba0d440229ef34bd7f6dd"
+    },
+    "sherpa": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/sherpa/SKILL.md",
+      "computedHash": "358e9073033d3a94187d08617335374a1f67f538468d6396a27434a0c3a13631"
+    },
+    "sigil": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/sigil/SKILL.md",
+      "computedHash": "753a650cf7d69a65440ce9fb7410368984f9a4d450e62dfc559414faf60a9511"
+    },
+    "thinking": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/thinking/SKILL.md",
+      "computedHash": "39839863a5a04e3d42165a1825451c192db2e7cf7630bd0e36d2e37191e2e839"
+    },
+    "vision": {
+      "source": "kintsukuro1/aplicacion_colegio",
+      "sourceType": "github",
+      "skillPath": "Aplicacion_Colegio/.github/skills/vision/SKILL.md",
+      "computedHash": "6de3d283161451eb165412ec7fb89ebf5dfba01ec41c0661e4ab27a29cf11d99"
     }
   }
 }
