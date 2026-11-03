@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import logo from "@/assets/logo-episafety.png";
 import fichaExemplo from "/marca/ficha-epi-exemplo.png";
-import mobileOfflineReal from "/marca/mobile-entrega-offline-real.jpg";
+import telaEntregasReal from "/marca/mobile-entregas-tela-real.png";
 import {
   PLANOS, precoFormatado, linkDoWhatsapp, algumPrecoDefinido,
   descontoPercentual, totalMensal, CONTATO,
@@ -395,10 +395,10 @@ export default function Planos() {
               Demonstração Prática do Balcão
             </span>
             <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              O EPI sai do estoque com CA conferido. A entrega sai assinada.
+              O histórico de EPI de cada colaborador, no bolso do almoxarife.
             </h2>
             <p className="mt-2 text-sm text-slate-600 sm:text-base">
-              Veja exatamente como o almoxarife faz a entrega no celular ou tablet em menos de 1 minuto:
+              Esta é a tela do sistema rodando no celular. Print de uso real, com os nomes trocados por fictícios:
             </p>
           </div>
 
@@ -409,8 +409,8 @@ export default function Planos() {
               <div className="relative w-full max-w-[320px] rounded-[2.5rem] border-[6px] border-slate-900 bg-slate-950 p-2 shadow-2xl shadow-slate-400/20">
                 <div className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-black">
                   <img
-                    src={mobileOfflineReal}
-                    alt="Tela do aplicativo SafetySoluções no celular no ato da entrega de EPI com assinatura digital em modo offline"
+                    src={telaEntregasReal}
+                    alt="Tela de entregas do SafetySoluções no celular, mostrando cada EPI com o número do CA, o motivo, a situação, a quantidade e a data de entrega"
                     className="w-full object-contain"
                     loading="lazy"
                   />
@@ -439,9 +439,9 @@ export default function Planos() {
                     1
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">Assinatura com o dedo na tela</h4>
+                    <h4 className="text-sm font-bold text-slate-900">O que cada colaborador tem, na hora</h4>
                     <p className="text-xs text-slate-600 mt-0.5">
-                      O colaborador assina diretamente na tela do celular no momento exato em que recebe o EPI.
+                      Nome do EPI, número do CA, quantidade, data e situação — como está no print ao lado.
                     </p>
                   </div>
                 </div>
@@ -451,9 +451,10 @@ export default function Planos() {
                     2
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">CA gravado na entrega</h4>
+                    <h4 className="text-sm font-bold text-slate-900">Entrega, troca e devolução no mesmo histórico</h4>
                     <p className="text-xs text-slate-600 mt-0.5">
-                      O número do Certificado de Aprovação e a validade cadastrada do EPI ficam gravados na entrega e saem impressos na ficha.
+                      Inclusive a devolução por desligamento. E uma devolução lançada errada pode ser desfeita,
+                      sem apagar o histórico do colaborador.
                     </p>
                   </div>
                 </div>
@@ -463,9 +464,9 @@ export default function Planos() {
                     3
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">Sincronização automática</h4>
+                    <h4 className="text-sm font-bold text-slate-900">Sem sinal, a entrega não para</h4>
                     <p className="text-xs text-slate-600 mt-0.5">
-                      Cada entrega fica gravada com segurança no aparelho. Quando reconectar ao Wi-Fi ou 4G, tudo sobe sozinho para a nuvem.
+                      A entrega fica gravada no próprio aparelho e sobe sozinha quando o Wi-Fi ou o 4G voltam.
                     </p>
                   </div>
                 </div>

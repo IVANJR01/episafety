@@ -11,6 +11,7 @@ import { MemoryRouter } from "react-router-dom";
 
 vi.mock("@/assets/logo-episafety.png", () => ({ default: "logo.png" }));
 vi.mock("/marca/ficha-epi-exemplo.png", () => ({ default: "ficha.png" }));
+vi.mock("/marca/mobile-entregas-tela-real.png", () => ({ default: "tela.png" }));
 
 const PLANO = {
   id: "epi", nome: "Gestão de EPIs",
@@ -248,5 +249,41 @@ describe("título da aba", () => {
     /* O link desta página circula sozinho; a aba não pode dizer só "Sistema". */
     await montar({ ...PLANO, precoPorVida: 2.5 }, "5588996349359");
     expect(document.title).toContain("EPIs");
+  });
+});
+
+describe("o print do celular é tela de verdade", () => {
+  /*
+   * A imagem anterior era um mockup desenhado: aparecia um celular com
+   * "CA: 43910 - Aprovado e Válido" e uma assinatura em letra cursiva que
+   * o sistema não produz. Pior, ela repetia em forma de imagem a mesma
+   * promessa de conferência de CA que foi retirada do texto — corrigir só
+   * as palavras teria deixado a mentira no desenho.
+   *
+   * Agora é um print do sistema rodando no celular, com os nomes dos
+   * colaboradores e da empresa trocados por fictícios: dado pessoal de
+   * terceiro não vai para página pública.
+   */
+  const comPreco = { ...PLANO, precoPorVida: 2.5, unidade: "por vida / mês" };
+
+  it("a página avisa que os nomes do print são fictícios", async () => {
+    await montar(comPreco, "5588996349359");
+    expect(textoDaPagina(), "sumiu o aviso de que os nomes foram trocados")
+      .toMatch(/nomes trocados por fict/i);
+  });
+
+  it("as duas imagens têm descrição para quem não enxerga", async () => {
+    await montar(comPreco, "5588996349359");
+    const alts = Array.from(document.querySelectorAll("img"))
+      .map((i) => i.getAttribute("alt") || "");
+    expect(alts.some((a) => /ficha/i.test(a)), "a ficha ficou sem alt").toBe(true);
+    expect(alts.some((a) => /tela de entregas/i.test(a)), "o print ficou sem alt")
+      .toBe(true);
+    expect(alts.every((a) => a.length > 0), "alguma imagem ficou sem alt").toBe(true);
+  });
+
+  it("não sobrou nenhuma afirmação de CA 'aprovado e válido'", async () => {
+    await montar(comPreco, "5588996349359");
+    expect(textoDaPagina()).not.toMatch(/aprovado e v[áa]lido/i);
   });
 });
