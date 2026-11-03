@@ -12,6 +12,8 @@ import { MemoryRouter } from "react-router-dom";
 vi.mock("@/assets/logo-episafety.png", () => ({ default: "logo.png" }));
 vi.mock("/marca/ficha-epi-exemplo.png", () => ({ default: "ficha.png" }));
 vi.mock("/marca/mobile-entregas-real.png", () => ({ default: "tela.png" }));
+vi.mock("/marca/tela-estoque-epis.png", () => ({ default: "estoque.png" }));
+vi.mock("/marca/tela-conferencia-publica.png", () => ({ default: "conferencia.png" }));
 
 const PLANO = {
   id: "epi", nome: "Gestão de EPIs",
@@ -395,5 +397,39 @@ describe("a promessa da página e o sistema andam juntos", () => {
         ? "a página promete recusar CA vencido, e o sistema deixou passar"
         : "o sistema recusa CA vencido e a página deixou de dizer isso",
     ).toBe(true);
+  });
+});
+
+describe("as telas do sistema na página", () => {
+  const comPreco = { ...PLANO, precoPorVida: 2.5, unidade: "por vida / mês" };
+
+  it("mostra estoque e conferência pública, e diz que não é desenho", async () => {
+    /*
+     * "O sistema controla EPI" não vende; ver a tela vende. As duas
+     * imagens saem do próprio código do sistema — uma renderizada com
+     * dados inventados, a outra é a página pública como está no ar.
+     */
+    await montar(comPreco, "5588996349359");
+    const alts = Array.from(document.querySelectorAll("img"))
+      .map((i) => i.getAttribute("alt") || "");
+    expect(alts.some((a) => /cadastro de EPIs/i.test(a)), "faltou a tela de estoque")
+      .toBe(true);
+    expect(alts.some((a) => /verificação de ficha/i.test(a)), "faltou a conferência")
+      .toBe(true);
+    expect(textoDaPagina()).toMatch(/não um desenho/i);
+  });
+
+  it("toda imagem de tela declara que o dado é fictício ou é pública", async () => {
+    /*
+     * Regra da página inteira: nenhuma imagem passa por dado de cliente
+     * sem avisar. Quatro imagens hoje — ficha, celular, estoque e a
+     * página pública.
+     */
+    await montar(comPreco, "5588996349359");
+    const texto = textoDaPagina();
+    expect((texto.match(/fict/gi) || []).length,
+      "alguma imagem ficou sem o aviso de dado fictício")
+      .toBeGreaterThanOrEqual(3);
+    expect(texto).toMatch(/página pública do sistema/i);
   });
 });

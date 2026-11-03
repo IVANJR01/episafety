@@ -10,6 +10,8 @@ import {
 import logo from "@/assets/logo-episafety.png";
 import fichaExemplo from "/marca/ficha-epi-exemplo.png";
 import mobileEntregasReal from "/marca/mobile-entregas-real.png";
+import telaEstoque from "/marca/tela-estoque-epis.png";
+import telaConferencia from "/marca/tela-conferencia-publica.png";
 import {
   PLANOS, precoFormatado, linkDoWhatsapp, algumPrecoDefinido,
   descontoPercentual, totalMensal, CONTATO,
@@ -365,6 +367,7 @@ export default function Planos() {
             <a href="#comparativo" className="transition-colors hover:text-slate-950">Por que Digitalizar</a>
             <a href="#mobile-offline" className="transition-colors hover:text-slate-950">App 100% Offline</a>
             <a href="#pilares" className="transition-colors hover:text-slate-950">Os 3 Pilares</a>
+            <a href="#telas" className="transition-colors hover:text-slate-950">As Telas</a>
             <a href="#recursos" className="transition-colors hover:text-slate-950">Recursos</a>
             <a href="#como-funciona" className="transition-colors hover:text-slate-950">Como Funciona</a>
             <a href="#oferta" className="transition-colors hover:text-slate-950">Preços</a>
@@ -811,6 +814,86 @@ export default function Planos() {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/*
+        * ── AS TELAS DO SISTEMA ──
+        *
+        * Dizer que o sistema controla EPI não basta: o comprador quer ver.
+        * As duas imagens são as telas DE VERDADE, geradas pelo próprio
+        * código do sistema — a de estoque com dados inventados, a de
+        * conferência é a página pública como ela está no ar agora. Não há
+        * desenho nenhum aqui.
+        */}
+      <section id="telas" className="border-b border-slate-200 bg-slate-50 py-16 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mx-auto max-w-3xl text-center">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+              O sistema por dentro
+            </span>
+            <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+              Estas são as telas, não um desenho
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+              Todas as imagens desta página saem do próprio sistema. Onde aparece
+              nome de pessoa ou de empresa, o dado é fictício.
+            </p>
+          </div>
+
+          <div className="mt-12 space-y-12">
+            {/* Estoque com CA e validade */}
+            <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center">
+              <figure className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-lg">
+                <img
+                  src={telaEstoque}
+                  alt="Tela de cadastro de EPIs do sistema, com nome, número do CA, categoria, fabricante, validade, valor e saldo em estoque de cada equipamento"
+                  className="w-full object-contain"
+                  loading="lazy"
+                />
+              </figure>
+              <div>
+                <h3 className="text-lg font-bold text-slate-950">
+                  Cada EPI com CA, validade e saldo
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  O cadastro guarda o número do CA, a validade, o fabricante e
+                  quanto ainda tem em estoque. Quando o saldo cai abaixo do mínimo
+                  que você definiu, o número aparece em vermelho — antes de faltar
+                  no balcão.
+                </p>
+                <p className="mt-3 text-xs font-medium text-slate-500">
+                  Equipamentos e valores fictícios.
+                </p>
+              </div>
+            </div>
+
+            {/* Conferência pública */}
+            <div className="grid gap-8 lg:grid-cols-[1fr_1.4fr] lg:items-center">
+              <div className="lg:order-2">
+                <h3 className="text-lg font-bold text-slate-950">
+                  O fiscal confere sem pedir login para ninguém
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  Cada entrega assinada leva um código impresso na ficha. Quem tem
+                  o papel na mão digita o código nesta página e vê se aquela
+                  entrega existe mesmo. É o que separa um PDF qualquer de um
+                  documento conferível.
+                </p>
+                <p className="mt-3 text-xs font-medium text-slate-500">
+                  Página pública do sistema, no ar agora.
+                </p>
+              </div>
+              <figure className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-lg lg:order-1">
+                <img
+                  src={telaConferencia}
+                  alt="Página pública de verificação de ficha de EPI, onde se digita o código impresso embaixo da assinatura para conferir a entrega"
+                  className="w-full object-contain"
+                  loading="lazy"
+                />
+              </figure>
+            </div>
           </div>
         </div>
       </section>
