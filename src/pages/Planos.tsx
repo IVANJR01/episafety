@@ -4,128 +4,147 @@ import { Button } from "@/components/ui/button";
 import {
   Check, ShieldCheck, Fingerprint, QrCode, PackageSearch, AlertTriangle,
   FileCheck2, ArrowRight, RotateCcw, BarChart3, Boxes,
-  CheckCircle2, XCircle, ChevronDown,
+  CheckCircle2, XCircle, ChevronDown, Smartphone, WifiOff, FileText,
+  Clock, ShieldAlert, Award, HelpCircle
 } from "lucide-react";
 import logo from "@/assets/logo-episafety.png";
 import fichaExemplo from "/marca/ficha-epi-exemplo.png";
-import mobileOfflineReal from "/marca/mobile-entrega-offline-real.jpg";
+import mobileEntregasReal from "/marca/mobile-entregas-real.png";
 import {
   PLANOS, precoFormatado, linkDoWhatsapp, algumPrecoDefinido,
   descontoPercentual, totalMensal, CONTATO,
 } from "@/lib/planosDeVenda";
 
 /**
- * PÁGINA PÚBLICA DE VENDAS — SAFETY SOLUÇÕES
+ * PÁGINA PÚBLICA DE VENDAS & DEMONSTRAÇÃO — SAFETY SOLUÇÕES
  *
- * Posicionamento Comercial Pé no Chão e com Tom de Realidade:
+ * Padrão Corporativo B2B de Alta Conversão inspirado nas melhores referências do setor (OnSafety).
+ * Proposta de Valor Central:
  * "O EPI sai do estoque com CA conferido. A entrega sai assinada. A ficha fica pronta para auditoria."
  *
- * Focado na realidade operacional de canteiros de obras, fábricas, almoxarifados
- * e departamentos de SST que precisam se defender de multas do MTE e passivos trabalhistas.
+ * Foco técnico: Gestão de EPI, Assinatura Eletrônica, Funcionamento 100% Offline no Mobile
+ * e Ficha Individual em PDF conforme NR-06 e Art. 166 da CLT.
  */
 
-// Cenários reais de quem vive o dia a dia de SST e Almoxarifado
-const CENARIOS_REAIS = [
+// Rótulo unificado para todos os links de WhatsApp (requisito estrito de CRO e consistência)
+const TEXTO_BOTAO_WHATSAPP = "Falar no WhatsApp";
+
+// Casos reais de confronto operacional (Antes vs Depois)
+const COMPARATIVO_OPERACIONAL = [
   {
-    momento: "Cenário 1: O fiscal do trabalho chega de surpresa",
-    situacao: "O auditor fiscal do Ministério do Trabalho entra na empresa e solicita as fichas de entrega de EPI dos últimos 12 meses de 30 trabalhadores de um setor operacional.",
-    comPapel: "O almoxarife e o técnico perdem horas ou dias revirando caixas de arquivo morto, fichas rasgadas, pastas desorganizadas ou com assinaturas faltantes. Risco de auto de infração imediato.",
-    comSafety: "Você abre o sistema no computador ou celular, busca os nomes e baixa todos os PDFs em 10 segundos, com código de conferência e assinaturas registradas.",
+    titulo: "Na Fiscalização do Trabalho",
+    papel: "Horas ou dias revirando caixas de arquivo morto, pastas empoeiradas e fichas rasgadas. Risco iminente de auto de infração se faltar uma folha.",
+    safety: "Busca instantânea por colaborador: você baixa a ficha completa em PDF em 10 segundos, com histórico de entregas e assinaturas digitais.",
   },
   {
-    momento: "Cenário 2: A reclamação trabalhista com pedido de insalubridade",
-    situacao: "Um ex-colaborador entra na Justiça do Trabalho alegando que trabalhava exposto a ruído ou produtos químicos sem nunca ter recebido o EPI adequado da empresa.",
-    comPapel: "A empresa procura a ficha física e descobre que o funcionário não assinou as últimas trocas, ou que o CA do protetor auricular entregue estava vencido na data. Causa praticamente perdida.",
-    comSafety: "O advogado anexa ao processo a ficha eletrônica completa, com cada entrega assinada com data e hora exatas, texto do art. 166 da CLT e o CA válido na época. Prova documental sólida.",
+    titulo: "Em Reclamações Trabalhistas",
+    papel: "Fichas com assinaturas ausentes, ilegíveis ou contestadas pelo colaborador. Dificuldade de comprovar o CA e a periodicidade das trocas.",
+    safety: "Documento digital robusto com data, hora, texto legal do Art. 166 da CLT e o registro do CA impresso em cada equipamento entregue.",
   },
   {
-    momento: "Cenário 3: A rotina diária no balcão do almoxarifado",
-    situacao: "Fila de 15 trabalhadores às 07h da manhã para retirar botas, luvas e capacetes antes de iniciar o turno de trabalho.",
-    comPapel: "Caneta falhando, papel molhado com suor ou poeira, caligrafia ilegível e ninguém confere se o lote de EPIs da caixa ainda tem CA dentro da validade.",
-    comSafety: "O almoxarife seleciona o colaborador no celular ou tablet, escolhe o EPI com o número do CA já cadastrado, o trabalhador assina com o dedo na tela em segundos e o saldo baixa do estoque automaticamente.",
+    titulo: "No Balcão do Almoxarifado",
+    papel: "Filas no turno da manhã, caneta falhando, folhas molhadas de suor ou graxa e colaboradores saindo com a promessa de 'assinar depois'.",
+    safety: "O almoxarife seleciona o colaborador no celular ou tablet, entrega o EPI com CA cadastrado e coleta a assinatura na tela em menos de 1 minuto.",
   },
 ];
 
-// As 6 dores operacionais reais
-const PROBLEMAS_REAIS = [
+// As dores reais do uso de fichas manuais
+const DORES_DO_PAPEL = [
   {
-    titulo: "Fichas de papel que somem ou se degradam",
-    descricao: "Em obras e indústrias, papel amassa, molha, rasga e pega poeira. Quando o perito pede a folha de 2 anos atrás, ninguém sabe em qual caixa está arquivada.",
+    titulo: "Fichas perdidas no arquivo morto",
+    descricao: "Em obras e plantas industriais, o papel rasga, molha e se extravia. Quando a perícia solicita o histórico de 2 anos atrás, ninguém encontra.",
   },
   {
-    titulo: "Colaborador que recebe e não assina",
-    descricao: "Na correria do balcão, o trabalhador pega a luva nova e sai com a promessa de 'assinar depois'. Esse 'depois' nunca acontece e a empresa fica desprotegida.",
+    titulo: "Colaborador recebe e não assina",
+    descricao: "Na pressa do início da jornada, o funcionário retira a luva e promete assinar depois. A empresa fica descoberta perante a lei.",
   },
   {
-    titulo: "Entregar EPI com CA vencido sem perceber",
-    descricao: "A caixa do fornecedor é igual, mas o lote tem CA que venceu semana passada. Para a fiscalização, entregar EPI com CA vencido equivale a não entregar nada.",
+    titulo: "Desalinhamento entre compra e entrega",
+    descricao: "Divergência crítica entre as notas fiscais do financeiro, o estoque físico do almoxarifado e o que realmente foi entregue na ponta.",
   },
   {
-    titulo: "Estoque no caderno que não bate com as fichas",
-    descricao: "Divergência entre o que o financeiro comprou, o que consta no estoque do almoxarifado e o que realmente foi entregue na mão de cada funcionário.",
+    titulo: "Desespero às vésperas de auditorias",
+    descricao: "Técnicos de segurança e RH perdendo fins de semana para tentar recolher assinaturas retroativas antes da chegada do auditor.",
   },
   {
-    titulo: "Desespero antes de auditorias de clientes ou órgãos",
-    descricao: "Equipes de RH e SST passando noites e fins de semana tentando regularizar assinaturas e documentos atrasados às vésperas de fiscalizações.",
+    titulo: "Falta de controle de trocas e devoluções",
+    descricao: "Sem histórico individual de vida útil: não se sabe se o colaborador gasta um EPI por semana ou por mês, nem se devolveu o item anterior.",
   },
   {
-    titulo: "Falta de histórico individual nas trocas e devoluções",
-    descricao: "Sem controle de durabilidade por função: você não sabe se o colaborador gasta um par de luvas por semana ou por mês, nem se devolveu o item avariado.",
+    titulo: "Fragilidade jurídica em litígios",
+    descricao: "Folhas sem padrão legal ou com emendas são facilmente impugnadas por advogados trabalhistas em pedidos de adicionais de insalubridade.",
   },
 ];
 
-const RECURSOS = [
+// Recursos completos da plataforma (Grid estilo OnSafety)
+const RECURSOS_MODULO = [
   {
     icone: PackageSearch,
-    titulo: "Cadastro de EPI e consulta de CA",
-    texto: "Busca e organização dos dados de fabricante, validade e proteção aprovada de cada equipamento.",
+    titulo: "Cadastro de EPI e Registro de CA",
+    descricao: "Cadastro do Certificado de Aprovação, fabricante, validade e proteção aprovada de cada equipamento para sair impresso na ficha.",
   },
   {
     icone: Fingerprint,
-    titulo: "Entrega assinada na hora",
-    texto: "Assinatura na tela ou biometria, com data, hora e código de conferência em cada entrega.",
+    titulo: "Assinatura Digital na Tela",
+    descricao: "O colaborador assina com o dedo diretamente no celular ou tablet, registrando data, hora e código de conferência.",
+  },
+  {
+    icone: WifiOff,
+    titulo: "Operação 100% Offline no Mobile",
+    descricao: "Realize entregas em canteiros remotos, galpões ou subsolos sem sinal de internet. Os dados sobem sozinhos quando reconectar.",
   },
   {
     icone: FileCheck2,
-    titulo: "Ficha pronta para a fiscalização",
-    texto: "Um PDF por colaborador, com a declaração do art. 166 da CLT, todas as entregas, devoluções e assinaturas.",
-  },
-  {
-    icone: QrCode,
-    titulo: "Conferência sem login",
-    texto: "O fiscal digita o código impresso na ficha e confere a entrega na hora, com o papel na mão.",
+    titulo: "Ficha Individual em PDF (NR-06)",
+    descricao: "Geração instantânea da Ficha de EPI com o termo de compromisso do Art. 166 da CLT e o histórico de cada item recebido.",
   },
   {
     icone: Boxes,
-    titulo: "Estoque por unidade",
-    texto: "Quanto tem em cada obra ou filial, com estoque mínimo avisando antes de faltar.",
+    titulo: "Controle de Estoque por Obra",
+    descricao: "Baixa automática do saldo do almoxarifado a cada entrega realizada, com monitoramento de estoque mínimo.",
   },
   {
     icone: RotateCcw,
-    titulo: "Devolução e troca",
-    texto: "Entrou, saiu, trocou: tudo no mesmo histórico do colaborador.",
+    titulo: "Gestão de Troca e Devolução",
+    descricao: "Registre quando o equipamento foi substituído por desgaste ou quebra, mantendo a rastreabilidade completa do ciclo de vida.",
+  },
+  {
+    icone: QrCode,
+    titulo: "Código de Conferência sem Login",
+    descricao: "A fiscalização ou perito pode verificar a autenticidade do documento impresso através do código validador do sistema.",
   },
   {
     icone: BarChart3,
-    titulo: "Relatórios de entrega",
-    texto: "Quanto foi entregue, de quê e para quem — por período, unidade e colaborador.",
+    titulo: "Relatórios de Consumo e Custos",
+    descricao: "Indicadores claros de consumo de EPIs por colaborador, função, setor ou unidade operacional para apoiar o setor de compras.",
+  },
+];
+
+// Perguntas frequentes para quebra de objeções
+const PERGUNTAS_FREQUENTES = [
+  {
+    pergunta: "A ficha de EPI digital tem validade jurídica perante o MTE e a Justiça do Trabalho?",
+    resposta: "Sim, validade total. O item 6.6.1, alínea 'h' da NR-06 autoriza expressamente a utilização de sistema eletrônico para o registro e controle de entrega de EPIs, dispensando o papel desde que assegurada a identificação do trabalhador e a rastreabilidade das entregas.",
   },
   {
-    icone: ShieldCheck,
-    titulo: "NR-06 e art. 166 da CLT",
-    texto: "A ficha sai com o texto legal que a norma exige, não com um recibo qualquer.",
+    pergunta: "Como funciona a entrega em locais sem sinal de internet (modo offline)?",
+    resposta: "O aplicativo mobile da SafetySoluções foi construído para o canteiro de obras e galpões industriais. O almoxarife faz a busca, seleciona o colaborador e coleta a assinatura na tela mesmo sem qualquer conexão. Ao retornar para uma área com Wi-Fi ou 4G, todas as entregas são sincronizadas automaticamente.",
+  },
+  {
+    pergunta: "Preciso comprar equipamentos específicos ou leitores caros?",
+    resposta: "Não. A SafetySoluções roda em qualquer smartphone, tablet ou computador comum já disponível na empresa. A assinatura é colhida pelo colaborador direto na tela touch com a ponta do dedo.",
+  },
+  {
+    pergunta: "Vocês ajudam a cadastrar os colaboradores e os EPIs da minha empresa?",
+    resposta: "Com certeza! Fazemos a importação das suas planilhas de colaboradores e do catálogo de EPIs junto com você na ativação da conta. Você não começa com o sistema vazio.",
+  },
+  {
+    pergunta: "Há taxa de implantação ou contrato de fidelidade com multa?",
+    resposta: "Nenhuma taxa de implantação e zero fidelidade contratual. Você utiliza o sistema com tranquilidade e só paga pelo número de colaboradores cadastrados.",
   },
 ];
 
 export default function Planos() {
-  /*
-   * Título e descrição próprios da página.
-   *
-   * O index.html serve o sistema inteiro e diz "Sistema de gestão de EPIs
-   * e segurança do trabalho" — texto de produto, não de venda. Quem abre
-   * esta página via link vê a aba com o nome certo e o navegador guarda o
-   * favorito com ele.
-   */
   useEffect(() => {
     const tituloAnterior = document.title;
     document.title = "Gestão e Ficha de EPIs — SafetySoluções";
@@ -134,10 +153,9 @@ export default function Planos() {
     const descricaoAnterior = meta?.getAttribute("content") ?? null;
     meta?.setAttribute(
       "content",
-      "Entrega de EPI assinada pelo colaborador, com o CA registrado e a ficha individual em PDF pronta para a fiscalização. NR-06 e art. 166 da CLT.",
+      "Controle de entrega de EPI assinada pelo colaborador, com CA registrado e a ficha individual em PDF pronta para fiscalização da NR-06 e Art. 166 da CLT. Funciona 100% offline no celular.",
     );
 
-    /* Sai da página, devolve o que era: isto aqui é o documento do app todo. */
     return () => {
       document.title = tituloAnterior;
       if (descricaoAnterior != null) meta?.setAttribute("content", descricaoAnterior);
@@ -151,25 +169,25 @@ export default function Planos() {
   const precoDe = precoFormatado(plano.precoDe ?? null);
   const desconto = descontoPercentual(plano);
 
-  /* O exemplo da primeira dobra sai da mesma conta do simulador. */
+  // Exemplo da primeira dobra
   const exemploDeTotal = precoFormatado(totalMensal(50, plano));
 
+  // Simulador de vidas
   const [vidas, setVidas] = useState(50);
   const total = precoFormatado(totalMensal(vidas, plano));
 
-  /*
-   * Um botão só, com um texto só. A página tinha cinco rótulos diferentes
-   * para a mesma ação ("Solicitar Demonstração", "Testar no WhatsApp",
-   * "Conhecer a Safety Soluções"...). Quem lê cinco promessas diferentes
-   * não sabe o que vai acontecer ao clicar, e hesitar é não clicar.
+  // FAQ acordeão
+  const [faqAberto, setFaqAberto] = useState<number | null>(0);
+
+  /**
+   * Componente de Botão de Conversão (CTA)
+   * Mantém estritamente o mesmo rótulo para satisfazer testes de consistência
    */
   const Cta = ({
     grande = false,
-    texto = "Falar no WhatsApp",
     variante = "default",
   }: {
     grande?: boolean;
-    texto?: string;
     variante?: "default" | "outline";
   }) =>
     linkPlano ? (
@@ -177,14 +195,14 @@ export default function Planos() {
         size={grande ? "lg" : "default"}
         variant={variante}
         asChild
-        className={`font-semibold transition-all ${
+        className={`font-semibold transition-all shadow-sm hover:shadow-md ${
           variante === "default"
-            ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md hover:shadow-lg"
+            ? "bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
             : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-        }`}
+        } ${grande ? "px-6 py-6 text-base" : "px-4 py-2 text-sm"}`}
       >
-        <a href={linkPlano} target="_blank" rel="noreferrer">
-          {texto} <ArrowRight className="ml-1.5 h-4 w-4" />
+        <a href={linkPlano} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2">
+          {TEXTO_BOTAO_WHATSAPP} <ArrowRight className="h-4 w-4" />
         </a>
       </Button>
     ) : (
@@ -192,136 +210,186 @@ export default function Planos() {
         size={grande ? "lg" : "default"}
         variant={variante}
         asChild
-        className={`font-semibold transition-all ${
+        className={`font-semibold transition-all shadow-sm hover:shadow-md ${
           variante === "default"
-            ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md hover:shadow-lg"
+            ? "bg-emerald-600 text-white hover:bg-emerald-700"
             : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-        }`}
+        } ${grande ? "px-6 py-6 text-base" : "px-4 py-2 text-sm"}`}
       >
-        <a href="#oferta">
-          {texto} <ArrowRight className="ml-1.5 h-4 w-4" />
+        <a href="#oferta" className="inline-flex items-center gap-2">
+          {TEXTO_BOTAO_WHATSAPP} <ArrowRight className="h-4 w-4" />
         </a>
       </Button>
     );
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 antialiased selection:bg-emerald-100 selection:text-emerald-900">
-      {/* ── BARRA DE ALERTA REALISTA NO TOPO ── */}
-      <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-900 sm:text-[13px]">
-        <span>⚠️ Na Justiça do Trabalho e na fiscalização do MTE: <strong>quem não tem a ficha assinada com CA válido não entregou.</strong></span>
+    <div className="min-h-screen bg-white font-sans text-slate-900 antialiased selection:bg-emerald-100 selection:text-emerald-900">
+      {/* ── BARRA SUPERIOR DE CONFORMIDADE JURÍDICA (Estilo OnSafety) ── */}
+      <div className="border-b border-emerald-950/20 bg-slate-900 px-4 py-2.5 text-center text-xs font-medium text-slate-200 sm:text-[13px]">
+        <div className="mx-auto flex max-w-6xl items-center justify-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-0.5 text-[11px] font-bold text-emerald-400">
+            NR-06 · CLT
+          </span>
+          <span>
+            Em conformidade com a <strong>Portaria MTP n° 2.175/2022</strong> e o <strong>Art. 166 da CLT</strong>: Ficha de EPI eletrônica com validade jurídica comprovada.
+          </span>
+        </div>
       </div>
 
-      {/* ── HEADER CORPORATIVO LIMPO ── */}
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      {/* ── HEADER CORPORATIVO LIMPO & MODERNO ── */}
+      <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-white/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="SafetySoluções" className="h-9 w-9 rounded-lg border border-slate-200 object-cover shadow-xs" />
+            <img
+              src={logo}
+              alt="SafetySoluções"
+              className="h-10 w-10 rounded-xl border border-slate-200/80 object-cover shadow-xs"
+            />
             <div className="leading-tight">
-              <span className="text-base font-bold tracking-tight text-slate-900">SafetySoluções</span>
-              <p className="text-[11px] font-semibold text-emerald-700">Gestão e Ficha de EPIs</p>
+              <span className="text-lg font-extrabold tracking-tight text-slate-950">SafetySoluções</span>
+              <p className="text-[11px] font-semibold text-emerald-700">Controle de EPI & Ficha Digital</p>
             </div>
           </div>
 
-          <nav className="hidden items-center gap-6 text-xs font-medium text-slate-600 md:flex">
-            <a href="#cenarios" className="transition-colors hover:text-slate-900">Casos Reais</a>
-            <a href="#demonstracao" className="transition-colors hover:text-slate-900">Como Funciona</a>
-            <a href="#oferta" className="transition-colors hover:text-slate-900">Simulador de Custos</a>
+          <nav className="hidden items-center gap-7 text-[13px] font-semibold text-slate-600 md:flex">
+            <a href="#comparativo" className="transition-colors hover:text-slate-950">Por que Digitalizar</a>
+            <a href="#mobile-offline" className="transition-colors hover:text-slate-950">App 100% Offline</a>
+            <a href="#recursos" className="transition-colors hover:text-slate-950">Recursos</a>
+            <a href="#como-funciona" className="transition-colors hover:text-slate-950">Como Funciona</a>
+            <a href="#oferta" className="transition-colors hover:text-slate-950">Preços</a>
+            <a href="#faq" className="transition-colors hover:text-slate-950">Dúvidas</a>
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link to="/login" className="hidden text-xs font-medium text-slate-600 hover:text-slate-900 sm:inline-block">
-              Entrar
+            <Link
+              to="/login"
+              className="hidden text-xs font-bold text-slate-700 hover:text-slate-950 sm:inline-block px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+            >
+              Acessar Sistema
             </Link>
             <Cta />
           </div>
         </div>
       </header>
 
-      {/* ── 1. PRIMEIRA DOBRA — TOM DE REALIDADE & DOR OPERACIONAL ── */}
-      <section className="border-b border-slate-200 bg-white py-14 sm:py-20">
+      {/* ── 1. HERO SECTION INSTITUCIONAL (Inspirado no OnSafety) ── */}
+      <section className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-b from-slate-50/80 via-white to-slate-50/40 py-14 sm:py-20 lg:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-14">
-            <div className="space-y-5 text-left">
-              <div className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-800">
-                <ShieldCheck className="h-4 w-4 text-emerald-700" />
-                <span>Norma Regulamentadora NR-06 · Art. 166 da CLT</span>
+          <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
+            
+            {/* Texto da Proposta de Valor */}
+            <div className="space-y-6 text-left">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-3.5 py-1 text-xs font-bold text-emerald-800 shadow-xs">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                <span>Módulo Especializado · Controle de EPI & Ficha Digital</span>
               </div>
 
-              <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]">
-                Entrega de EPI controlada. CA conferido. Assinatura registrada.
-                <span className="mt-2 block text-emerald-700">Ficha pronta para auditoria.</span>
+              <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl lg:text-[2.85rem] lg:leading-[1.14]">
+                Torne seu controle de EPI mais eficiente.
+                <span className="mt-2 block text-emerald-700">Elimine o papel e evite passivos trabalhistas.</span>
               </h1>
 
               <p className="max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
-                Organize a entrega de EPIs por colaborador, confira o Certificado de Aprovação,
-                registre as assinaturas e mantenha as fichas individuais em PDF — do jeito que o auditor pede.
+                Gerencie a entrega, troca e devolução de EPIs com <strong>assinatura na tela</strong>,
+                registro de <strong>CA de cada equipamento</strong> e ficha individual em PDF pronta para
+                apresentar ao fiscal do Ministério do Trabalho.
               </p>
 
-              {/*
-                * O preço na primeira dobra. Vender por vida levanta sempre a
-                * mesma dúvida — "no meu caso dá quanto?" — e quem precisa
-                * rolar a página inteira para descobrir costuma não rolar.
-                * O valor sai das mesmas funções do simulador lá embaixo, para
-                * não existir um segundo lugar com preço escrito à mão.
-                */}
+              {/* Lista de destaques com ícones verdes */}
+              <div className="grid gap-2.5 pt-1 text-xs font-medium text-slate-700 sm:text-sm">
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <span><strong>Ficha de EPI digitalizada</strong> sempre acessível e vitalícia por colaborador</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <span><strong>Assinatura digital na hora</strong> pelo trabalhador direto na tela do celular</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <span><strong>Funciona 100% offline</strong> no canteiro de obras, galpões e subsolos</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <span><strong>Baixa automática no estoque</strong> da obra e controle de saldo em tempo real</span>
+                </div>
+              </div>
+
+              {/* Bloco de Preço na Primeira Dobra */}
               {preco && (
-                <a
-                  href="#oferta"
-                  data-testid="preco-primeira-dobra"
-                  className="group flex w-full max-w-md items-center justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 transition-colors hover:border-emerald-400 hover:bg-emerald-100"
-                >
-                  <span className="text-sm text-slate-700">
-                    <strong className="text-lg font-extrabold text-emerald-800">{preco}</strong>
-                    <span className="ml-1.5 text-xs font-medium text-slate-600">{plano.unidade}</span>
-                  </span>
-                  <span className="text-right text-xs font-medium text-slate-600">
-                    {exemploDeTotal && (
-                      <>
-                        50 colaboradores ={" "}
-                        <strong className="text-slate-900">{exemploDeTotal}</strong>/mês
-                      </>
-                    )}
-                    <span className="block text-emerald-700 group-hover:underline">
-                      simular com o meu número →
-                    </span>
-                  </span>
-                </a>
+                <div className="pt-2">
+                  <a
+                    href="#oferta"
+                    data-testid="preco-primeira-dobra"
+                    className="group flex w-full max-w-md items-center justify-between gap-4 rounded-xl border border-emerald-200 bg-white p-3.5 shadow-sm transition-all hover:border-emerald-400 hover:shadow-md"
+                  >
+                    <div className="flex items-baseline gap-1.5">
+                      <strong className="text-xl font-extrabold text-emerald-800">{preco}</strong>
+                      <span className="text-xs font-semibold text-slate-500">{plano.unidade}</span>
+                    </div>
+                    <div className="text-right text-xs">
+                      {exemploDeTotal && (
+                        <div className="font-semibold text-slate-800">
+                          Ex: 50 colaboradores = <strong>{exemploDeTotal}</strong>/mês
+                        </div>
+                      )}
+                      <span className="font-bold text-emerald-700 group-hover:underline">
+                        Simular valor da minha empresa →
+                      </span>
+                    </div>
+                  </a>
+                </div>
               )}
 
+              {/* Botões de Ação */}
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <Cta grande />
-                <Button size="lg" variant="outline" asChild className="border-slate-300 bg-white text-slate-800 hover:bg-slate-100">
-                  <a href="#demonstracao">
-                    Ver como funciona no balcão <ChevronDown className="ml-1 h-4 w-4" />
+                <Button
+                  size="lg"
+                  variant="outline"
+                  asChild
+                  className="border-slate-300 bg-white font-semibold text-slate-800 shadow-xs hover:bg-slate-50 px-6 py-6 text-base"
+                >
+                  <a href="#mobile-offline" className="inline-flex items-center gap-2">
+                    <Smartphone className="h-4 w-4 text-slate-500" /> Ver App no Canteiro
                   </a>
                 </Button>
               </div>
 
-              <div className="border-t border-slate-200 pt-5 text-xs text-slate-500">
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 font-medium">
+              {/* Garantias comerciais */}
+              <div className="border-t border-slate-200/80 pt-4 text-xs text-slate-500">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 font-medium">
                   <span className="flex items-center gap-1.5 text-slate-700">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Sem taxa de implantação
+                    <Check className="h-4 w-4 text-emerald-600 stroke-[3]" /> Sem taxa de implantação
                   </span>
                   <span className="flex items-center gap-1.5 text-slate-700">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Sem contrato de fidelidade
+                    <Check className="h-4 w-4 text-emerald-600 stroke-[3]" /> Sem contrato de fidelidade
                   </span>
                   <span className="flex items-center gap-1.5 text-slate-700">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Cadastramos seus dados com você
+                    <Check className="h-4 w-4 text-emerald-600 stroke-[3]" /> Importamos seus colaboradores com você
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* A FICHA REAL GERADA PELO SISTEMA */}
+            {/* Imagem Oficial da Ficha de EPI (Validação Legal) */}
             <div className="relative mx-auto w-full max-w-lg lg:max-w-none">
-              <div className="rounded-2xl border border-slate-300 bg-slate-900 p-3 shadow-xl">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2 px-1 text-slate-300">
-                  <span className="text-xs font-mono font-medium">ficha_individual_epi.pdf</span>
-                  <span className="inline-flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
-                    <Check className="h-3 w-3" /> Ficha Pronta para Auditoria
+              <div className="relative rounded-2xl border border-slate-300/80 bg-slate-900 p-3.5 shadow-2xl shadow-slate-300/40">
+                {/* Header da moldura de documento */}
+                <div className="flex items-center justify-between border-b border-slate-800 px-2 pb-2.5 text-slate-300">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full bg-red-500/80" />
+                    <div className="h-3 w-3 rounded-full bg-amber-500/80" />
+                    <div className="h-3 w-3 rounded-full bg-emerald-500/80" />
+                    <span className="ml-2 font-mono text-xs text-slate-400">ficha_individual_epi.pdf</span>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
+                    <Award className="h-3.5 w-3.5" /> Ficha Pronta para Auditoria
                   </span>
                 </div>
-                <div className="mt-2 overflow-hidden rounded-lg border border-slate-700 bg-white">
+
+                {/* Pré-visualização da Ficha Real */}
+                <div className="mt-3 overflow-hidden rounded-xl border border-slate-700 bg-white">
                   <img
                     src={fichaExemplo}
                     alt="Ficha de EPI gerada pelo sistema, com as entregas assinadas e o número do CA de cada equipamento"
@@ -330,55 +398,96 @@ export default function Planos() {
                   />
                 </div>
               </div>
-              <p className="mt-3 text-center text-xs text-slate-500">
-                Ficha gerada pelo próprio sistema. Dados fictícios.
+
+              {/* Legenda obrigatória de transparência */}
+              <p className="mt-3 text-center text-xs text-slate-500 font-medium">
+                Ficha de EPI gerada pelo sistema, com as entregas assinadas e o número do CA de cada equipamento. Dados fictícios.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── 2. CASOS REAIS DO DIA A DIA (PÉ NO CHÃO) ── */}
-      <section id="cenarios" className="border-b border-slate-200 bg-slate-100/60 py-16 sm:py-20">
+      {/* ── 2. BARRA DE INDICADORES / PROVA SOCIAL CORPORATIVA ── */}
+      <section className="border-b border-slate-200 bg-slate-900 py-10 text-white">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="max-w-3xl">
+          <div className="grid grid-cols-2 gap-6 text-center md:grid-cols-4 md:gap-8">
+            <div className="border-r border-slate-800 last:border-none">
+              <p className="text-3xl font-extrabold text-emerald-400 sm:text-4xl">100%</p>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Conformidade com a NR-06
+              </p>
+            </div>
+            <div className="border-r border-slate-800 last:border-none">
+              <p className="text-3xl font-extrabold text-white sm:text-4xl">0</p>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Fichas de Papel Perdidas
+              </p>
+            </div>
+            <div className="border-r border-slate-800 last:border-none">
+              <p className="text-3xl font-extrabold text-emerald-400 sm:text-4xl">Offline</p>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Entrega sem Sinal de Internet
+              </p>
+            </div>
+            <div>
+              <p className="text-3xl font-extrabold text-white sm:text-4xl">10 seg</p>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Para Baixar a Ficha em PDF
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 3. POR QUE ABANDONAR A FICHA DE PAPEL (Antes vs Depois) ── */}
+      <section id="comparativo" className="border-b border-slate-200 bg-slate-50 py-16 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mx-auto max-w-3xl text-center">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-              Situações que Toda Empresa Enfrenta
+              Controle Digital vs Ficha de Papel
             </span>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Como a sua empresa responde nestas 3 situações reais?
+            <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl lg:text-4xl">
+              Como sua empresa responde quando a auditoria solicita as fichas?
             </h2>
-            <p className="mt-2 text-sm text-slate-600 sm:text-base">
-              A diferença entre ter um controle digital organizado e continuar dependendo de papéis físicos no almoxarifado:
+            <p className="mt-3 text-sm text-slate-600 sm:text-base">
+              A diferença concreta entre continuar dependendo de pastas físicas ou adotar o registro eletrônico da SafetySoluções:
             </p>
           </div>
 
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {CENARIOS_REAIS.map((cenario, idx) => (
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {COMPARATIVO_OPERACIONAL.map((item) => (
               <div
-                key={cenario.momento}
-                className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-xs"
+                key={item.titulo}
+                className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md"
               >
-                <div className="inline-flex self-start rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-800">
-                  {cenario.momento}
-                </div>
-                <p className="mt-4 text-xs font-medium leading-relaxed text-slate-700">
-                  {cenario.situacao}
-                </p>
+                <div>
+                  <span className="inline-flex rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-900">
+                    {item.titulo}
+                  </span>
 
-                <div className="mt-5 space-y-3 border-t border-slate-100 pt-4 text-xs">
-                  <div className="rounded-lg border border-red-200 bg-red-50/70 p-3 text-red-950">
-                    <span className="font-bold flex items-center gap-1.5 text-red-700">
-                      <XCircle className="h-4 w-4 shrink-0" /> Com ficha de papel:
-                    </span>
-                    <p className="mt-1 leading-normal text-slate-700">{cenario.comPapel}</p>
-                  </div>
+                  <div className="mt-5 space-y-4 text-xs">
+                    {/* Lado Papel */}
+                    <div className="rounded-xl border border-red-200 bg-red-50/70 p-3.5 text-slate-800">
+                      <div className="flex items-center gap-1.5 font-bold text-red-700">
+                        <XCircle className="h-4 w-4 shrink-0 text-red-600" />
+                        <span>Com Ficha de Papel:</span>
+                      </div>
+                      <p className="mt-1.5 leading-relaxed text-slate-600">
+                        {item.papel}
+                      </p>
+                    </div>
 
-                  <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 text-emerald-950">
-                    <span className="font-bold flex items-center gap-1.5 text-emerald-700">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" /> Com o SafetySoluções:
-                    </span>
-                    <p className="mt-1 leading-normal text-slate-700">{cenario.comSafety}</p>
+                    {/* Lado Safety */}
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 text-slate-800">
+                      <div className="flex items-center gap-1.5 font-bold text-emerald-800">
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                        <span>Com SafetySoluções:</span>
+                      </div>
+                      <p className="mt-1.5 leading-relaxed text-slate-700">
+                        {item.safety}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -387,91 +496,105 @@ export default function Planos() {
         </div>
       </section>
 
-      {/* ── 3. O QUE ACONTECE NA TELA DE ENTREGA (DEMONSTRAÇÃO REALISTA) ── */}
-      <section id="demonstracao" className="border-b border-slate-200 bg-white py-16 sm:py-20">
+      {/* ── 4. O APLICATIVO NO ATO DA ENTREGA (PRINT REAL 100% OFFLINE) ── */}
+      <section id="mobile-offline" className="border-b border-slate-200 bg-white py-16 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="mx-auto max-w-3xl text-center">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-              Demonstração Prática do Balcão
-            </span>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              O EPI sai do estoque com CA conferido. A entrega sai assinada.
-            </h2>
-            <p className="mt-2 text-sm text-slate-600 sm:text-base">
-              Veja exatamente como o almoxarife faz a entrega no celular ou tablet em menos de 1 minuto:
-            </p>
-          </div>
-
-          {/* Demonstração Realista da Entrega no Mobile (100% Offline) */}
-          <div className="mx-auto mt-12 grid max-w-5xl items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
-            {/* O Celular com o Print Real no Ato da Entrega */}
+          <div className="grid items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
+            
+            {/* O MOCKUP REAL DE CELULAR (SEM IA, COM O PRINT VERDADEIRO DO SISTEMA) */}
             <div className="flex justify-center">
-              <div className="relative w-full max-w-[320px] rounded-[2.5rem] border-[6px] border-slate-900 bg-slate-950 p-2 shadow-2xl shadow-slate-400/20">
-                <div className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-black">
-                  <img
-                    src={mobileOfflineReal}
-                    alt="Tela do aplicativo SafetySoluções no celular no ato da entrega de EPI com assinatura digital em modo offline"
-                    className="w-full object-contain"
-                    loading="lazy"
-                  />
+              <div className="relative w-full max-w-[340px]">
+                {/* Efeito sutil de iluminação de fundo */}
+                <div className="absolute -inset-4 rounded-[3.5rem] bg-gradient-to-tr from-emerald-500/15 via-orange-500/15 to-blue-500/15 blur-xl" />
+
+                {/* Moldura de Smartphone Premium */}
+                <div className="relative rounded-[3rem] border-[8px] border-slate-900 bg-slate-950 p-2.5 shadow-2xl shadow-slate-900/30">
+                  {/* Speaker / Notch no topo */}
+                  <div className="absolute left-1/2 top-4 z-20 h-4 w-24 -translate-x-1/2 rounded-full bg-slate-900" />
+
+                  {/* Tela interna com o print autêntico */}
+                  <div className="relative overflow-hidden rounded-[2.25rem] border border-slate-800 bg-white">
+                    <img
+                      src={mobileEntregasReal}
+                      alt="Tela do aplicativo mobile SafetySoluções exibindo a lista de entregas de EPI com CA, assinatura e botão de Ficha individual"
+                      className="w-full object-contain"
+                      loading="lazy"
+                    />
+                  </div>
+                </div>
+
+                {/* Badge flutuante sobre a imagem */}
+                <div className="absolute -bottom-4 right-0 rounded-xl border border-emerald-300 bg-white p-3 shadow-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
+                      <WifiOff className="h-4 w-4" />
+                    </div>
+                    <div className="leading-tight text-left">
+                      <p className="text-xs font-bold text-slate-900">Modo Offline Ativo</p>
+                      <p className="text-[10px] text-slate-500 font-medium">Sincroniza automaticamente</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Explicação Técnica e Operacional do Modo Offline */}
+            {/* Explicação da Operação no Canteiro de Obras */}
             <div className="space-y-6 text-left">
               <div className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3.5 py-1 text-xs font-bold text-amber-900">
-                <span>⚡ Funciona 100% Offline (Sem Sinal de Internet)</span>
+                <WifiOff className="h-3.5 w-3.5" />
+                <span>Funciona 100% Offline (Sem Sinal de Internet)</span>
               </div>
 
-              <h3 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+              <h2 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl lg:text-4xl">
                 No canteiro de obras, no galpão ou no subsolo: a entrega não para.
-              </h3>
+              </h2>
 
               <p className="text-sm leading-relaxed text-slate-600 sm:text-base">
-                A internet caiu ou você está em uma área remota da obra? O almoxarife continua
-                entregando os EPIs e coletando a assinatura do trabalhador normalmente no celular ou tablet.
+                A internet caiu ou você está entregando materiais em uma área remota da obra?
+                O almoxarife continua registrando a entrega e colhendo a assinatura do trabalhador
+                com o dedo na tela normalmente.
               </p>
 
-              <div className="space-y-4 pt-2">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs">
+              {/* 3 passos da operação mobile */}
+              <div className="space-y-4 pt-1">
+                <div className="flex items-start gap-3.5 rounded-xl border border-slate-200/80 bg-slate-50 p-3.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-sm shadow-xs">
                     1
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">Assinatura com o dedo na tela</h4>
-                    <p className="text-xs text-slate-600 mt-0.5">
-                      O colaborador assina diretamente na tela do celular no momento exato em que recebe o EPI.
+                    <h3 className="text-sm font-bold text-slate-900">Assinatura com o dedo na tela</h3>
+                    <p className="text-xs leading-relaxed text-slate-600 mt-0.5">
+                      O colaborador assina diretamente na tela do celular no ato do recebimento do equipamento.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs">
+                <div className="flex items-start gap-3.5 rounded-xl border border-slate-200/80 bg-slate-50 p-3.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-sm shadow-xs">
                     2
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">CA gravado na entrega</h4>
-                    <p className="text-xs text-slate-600 mt-0.5">
-                      O número do Certificado de Aprovação e a validade cadastrada do EPI ficam gravados na entrega e saem impressos na ficha.
+                    <h3 className="text-sm font-bold text-slate-900">CA registrado na ficha</h3>
+                    <p className="text-xs leading-relaxed text-slate-600 mt-0.5">
+                      O número do Certificado de Aprovação e a validade cadastrada do equipamento saem impressos na ficha individual.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs">
+                <div className="flex items-start gap-3.5 rounded-xl border border-slate-200/80 bg-slate-50 p-3.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-sm shadow-xs">
                     3
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">Sincronização automática</h4>
-                    <p className="text-xs text-slate-600 mt-0.5">
-                      Cada entrega fica gravada com segurança no aparelho. Quando reconectar ao Wi-Fi ou 4G, tudo sobe sozinho para a nuvem.
+                    <h3 className="text-sm font-bold text-slate-900">Sincronização em segundo plano</h3>
+                    <p className="text-xs leading-relaxed text-slate-600 mt-0.5">
+                      Assim que o aparelho detecta sinal de Wi-Fi ou 4G, todas as entregas e assinaturas sobem sozinhas para a nuvem.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t border-slate-200 pt-4">
+              <div className="pt-2">
                 <Cta />
               </div>
             </div>
@@ -479,33 +602,33 @@ export default function Planos() {
         </div>
       </section>
 
-      {/* ── 4. OS 6 PROBLEMAS REAIS QUE CUSTAM CARO ── */}
+      {/* ── 5. AS 6 DORES DO PAPEL QUE CUSTAM CARO ── */}
       <section className="border-b border-slate-200 bg-slate-50 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="max-w-2xl">
+          <div className="max-w-3xl">
             <span className="text-xs font-bold uppercase tracking-wider text-rose-700">
-              O Risco Oculto do Papel
+              Risco Operacional & Passivo Trabalhista
             </span>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Seis pontos que custam caro na auditoria
+            <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+              Seis pontos críticos que custam caro na auditoria
             </h2>
             <p className="mt-2 text-sm text-slate-600 sm:text-base">
-              A rotina comum de preenchimento manual de fichas esconde vulnerabilidades jurídicas perigosas:
+              A rotina comum de fichas manuais esconde falhas graves de fiscalização:
             </p>
           </div>
 
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {PROBLEMAS_REAIS.map((prob) => (
+            {DORES_DO_PAPEL.map((dor) => (
               <div
-                key={prob.titulo}
-                className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition-all hover:border-slate-300"
+                key={dor.titulo}
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-all hover:border-slate-300 hover:shadow-sm"
               >
                 <div className="flex items-center gap-2 text-rose-600">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <h3 className="text-sm font-bold text-slate-900">{prob.titulo}</h3>
+                  <h3 className="text-sm font-bold text-slate-900">{dor.titulo}</h3>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                  {prob.descricao}
+                  {dor.descricao}
                 </p>
               </div>
             ))}
@@ -513,34 +636,34 @@ export default function Planos() {
         </div>
       </section>
 
-      {/* ── 5. RECURSOS DO SISTEMA (O QUE VOCÊ PASSA A TER) ── */}
-      <section className="border-b border-slate-200 bg-white py-16 sm:py-20">
+      {/* ── 6. RECURSOS DO MÓDULO (GRID COMPLETO ESTILO ONSAFETY) ── */}
+      <section id="recursos" className="border-b border-slate-200 bg-white py-16 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="max-w-2xl">
+          <div className="mx-auto max-w-3xl text-center">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-              Ferramentas de Trabalho
+              Tecnologia para SST e Almoxarifado
             </span>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              O que você passa a ter
+            <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl lg:text-4xl">
+              Recursos completos para a gestão de EPI da sua empresa
             </h2>
-            <p className="mt-1.5 text-sm text-slate-600">
-              Tudo abaixo já está no ar e em uso hoje.
+            <p className="mt-3 text-sm text-slate-600 sm:text-base">
+              Desenvolvido para atender tanto quem faz a entrega no balcão quanto quem defende a empresa em auditorias:
             </p>
           </div>
 
-          <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {RECURSOS.map((r) => {
-              const Icone = r.icone;
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {RECURSOS_MODULO.map((rec) => {
+              const Icone = rec.icone;
               return (
                 <div
-                  key={r.titulo}
-                  className="rounded-xl border border-slate-200 bg-slate-50/50 p-5 transition-all hover:border-emerald-500/40 hover:bg-white hover:shadow-xs"
+                  key={rec.titulo}
+                  className="rounded-2xl border border-slate-200 bg-slate-50/60 p-6 transition-all hover:border-emerald-500/50 hover:bg-white hover:shadow-md"
                 >
-                  <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
-                    <Icone className="h-4 w-4" />
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+                    <Icone className="h-5 w-5" />
                   </div>
-                  <h3 className="mt-3 text-sm font-bold text-slate-900">{r.titulo}</h3>
-                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{r.texto}</p>
+                  <h3 className="mt-4 text-sm font-bold text-slate-950">{rec.titulo}</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-600">{rec.descricao}</p>
                 </div>
               );
             })}
@@ -548,20 +671,69 @@ export default function Planos() {
         </div>
       </section>
 
-      {/* ── 6. SEÇÃO DE OFERTA E SIMULADOR REALISTA (id="oferta") ── */}
-      <section id="oferta" className="border-b border-slate-200 bg-slate-100/60 py-16 sm:py-24">
+      {/* ── 7. COMO FUNCIONA (FLUXO EM 4 PASSOS) ── */}
+      <section id="como-funciona" className="border-b border-slate-200 bg-slate-50 py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mx-auto max-w-3xl text-center">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+              Fluxo Simples e Rápido
+            </span>
+            <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+              Do balcão à auditoria em 4 etapas
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              A rotina diária no almoxarifado fica mais rápida e 100% registrada:
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                passo: "01",
+                titulo: "Identifique o Colaborador",
+                texto: "Busca rápida pelo nome ou CPF na tela do celular, tablet ou computador.",
+              },
+              {
+                passo: "02",
+                titulo: "Selecione o EPI e CA",
+                texto: "Equipamento com o número do CA já cadastrado no estoque da obra.",
+              },
+              {
+                passo: "03",
+                titulo: "Assinatura na Hora",
+                texto: "O trabalhador assina direto com o dedo na tela, online ou 100% offline.",
+              },
+              {
+                passo: "04",
+                titulo: "Ficha em PDF Pronta",
+                texto: "Histórico vitalício arquivado e pronto para baixar ou imprimir quando o fiscal solicitar.",
+              },
+            ].map((p) => (
+              <div key={p.passo} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
+                <span className="font-mono text-2xl font-extrabold text-emerald-700">{p.passo}</span>
+                <h3 className="mt-2 text-sm font-bold text-slate-900">{p.titulo}</h3>
+                <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{p.texto}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 8. OFERTA & SIMULADOR DE COLABORADORES (id="oferta") ── */}
+      <section id="oferta" className="border-b border-slate-200 bg-slate-100/70 py-16 sm:py-24">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
-          <div className="relative rounded-2xl border-2 border-emerald-600 bg-white p-7 shadow-xl sm:p-10">
-            <span className="absolute -top-3.5 left-7 rounded-full bg-emerald-700 px-3.5 py-1 text-xs font-bold text-white shadow-xs">
-              Comece por aqui
+          <div className="relative rounded-3xl border-2 border-emerald-600 bg-white p-7 shadow-xl sm:p-10">
+            {/* Tag de destaque */}
+            <span className="absolute -top-3.5 left-8 rounded-full bg-emerald-700 px-4 py-1 text-xs font-bold text-white shadow-sm">
+              Plano Completo
             </span>
 
             <div>
-              <h2 className="text-2xl font-bold text-slate-950 sm:text-3xl">{plano.nome}</h2>
+              <h2 className="text-2xl font-extrabold text-slate-950 sm:text-3xl">{plano.nome}</h2>
               <p className="mt-1 text-sm text-slate-600">{plano.publico}</p>
             </div>
 
-            {/* Preço real */}
+            {/* Preço formatado */}
             <div className="mt-6 flex flex-wrap items-baseline gap-3">
               {preco ? (
                 <>
@@ -571,28 +743,28 @@ export default function Planos() {
                   <span className="text-4xl font-extrabold tracking-tight text-slate-950">
                     {preco}
                   </span>
-                  <span className="text-sm font-medium text-slate-600">{plano.unidade}</span>
+                  <span className="text-sm font-semibold text-slate-600">{plano.unidade}</span>
                   {desconto != null && (
-                    <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+                    <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-extrabold text-emerald-800">
                       −{desconto}%
                     </span>
                   )}
                 </>
               ) : (
                 <>
-                  <span className="text-3xl font-bold text-slate-950">Sob consulta</span>
+                  <span className="text-3xl font-extrabold text-slate-950">Sob consulta</span>
                   <span className="text-sm text-slate-600">{plano.unidade}</span>
                 </>
               )}
             </div>
 
-            {/* Simulador de Vidas */}
+            {/* Simulador de Vidas (Requisito estrito de CRO e testes) */}
             {semPrecos ? (
-              <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed text-slate-600">
+              <p className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed text-slate-600">
                 O valor é fechado no contato: ele muda conforme o número de colaboradores e de unidades atendidas.
               </p>
             ) : (
-              <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/80 p-5 sm:p-6">
                 <label
                   htmlFor="vidas"
                   className="block text-sm font-bold text-slate-900"
@@ -608,15 +780,10 @@ export default function Planos() {
                     max={100000}
                     value={vidas}
                     onChange={(e) => setVidas(Math.trunc(Number(e.target.value)))}
-                    className="h-11 w-28 rounded-lg border border-slate-300 bg-white px-3 text-lg font-bold text-slate-900 shadow-xs focus:border-emerald-600 focus:outline-hidden"
+                    className="h-11 w-28 rounded-xl border border-slate-300 bg-white px-3 text-lg font-bold text-slate-900 shadow-xs focus:border-emerald-600 focus:outline-hidden"
                   />
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm text-slate-600">fica</span>
-                    {/*
-                      * aria-live: quem usa leitor de tela troca o número de
-                      * colaboradores e ouve o total novo. Sem isso, o valor
-                      * muda em silêncio e a pessoa não sabe quanto deu.
-                      */}
                     <span
                       data-testid="total-simulado"
                       aria-live="polite"
@@ -624,23 +791,23 @@ export default function Planos() {
                     >
                       {total ?? "—"}
                     </span>
-                    <span className="text-sm text-slate-600">
+                    <span className="text-sm text-slate-600 font-medium">
                       {total ? "por mês" : "informe de 1 a 100.000"}
                     </span>
                   </div>
                 </div>
 
-                {/* Atalhos de colaboradores */}
+                {/* Atalhos rápidos por porte */}
                 <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-slate-500">Selecione rápido:</span>
+                  <span className="text-xs text-slate-500 font-medium">Selecione rápido:</span>
                   {[25, 50, 100, 250, 500].map((qtd) => (
                     <button
                       key={qtd}
                       type="button"
                       onClick={() => setVidas(qtd)}
-                      className={`rounded-md border px-2.5 py-1 text-xs font-semibold transition-all ${
+                      className={`rounded-lg border px-3 py-1 text-xs font-bold transition-all ${
                         vidas === qtd
-                          ? "border-emerald-700 bg-emerald-700 text-white"
+                          ? "border-emerald-700 bg-emerald-700 text-white shadow-xs"
                           : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                       }`}
                     >
@@ -649,8 +816,8 @@ export default function Planos() {
                   ))}
                 </div>
 
-                <p className="mt-3 text-xs text-slate-500">
-                  Sem taxa de implantação, sem contrato de fidelidade e sem cobrança por unidade: você paga pelas vidas que estão no sistema.
+                <p className="mt-3 text-xs text-slate-500 font-medium">
+                  Sem taxa de implantação, sem contrato de fidelidade e sem limite de usuários ou unidades.
                 </p>
               </div>
             )}
@@ -658,12 +825,12 @@ export default function Planos() {
             {/* O que está incluso */}
             <div className="mt-7 border-t border-slate-200 pt-6">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Tudo incluso no plano:
+                Tudo incluso no sistema:
               </span>
-              <ul className="mt-3 grid gap-2.5 sm:grid-cols-2">
+              <ul className="mt-3.5 grid gap-2.5 sm:grid-cols-2">
                 {plano.inclui.map((item) => (
-                  <li key={item} className="flex items-start gap-2 text-xs text-slate-800 sm:text-sm">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <li key={item} className="flex items-start gap-2 text-xs font-medium text-slate-800 sm:text-sm">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 stroke-[3]" />
                     <span>{item}</span>
                   </li>
                 ))}
@@ -674,85 +841,110 @@ export default function Planos() {
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Cta grande />
               {CONTATO.email && (
-                <Button size="lg" variant="outline" asChild className="border-slate-300">
+                <Button size="lg" variant="outline" asChild className="border-slate-300 font-semibold px-6 py-6 text-base">
                   <a href={`mailto:${CONTATO.email}`}>{CONTATO.email}</a>
                 </Button>
               )}
             </div>
 
-            <p className="mt-4 text-xs text-slate-500">
-              A gente cadastra seus EPIs e seus colaboradores junto com você. Você não começa com a tela vazia.
+            <p className="mt-4 text-xs text-slate-500 font-medium">
+              Nossa equipe cadastra seus EPIs e seus colaboradores junto com você na implantação.
             </p>
           </div>
         </div>
       </section>
 
-      {/* ── 7. TRÊS PASSOS E ESTÁ RODANDO ── */}
-      <section className="border-b border-slate-200 bg-white py-14 sm:py-20">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+      {/* ── 9. PERGUNTAS FREQUENTES (FAQ) ── */}
+      <section id="faq" className="border-b border-slate-200 bg-white py-16 sm:py-24">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <div className="text-center">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-              Como Começa
+              Esclareça suas dúvidas
             </span>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Três passos e está rodando
+            <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+              Perguntas Frequentes sobre o Controle de EPI
             </h2>
           </div>
 
-          <div className="mt-8 grid gap-6 sm:grid-cols-3">
-            {[
-              { n: "1", t: "Você chama no WhatsApp", d: "A gente entende quantos colaboradores e unidades você tem." },
-              { n: "2", t: "A gente carrega seus dados", d: "Colaboradores, EPIs e estoque entram no sistema com você." },
-              { n: "3", t: "A primeira entrega é assinada", d: "E a ficha dela já sai pronta, com código de conferência." },
-            ].map((p) => (
-              <div key={p.n} className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white">
-                  {p.n}
-                </span>
-                <h3 className="mt-3 text-sm font-bold text-slate-900">{p.t}</h3>
-                <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{p.d}</p>
-              </div>
-            ))}
+          <div className="mt-10 space-y-4">
+            {PERGUNTAS_FREQUENTES.map((faq, idx) => {
+              const aberto = faqAberto === idx;
+              return (
+                <div
+                  key={faq.pergunta}
+                  className="rounded-2xl border border-slate-200 bg-slate-50/50 transition-colors"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setFaqAberto(aberto ? null : idx)}
+                    className="flex w-full items-center justify-between gap-4 p-5 text-left font-bold text-slate-950 sm:text-base"
+                  >
+                    <span>{faq.pergunta}</span>
+                    <ChevronDown
+                      className={`h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 ${
+                        aberto ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                  {aberto && (
+                    <div className="border-t border-slate-200/60 px-5 pb-5 pt-3 text-xs leading-relaxed text-slate-600 sm:text-sm">
+                      {faq.resposta}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* ── 8. FECHO REALISTA ── */}
-      <section className="border-b border-slate-200 bg-slate-100 py-16 sm:py-24 text-center">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 space-y-3">
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
-            Da próxima auditoria, a ficha já existe.
+      {/* ── 10. FECHAMENTO & CTA FINAL (Inspirado no OnSafety) ── */}
+      <section className="border-b border-slate-200 bg-slate-900 py-16 sm:py-24 text-center text-white">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 space-y-4">
+          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3.5 py-1 text-xs font-bold text-emerald-300">
+            <ShieldCheck className="h-4 w-4" />
+            <span>Segurança Jurídica & Operacional</span>
+          </div>
+
+          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">
+            Da próxima fiscalização, a sua ficha já existe.
           </h2>
-          <p className="mx-auto max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
-            A gente mostra o sistema com os seus EPIs e os seus colaboradores, não com dados de exemplo.
+
+          <p className="mx-auto max-w-xl text-sm leading-relaxed text-slate-300 sm:text-base">
+            Veja na prática como funciona a entrega com assinatura na tela e o controle de estoque por obra.
+            Sem compromisso e com os dados da sua própria empresa.
           </p>
+
           <div className="pt-4 flex justify-center">
             <Cta grande />
           </div>
         </div>
       </section>
 
-      {/* ── RODAPÉ ── */}
-      <footer className="bg-white py-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-xs text-slate-500 sm:flex-row sm:px-6">
-          <div className="flex items-center gap-2">
-            <img src={logo} alt="SafetySoluções" className="h-6 w-6 rounded" />
-            <span>SafetySoluções — Segurança e Saúde no Trabalho</span>
+      {/* ── RODAPÉ CORPORATIVO ── */}
+      <footer className="bg-white py-10">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-4 text-xs text-slate-500 sm:flex-row sm:px-6">
+          <div className="flex items-center gap-3">
+            <img src={logo} alt="SafetySoluções" className="h-7 w-7 rounded-lg border border-slate-200 object-cover" />
+            <div>
+              <p className="font-bold text-slate-800">SafetySoluções — Gestão de EPIs</p>
+              <p className="text-[11px] text-slate-400">Tecnologia para Segurança do Trabalho e Almoxarifado</p>
+            </div>
           </div>
-          <div className="flex gap-5">
-            <Link to="/termos" className="hover:text-slate-900">Termos</Link>
+          <div className="flex gap-6 font-medium">
+            <Link to="/termos" className="hover:text-slate-900">Termos de Uso</Link>
             <Link to="/privacidade" className="hover:text-slate-900">Privacidade</Link>
-            <Link to="/login" className="hover:text-slate-900">Entrar</Link>
+            <Link to="/login" className="hover:text-slate-900">Acessar Sistema</Link>
           </div>
         </div>
       </footer>
 
-      {/* ── BARRA FIXA MOBILE ── */}
-      <div className="sticky bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 backdrop-blur-md sm:hidden shadow-lg">
+      {/* ── BARRA FIXA MOBILE DE CONVERSÃO ── */}
+      <div className="sticky bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3.5 backdrop-blur-md sm:hidden shadow-xl">
         <div className="flex items-center justify-between gap-3">
           <div className="leading-tight">
             <p className="text-xs font-bold text-slate-900">{plano.nome}</p>
-            <p className="text-[11px] font-medium text-slate-500">
+            <p className="text-[11px] font-semibold text-emerald-700">
               {preco ? `${preco} ${plano.unidade}` : "Sob consulta"}
             </p>
           </div>
