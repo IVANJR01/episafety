@@ -18,6 +18,8 @@
  * propósito.
  */
 
+import { episComCaVencido, recusaPorCaVencido } from "./validadeDoCa";
+
 /** O que o formulário de entrega tem preenchido. */
 export interface FormularioDeEntrega {
   funcionario_id: string;
@@ -29,7 +31,7 @@ export interface FormularioDeEntrega {
 
 /** Um EPI com a quantidade que o técnico somou na lista. */
 export interface ItemDeEntrega {
-  epi: { id: string; nome: string; source_epi_id?: string };
+  epi: { id: string; nome: string; source_epi_id?: string; validade?: string | null };
   quantidade: number;
 }
 
@@ -77,6 +79,8 @@ export function impedimentoParaSalvar(entrada: {
   form: FormularioDeEntrega;
   itens: ItemDeEntrega[];
   empresaId?: string | null;
+  /** Só para teste: fixa a data de hoje na conferência do CA. */
+  hoje?: string;
 }): ImpedimentoDeEntrega | null {
   const { form, itens } = entrada;
 
@@ -95,6 +99,20 @@ export function impedimentoParaSalvar(entrada: {
       descricao: "Empresa não identificada. Faça logout e entre novamente.",
     };
   }
+
+  /*
+   * Por último, o CA.
+   *
+   * Vem depois das outras conferências de propósito: não adianta falar do
+   * certificado para quem ainda não escolheu o colaborador. E só impede
+   * quando o registro entrega EPI para uso — perda e dano passam, porque
+   * aí o equipamento já estava com o trabalhador.
+   */
+  const recusa = recusaPorCaVencido(
+    episComCaVencido(itens, normalizarTipo(form.tipo), entrada.hoje),
+  );
+  if (recusa) return recusa;
+
   return null;
 }
 

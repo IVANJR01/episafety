@@ -298,7 +298,8 @@ describe("as seções que decidem a compra", () => {
      */
     await montar(comPreco, "5588996349359");
     const texto = textoDaPagina();
-    expect(texto).toMatch(/CA registrado em cada entrega/i);
+    /* O pilar 01 virou a promessa forte quando o sistema passou a cumpri-la. */
+    expect(texto).toMatch(/não deixa sair EPI com CA vencido/i);
     expect(texto).toMatch(/assinatura de quem recebeu/i);
     expect(texto).toMatch(/ficha individual em PDF/i);
   });
@@ -321,7 +322,7 @@ describe("as seções que decidem a compra", () => {
     const faq = screen.getByTestId("lista-faq").textContent || "";
     for (const assunto of [
       /como é feita uma entrega/i,
-      /CA do equipamento/i,
+      /conferência do CA/i,
       /colaborador assina/i,
       /histórico/i,
       /controle de estoque/i,
@@ -355,5 +356,32 @@ describe("a página não inventa prova social", () => {
     const texto = textoDaPagina();
     expect(texto).not.toMatch(/depoimento/i);
     expect(texto, "apareceu aspas de cliente fictício").not.toMatch(/—\s*(Diretor|Gerente|Eng\.|Técnico)\s+de/i);
+  });
+});
+
+describe("a promessa da página e o sistema andam juntos", () => {
+  /*
+   * Este teste existe porque o problema já aconteceu: a página prometia
+   * conferência de CA meses antes de o sistema conferir qualquer coisa.
+   * Agora que ela voltou a prometer, a promessa fica amarrada ao código
+   * que a cumpre — mexer num lado sem o outro quebra aqui.
+   */
+  it("se a página diz que recusa CA vencido, o sistema recusa mesmo", async () => {
+    await montar({ ...PLANO, precoPorVida: 2.5 }, "5588996349359");
+    const prometeBloqueio = /não deixa sair EPI com CA vencido/i.test(textoDaPagina());
+
+    const { episComCaVencido } = await import("@/lib/validadeDoCa");
+    const recusados = episComCaVencido(
+      [{ epi: { nome: "LUVA", validade: "2020-01-01" } }],
+      "entrega",
+      "2026-11-03",
+    );
+
+    expect(
+      prometeBloqueio && recusados.length === 1,
+      prometeBloqueio
+        ? "a página promete recusar CA vencido, e o sistema deixou passar"
+        : "o sistema recusa CA vencido e a página deixou de dizer isso",
+    ).toBe(true);
   });
 });

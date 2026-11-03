@@ -267,3 +267,74 @@ describe("descarte automático por substituição", () => {
     expect(plano.registro.empresa_id).toBe("emp-ativa");
   });
 });
+
+describe("o CA vencido impede salvar", () => {
+  /*
+   * A conferência mora na mesma porta por onde a tela já perguntava o que
+   * falta para salvar. Assim não existe um segundo caminho que escape
+   * dela: quem salva, passa por aqui.
+   */
+  const HOJE = "2026-11-03";
+  const vencido = {
+    epi: { id: "e1", nome: "LUVA DE MALHA DE AÇO", validade: "2026-01-10" },
+    quantidade: 1,
+  };
+  const valido = {
+    epi: { id: "e2", nome: "CAPACETE", validade: "2027-10-10" },
+    quantidade: 1,
+  };
+
+  it("entrega com CA vencido é recusada, dizendo qual EPI", () => {
+    const r = impedimentoParaSalvar({
+      form: FORM, itens: [valido, vencido], empresaId: "emp-1", hoje: HOJE,
+    });
+    expect(r, "deixou entregar EPI com CA vencido").not.toBeNull();
+    expect(r?.descricao).toContain("LUVA DE MALHA DE AÇO");
+    expect(r?.descricao, "o capacete válido foi acusado junto")
+      .not.toContain("CAPACETE");
+  });
+
+  it("CA válido passa", () => {
+    expect(impedimentoParaSalvar({
+      form: FORM, itens: [valido], empresaId: "emp-1", hoje: HOJE,
+    })).toBeNull();
+  });
+
+  it("registrar PERDA de EPI com CA vencido continua possível", () => {
+    /*
+     * O equipamento já estava com o trabalhador. Bloquear o registro
+     * esconderia a perda em vez de evitá-la.
+     */
+    expect(impedimentoParaSalvar({
+      form: { ...FORM, tipo: "Perda" }, itens: [vencido],
+      empresaId: "emp-1", hoje: HOJE,
+    })).toBeNull();
+  });
+
+  it("substituição também é impedida", () => {
+    /* Substituir é entregar um equipamento novo para uso. */
+    expect(impedimentoParaSalvar({
+      form: { ...FORM, tipo: "Substituição" }, itens: [vencido],
+      empresaId: "emp-1", hoje: HOJE,
+    })).not.toBeNull();
+  });
+
+  it("EPI sem validade cadastrada não trava o almoxarifado", () => {
+    expect(impedimentoParaSalvar({
+      form: FORM, itens: [{ epi: { id: "e3", nome: "BOTINA" }, quantidade: 1 }],
+      empresaId: "emp-1", hoje: HOJE,
+    })).toBeNull();
+  });
+
+  it("o que falta no formulário é cobrado antes do CA", () => {
+    /*
+     * Falar de certificado para quem ainda não escolheu o colaborador é
+     * mandar a pessoa resolver a segunda coisa antes da primeira.
+     */
+    const r = impedimentoParaSalvar({
+      form: { ...FORM, funcionario_id: "" }, itens: [vencido],
+      empresaId: "emp-1", hoje: HOJE,
+    });
+    expect(r?.titulo).toContain("funcionário");
+  });
+});

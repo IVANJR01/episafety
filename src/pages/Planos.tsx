@@ -121,19 +121,19 @@ const RECURSOS_MODULO = [
 ];
 
 /*
- * Os três pilares. O texto de cada um descreve o que o sistema faz hoje:
- * o CA é cadastrado, gravado na entrega e impresso na ficha — ele não é
- * conferido automaticamente contra a data no momento da entrega, e a
- * página não pode dizer que é.
+ * Os três pilares. O texto de cada um descreve o que o sistema faz hoje.
+ * O pilar 01 ficou meses mais fraco do que a página queria porque o
+ * sistema guardava a validade do CA e não olhava para ela. Agora olha, e
+ * recusa a entrega — por isso a frase mudou.
  */
 const PILARES = [
   {
     numero: "01",
     icone: ShieldCheck,
-    titulo: "O CA registrado em cada entrega",
+    titulo: "O sistema não deixa sair EPI com CA vencido",
     texto:
-      "Você cadastra o EPI uma vez e o sistema busca os dados do certificado pelo número do CA — fabricante, validade e proteção aprovada. A partir daí o CA acompanha toda entrega daquele equipamento e sai impresso na ficha.",
-    semIsso: "Sem o CA no registro, a entrega não prova proteção adequada.",
+      "Você cadastra o EPI uma vez e o sistema busca os dados do certificado pelo número do CA. Na hora da entrega ele confere a validade: se o CA estiver vencido, a entrega é recusada e o almoxarife vê qual item é. Vencendo nos próximos 30 dias, avisa antes.",
+    semIsso: "EPI com CA vencido, na fiscalização, é o mesmo que EPI não entregue.",
   },
   {
     numero: "02",
@@ -208,8 +208,8 @@ const PERGUNTAS_FREQUENTES = [
     resposta: "Você busca o colaborador pelo nome, CPF ou matrícula, escolhe o EPI e a quantidade, informa de qual unidade o material está saindo e passa o aparelho para o trabalhador assinar na tela. O saldo do estoque baixa na mesma hora e a entrega já entra na ficha dele.",
   },
   {
-    pergunta: "Como o CA do equipamento entra no registro?",
-    resposta: "O CA é cadastrado uma vez por EPI — e o sistema busca os dados do certificado automaticamente a partir do número, preenchendo fabricante, validade e proteção aprovada. A partir daí, o número do CA fica gravado em cada entrega daquele equipamento e sai impresso na ficha do colaborador, que é onde o fiscal procura.",
+    pergunta: "Como é feita a conferência do CA?",
+    resposta: "O CA é cadastrado uma vez por EPI, e o sistema busca os dados do certificado automaticamente a partir do número — fabricante, validade e proteção aprovada. Na hora de registrar a entrega, a validade é conferida contra a data de hoje: se estiver vencida, o sistema recusa a entrega e mostra qual equipamento está irregular. Faltando 30 dias ou menos para vencer, aparece um aviso para dar tempo de repor o estoque. O número do CA também fica gravado em cada entrega e sai impresso na ficha, que é onde o fiscal procura.",
   },
   {
     pergunta: "O colaborador assina como? Precisa de papel em algum momento?",
@@ -504,9 +504,9 @@ export default function Planos() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="grid grid-cols-2 gap-6 text-center md:grid-cols-4 md:gap-8">
             <div className="border-r border-slate-800 last:border-none">
-              <p className="text-3xl font-extrabold text-emerald-400 sm:text-4xl">100%</p>
+              <p className="text-3xl font-extrabold text-emerald-400 sm:text-4xl">0</p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Conformidade com a NR-06
+                Entregas com CA vencido
               </p>
             </div>
             <div className="border-r border-slate-800 last:border-none">

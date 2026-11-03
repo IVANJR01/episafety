@@ -34,6 +34,7 @@ import {
   planejarDevolucao, planejarEstorno, localizarEntregaDeOrigem,
   lerAuditoriaDaDevolucao, DESTINOS_DE_DEVOLUCAO, type DestinoDevolucao,
 } from "@/lib/entregaDevolucao";
+import { situacaoDoCa } from "@/lib/validadeDoCa";
 import {
   impedimentoParaSalvar, statusDaEntrega, registroDeEntrega, registroOffline,
   linhaDoCache, entregaAtivaParaSubstituir, descarteDaSubstituicao,
@@ -2011,6 +2012,27 @@ export default function Entregas() {
                         <p className="text-xs text-muted-foreground">
                           {item.epi.ca && <>C.A.: {item.epi.ca} — </>}Estoque: {item.epi.estoque} — Qtd: {item.quantidade}
                         </p>
+                        {/*
+                          * A situação do CA aparece aqui, antes de salvar, e
+                          * não só no erro ao salvar: o almoxarife vê o
+                          * problema enquanto ainda dá para trocar o item.
+                          */}
+                        {(() => {
+                          const ca = situacaoDoCa(item.epi.validade);
+                          if (ca.nivel === "valido") return null;
+                          const cor =
+                            ca.nivel === "vencido"
+                              ? "text-destructive"
+                              : ca.nivel === "vence_em_breve"
+                                ? "text-amber-600"
+                                : "text-muted-foreground";
+                          return (
+                            <p className={`mt-0.5 flex items-center gap-1 text-xs font-medium ${cor}`}>
+                              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                              {ca.mensagem}
+                            </p>
+                          );
+                        })()}
                       </div>
                       <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => removeEpiFromList(item.epi.id)}>
                         <Trash2 className="w-3.5 h-3.5 text-destructive" />

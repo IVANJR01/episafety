@@ -47,7 +47,7 @@ export const PLANOS: PlanoDeVenda[] = [
     destaque: true,
     inclui: [
       "Cadastro de EPI com consulta automática do CA",
-      "Número do CA e validade cadastrados, impressos em cada ficha",
+      "Bloqueio da entrega de EPI com CA vencido, com aviso 30 dias antes",
       "Estoque por unidade, com estoque mínimo",
       "Entrega assinada pelo colaborador, com biometria ou assinatura",
       "Ficha de EPI pronta para a fiscalização, em PDF",
