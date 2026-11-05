@@ -120,7 +120,7 @@ describe("o foco da página", () => {
     /* Imagem de produto sem essa ressalva vira promessa do que não é. */
     await montar(PLANO);
     expect(screen.getByAltText(/Ficha de EPI gerada pelo sistema/)).toBeTruthy();
-    expect(textoDaPagina()).toContain("Dados fictícios");
+    expect(textoDaPagina()).toMatch(/dados fict[ií]cios/i);
   });
 });
 
@@ -237,10 +237,14 @@ describe("os botões falam a mesma língua", () => {
      * é não clicar.
      */
     await montar({ ...PLANO, precoPorVida: 2.5 }, "5588996349359");
+    /*
+      * O botão flutuante do celular é só o ícone, então o nome dele está no
+      * aria-label — que é justamente o que o leitor de tela anuncia.
+      */
     const rotulos = new Set(
       Array.from(document.querySelectorAll("a[href]"))
         .filter((a) => (a.getAttribute("href") || "").includes("wa.me"))
-        .map((a) => (a.textContent || "").trim()),
+        .map((a) => ((a.textContent || "").trim() || a.getAttribute("aria-label") || "").trim()),
     );
     expect(rotulos.size, `rótulos diferentes: ${[...rotulos].join(" | ")}`).toBe(1);
   });
@@ -301,7 +305,8 @@ describe("as seções que decidem a compra", () => {
     await montar(comPreco, "5588996349359");
     const texto = textoDaPagina();
     /* O pilar 01 virou a promessa forte quando o sistema passou a cumpri-la. */
-    expect(texto).toMatch(/não deixa sair EPI com CA vencido/i);
+    /* A promessa do pilar 01: o sistema recusa a entrega, não só registra. */
+    expect(texto).toMatch(/recusa a entrega se estiver vencido/i);
     expect(texto).toMatch(/assinatura de quem recebeu/i);
     expect(texto).toMatch(/ficha individual em PDF/i);
   });
@@ -382,7 +387,7 @@ describe("a promessa da página e o sistema andam juntos", () => {
    */
   it("se a página diz que recusa CA vencido, o sistema recusa mesmo", async () => {
     await montar({ ...PLANO, precoPorVida: 2.5 }, "5588996349359");
-    const prometeBloqueio = /não deixa sair EPI com CA vencido/i.test(textoDaPagina());
+    const prometeBloqueio = /recusa a entrega se estiver vencido/i.test(textoDaPagina());
 
     const { episComCaVencido } = await import("@/lib/validadeDoCa");
     const recusados = episComCaVencido(
@@ -431,5 +436,99 @@ describe("as telas do sistema na página", () => {
       "alguma imagem ficou sem o aviso de dado fictício")
       .toBeGreaterThanOrEqual(3);
     expect(texto).toMatch(/página pública do sistema/i);
+  });
+});
+
+describe("as regras de escrita da página", () => {
+  /*
+   * A página estava com cara de texto de modelo: título dramático,
+   * negrito em tudo e a mesma ideia repetida em seções diferentes. Estas
+   * verificações existem para ela não voltar a engordar sozinha.
+   */
+  const comPreco = { ...PLANO, precoPorVida: 2.5, unidade: "por vida / mês" };
+
+  it('a palavra "offline" aparece no máximo 3 vezes', async () => {
+    await montar(comPreco, "5588996349359");
+    const vezes = (textoDaPagina().match(/offline/gi) || []).length;
+    expect(vezes, `apareceu ${vezes} vezes`).toBeLessThanOrEqual(3);
+  });
+
+  it("nenhum número de prova social inventado", async () => {
+    /* "0 fichas de papel perdidas" é slogan, não dado — e parece dado. */
+    await montar(comPreco, "5588996349359");
+    const texto = textoDaPagina();
+    expect(texto).not.toMatch(/fichas de papel perdidas/i);
+    expect(texto).not.toMatch(/entregas com CA vencido/i);
+  });
+
+  it("some com as frases de modelo que o cliente pediu para tirar", async () => {
+    await montar(comPreco, "5588996349359");
+    const texto = textoDaPagina();
+    expect(texto).not.toMatch(/torne seu controle de EPI mais eficiente/i);
+    expect(texto).not.toMatch(/ficha de EPI digitalizada sempre acess/i);
+    expect(texto).not.toMatch(/pastas empoeiradas|risco iminente|solução completa/i);
+  });
+
+  it("no máximo 3 botões de WhatsApp fixos, mais o flutuante do celular", async () => {
+    /*
+     * Botão repetido em toda seção cansa e some no meio do texto. Ficam
+     * três — cabeçalho, preços e fecho — e o flutuante no celular.
+     */
+    await montar(comPreco, "5588996349359");
+    expect(linksDeWhatsapp().length).toBeLessThanOrEqual(4);
+  });
+
+  it("o menu do topo cabe numa linha: no máximo 6 itens", async () => {
+    await montar(comPreco, "5588996349359");
+    const itens = document.querySelectorAll("nav a");
+    expect(itens.length, "o menu voltou a crescer").toBeLessThanOrEqual(6);
+    for (const a of Array.from(itens)) {
+      expect(a.className, `"${a.textContent}" pode quebrar linha`)
+        .toContain("whitespace-nowrap");
+    }
+  });
+
+  it("o comparativo é uma tabela de 3 linhas", async () => {
+    await montar(comPreco, "5588996349359");
+    const linhas = document.querySelectorAll("table tbody tr");
+    expect(linhas).toHaveLength(3);
+    const texto = textoDaPagina();
+    for (const caso of [/Fiscalização/, /Processo trabalhista/, /Balcão do almoxarifado/]) {
+      expect(texto).toMatch(caso);
+    }
+  });
+
+  it("a seção das seis dores saiu da página", async () => {
+    await montar(comPreco, "5588996349359");
+    expect(textoDaPagina()).not.toMatch(/arquivo morto|desespero às vésperas/i);
+  });
+
+  it("a grade de recursos tem 6 cards, não 8", async () => {
+    await montar(comPreco, "5588996349359");
+    const texto = textoDaPagina();
+    expect(texto).toMatch(/Conferência do CA/);
+    expect(texto).not.toMatch(/Relatórios de Consumo e Custos/);
+  });
+});
+
+describe('a seção "Quem está por trás"', () => {
+  it("não aparece enquanto não houver nome de verdade", async () => {
+    /*
+     * É o bloco que mais vende num negócio pequeno — e o único que eu não
+     * posso escrever: quem é a pessoa, há quantos anos e por quê.
+     */
+    await montar({ ...PLANO, precoPorVida: 2.5 }, "5588996349359");
+    expect(document.querySelector("#quem-somos")).toBeNull();
+    expect(textoDaPagina()).not.toMatch(/Sou\s*,|Criei a SafetySoluções porque\s*\./);
+  });
+
+  it("o rodapé não inventa CNPJ", async () => {
+    await montar({ ...PLANO, precoPorVida: 2.5 }, "5588996349359");
+    expect(textoDaPagina()).not.toMatch(/CNPJ\s*(00|\[|xx)/i);
+  });
+
+  it("o rodapé mostra o WhatsApp cadastrado", async () => {
+    await montar({ ...PLANO, precoPorVida: 2.5 }, "5588996349359");
+    expect(textoDaPagina()).toMatch(/WhatsApp \(88\) 99634-9359/);
   });
 });
