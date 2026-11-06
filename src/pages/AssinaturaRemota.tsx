@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import SignatureCanvas from "@/components/SignatureCanvas";
 import CameraCapture from "@/components/CameraCapture";
+import { recadoDeErro } from "@/lib/recadoDaAssinaturaRemota";
 
 const optimizePhotoDataUrl = async (dataUrl: string) => {
   try {
@@ -63,6 +64,12 @@ export default function AssinaturaRemota() {
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [sucesso, setSucesso] = useState(false);
+  /*
+   * Erro ao salvar aparece na própria tela, não num alert do navegador:
+   * no celular o alert some com um toque e a pessoa fica sem saber se
+   * assinou ou não.
+   */
+  const [falhaAoSalvar, setFalhaAoSalvar] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadPendencias() {
@@ -77,12 +84,33 @@ export default function AssinaturaRemota() {
           p_funcionario_id: funcionario_id,
         });
 
-        if (error) throw error;
-        if (!data || !data.ok) throw new Error(data?.erro || "Não foi possível carregar as pendências.");
+        /*
+         * Falha técnica e recusa do sistema são coisas diferentes, e só a
+         * segunda foi escrita para o trabalhador ler. Misturar as duas foi
+         * o que pôs "Could not find the function ... in the schema cache"
+         * na tela de quem só queria assinar o recebimento da luva.
+         */
+        if (error || !data || !data.ok) {
+          const recado = recadoDeErro({
+            acao: "carregar",
+            recusaDoServidor: data?.erro ?? null,
+            falhaTecnica: error,
+            comInternet: typeof navigator !== "undefined" ? navigator.onLine : undefined,
+          });
+          if (recado.tecnico) console.error("[assinatura remota]", recado.tecnico);
+          setErro(recado.mensagem);
+          return;
+        }
 
         setDados(data);
-      } catch (err: any) {
-        setErro(err.message || "Erro inesperado ao carregar.");
+      } catch (err: unknown) {
+        const recado = recadoDeErro({
+          acao: "carregar",
+          falhaTecnica: err,
+          comInternet: typeof navigator !== "undefined" ? navigator.onLine : undefined,
+        });
+        if (recado.tecnico) console.error("[assinatura remota]", recado.tecnico);
+        setErro(recado.mensagem);
       } finally {
         setLoading(false);
       }
@@ -101,14 +129,16 @@ export default function AssinaturaRemota() {
 
       if (signMode === "facial") {
         if (!capturedPhoto) {
-          throw new Error("Tire a foto antes de salvar.");
+          setFalhaAoSalvar("Tire a foto antes de salvar.");
+          return;
         }
         assinaturaColaborador = "RECONHECIMENTO_FACIAL";
         fotoFallbackDataUrl = await optimizePhotoDataUrl(capturedPhoto);
       } else {
         assinaturaColaborador = sigRef.current?.getDataURL() || null;
         if (!assinaturaColaborador) {
-          throw new Error("Desenhe sua assinatura antes de salvar.");
+          setFalhaAoSalvar("Desenhe sua assinatura antes de salvar.");
+          return;
         }
       }
 
@@ -118,12 +148,28 @@ export default function AssinaturaRemota() {
         p_foto_url: fotoFallbackDataUrl,
       });
 
-      if (error) throw error;
-      if (!data || !data.ok) throw new Error(data?.erro || "Falha ao registrar assinatura.");
+      if (error || !data || !data.ok) {
+        const recado = recadoDeErro({
+          acao: "assinar",
+          recusaDoServidor: data?.erro ?? null,
+          falhaTecnica: error,
+          comInternet: typeof navigator !== "undefined" ? navigator.onLine : undefined,
+        });
+        if (recado.tecnico) console.error("[assinatura remota]", recado.tecnico);
+        setFalhaAoSalvar(recado.mensagem);
+        return;
+      }
 
+      setFalhaAoSalvar(null);
       setSucesso(true);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      const recado = recadoDeErro({
+        acao: "assinar",
+        falhaTecnica: err,
+        comInternet: typeof navigator !== "undefined" ? navigator.onLine : undefined,
+      });
+      if (recado.tecnico) console.error("[assinatura remota]", recado.tecnico);
+      setFalhaAoSalvar(recado.mensagem);
     } finally {
       setSaving(false);
     }
@@ -262,6 +308,20 @@ export default function AssinaturaRemota() {
         </div>
 
         <div className="p-4 border-t border-border bg-muted/10">
+          {/*
+            * O erro fica na tela, acima do botão. Antes era um alert do
+            * navegador: no celular ele some com um toque e a pessoa fica
+            * sem saber se assinou ou não.
+            */}
+          {falhaAoSalvar && (
+            <div
+              role="alert"
+              className="mb-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+            >
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{falhaAoSalvar}</span>
+            </div>
+          )}
           <Button
             size="lg"
             className="w-full h-12 text-base font-bold shadow-lg"
