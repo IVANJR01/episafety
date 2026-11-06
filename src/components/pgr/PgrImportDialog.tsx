@@ -11,6 +11,7 @@ import {
 import { avisoDeEmpresa } from "@/lib/conferirEmpresaDoDocumento";
 import { indiceDeGes, gesDaEstrutura } from "@/lib/vinculosDoInventario";
 import { vinculosDeSetorFaltantes, vinculosDeFuncaoFaltantes } from "@/lib/vinculosDoGes";
+import { conferirImportacao, textoDaConferencia } from "@/lib/conferenciaDaImportacao";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -1278,9 +1279,42 @@ export default function PgrImportDialog({
         await (supabase.from as any)("pgr_acoes").insert(acoesParaInserir);
       }
 
-      toast.success(
-        `PGR importado com sucesso! ${itensInventario.length} riscos e ${dadosExtraidos.ghes?.length || 0} GES cadastrados.`
-      );
+      /*
+       * A conferência do que REALMENTE entrou.
+       *
+       * A mensagem antiga contava os GES que a leitura do documento
+       * achou, não os que ficaram ligados a setor — então dizia "25 GES
+       * cadastrados" numa importação em que os 22 setores continuaram
+       * sem GES nenhum. A tela afirmava uma coisa e a Estrutura
+       * ocupacional mostrava outra.
+       */
+      const { data: setoresDaEmpresa } = await (supabase.from as any)("sst_setores")
+        .select("id")
+        .eq("empresa_id", empresaId);
+      const { data: vinculosFinais } = await (supabase.from as any)("ghe_setores")
+        .select("setor_id, ghe_id");
+
+      const idsDeGesDaEmpresa = new Set(Array.from(mapaGes.values()));
+      const resumo = conferirImportacao({
+        itens: itensInventario,
+        vinculosDeSetor: (vinculosFinais || []).filter((v: any) => idsDeGesDaEmpresa.has(v.ghe_id)),
+        setores: setoresDaEmpresa || [],
+        acoes: acoesParaInserir.length,
+      });
+      const conferencia = textoDaConferencia(resumo);
+
+      /* Pendência não é sucesso: o aviso fica na tela até ser lido. */
+      if (conferencia.completo) {
+        toast.success(conferencia.titulo, {
+          description: conferencia.linhas.join(" "),
+          duration: 8000,
+        });
+      } else {
+        toast.warning(conferencia.titulo, {
+          description: conferencia.linhas.join(" "),
+          duration: 15000,
+        });
+      }
 
       if (onImportadoSucesso) {
         onImportadoSucesso(novoPgrId);
