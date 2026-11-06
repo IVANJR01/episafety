@@ -10,6 +10,7 @@ import {
 } from "@/lib/dadosDoWordPgr";
 import { avisoDeEmpresa } from "@/lib/conferirEmpresaDoDocumento";
 import { indiceDeGes, gesDaEstrutura } from "@/lib/vinculosDoInventario";
+import { vinculosDeSetorFaltantes, vinculosDeFuncaoFaltantes } from "@/lib/vinculosDoGes";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -1035,6 +1036,8 @@ export default function PgrImportDialog({
       }
 
       // 4. Cria / Sincroniza GES
+      const vinculosDeSetorDoDocumento: { ghe_id: string; setor_id: string }[] = [];
+      const vinculosDeFuncaoDoDocumento: { ghe_id: string; funcao_id: string }[] = [];
       const mapaGes = new Map<string, string>(); // codigoGes -> id
       const { data: gesExistentes } = await (supabase.from as any)("ghe_ges")
         .select("id, codigo, nome")
@@ -1066,26 +1069,27 @@ export default function PgrImportDialog({
             gesId = gesNovo.id;
             mapaGes.set(chaveCodigo, gesNovo.id);
             mapaGes.set(chaveNome, gesNovo.id);
+          }
+        }
 
-            // Vincula Setor ao GES
-            const setorId = ghe.setor ? mapaSetores.get(ghe.setor.trim().toLowerCase()) : null;
-            if (setorId) {
-              await (supabase.from as any)("ghe_setores").insert({
-                ghe_id: gesNovo.id,
-                setor_id: setorId,
-                nome: ghe.nome,
-              });
-            }
-
-            // Vincula Funções ao GES
-            for (const funcNome of ghe.funcoes || []) {
-              const funcaoId = mapaFuncoes.get(funcNome.trim().toLowerCase());
-              if (funcaoId) {
-                await (supabase.from as any)("ghe_funcoes").insert({
-                  ghe_id: gesNovo.id,
-                  funcao_id: funcaoId,
-                });
-              }
+        /*
+         * As ligações são feitas tendo o GES acabado de nascer ou não.
+         *
+         * Antes elas ficavam dentro do `if` de GES novo: reimportar o
+         * mesmo PGR encontrava os GES já cadastrados, pulava o bloco
+         * inteiro e deixava setor e função sem ligar. Quem tentasse de
+         * novo para "consertar" só piorava — a segunda tentativa nunca
+         * ligava nada.
+         */
+        if (gesId) {
+          const setorId = ghe.setor ? mapaSetores.get(ghe.setor.trim().toLowerCase()) : null;
+          if (setorId) {
+            vinculosDeSetorDoDocumento.push({ ghe_id: gesId, setor_id: setorId });
+          }
+          for (const funcNome of ghe.funcoes || []) {
+            const funcaoId = mapaFuncoes.get(funcNome.trim().toLowerCase());
+            if (funcaoId) {
+              vinculosDeFuncaoDoDocumento.push({ ghe_id: gesId, funcao_id: funcaoId });
             }
           }
         }
@@ -1127,6 +1131,13 @@ export default function PgrImportDialog({
           ghe_id: gesId || null,
           ges_id: gesDaEstrutura(indiceGesEstrutura, item.ges_codigo, item.setor),
           setor: item.setor || null,
+          /*
+           * O id do setor era calculado logo acima e jogado fora: só o
+           * nome em texto era gravado. Sem ele, nada no sistema conseguia
+           * juntar o risco ao setor da estrutura ocupacional — e é desse
+           * par que sai a ligação do GES com o setor.
+           */
+          setor_id: setorId || null,
           grupo: item.grupo,
           tipo_agente: item.tipo_agente || null,
           perigo_descricao: item.perigo_descricao || "Risco identificado no PGR",
@@ -1185,6 +1196,47 @@ export default function PgrImportDialog({
           await (supabase.from as any)("pgr_documentos").delete().eq("id", novoPgrId);
           throw invErr;
         }
+      }
+
+      /*
+       * 5b. Liga o GES ao setor e à função.
+       *
+       * É o que faltava: o cliente ficou com 25 GES, 22 setores e nenhuma
+       * ligação entre os dois, e a Estrutura ocupacional mostrou "0 GES ·
+       * Sem GES" em todos. O documento nem sempre diz a que setor cada
+       * GES pertence, mas o INVENTÁRIO diz — cada risco traz o GES e o
+       * setor dele. Então as duas fontes são usadas: o que o documento
+       * declarou e o que o inventário comprova.
+       */
+      const { data: vinculosSetorJaGravados } = await (supabase.from as any)("ghe_setores")
+        .select("ghe_id, setor_id");
+      const { data: vinculosFuncaoJaGravados } = await (supabase.from as any)("ghe_funcoes")
+        .select("ghe_id, funcao_id");
+
+      const novosVinculosDeSetor = vinculosDeSetorFaltantes(
+        [...vinculosDeSetorDoDocumento, ...itensInventario],
+        vinculosSetorJaGravados || [],
+      );
+      const novosVinculosDeFuncao = vinculosDeFuncaoFaltantes(
+        [...vinculosDeFuncaoDoDocumento, ...itensInventario],
+        vinculosFuncaoJaGravados || [],
+      );
+
+      if (novosVinculosDeSetor.length > 0) {
+        const { error: vincErr } = await (supabase.from as any)("ghe_setores")
+          .insert(novosVinculosDeSetor);
+        /*
+         * Vínculo que falha não derruba a importação: o inventário já
+         * está gravado e é o que mais custa a refazer. O aviso sai no
+         * resumo, e a reimportação tenta de novo.
+         */
+        if (vincErr) console.error("Falha ao ligar GES a setores:", vincErr);
+      }
+
+      if (novosVinculosDeFuncao.length > 0) {
+        const { error: vincErr } = await (supabase.from as any)("ghe_funcoes")
+          .insert(novosVinculosDeFuncao);
+        if (vincErr) console.error("Falha ao ligar GES a funções:", vincErr);
       }
 
       // 6. Insere Plano de Ação sugerido ou extraído da aba 5W2H da planilha
