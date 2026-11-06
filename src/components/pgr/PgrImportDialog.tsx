@@ -12,6 +12,7 @@ import { avisoDeEmpresa } from "@/lib/conferirEmpresaDoDocumento";
 import { indiceDeGes, gesDaEstrutura } from "@/lib/vinculosDoInventario";
 import { vinculosDeSetorFaltantes, vinculosDeFuncaoFaltantes } from "@/lib/vinculosDoGes";
 import { conferirImportacao, textoDaConferencia } from "@/lib/conferenciaDaImportacao";
+import { reconhecerDocumento, type Reconhecimento } from "@/lib/reconhecerDocumentoPgr";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -103,6 +104,13 @@ export default function PgrImportDialog({
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [textoLivre, setTextoLivre] = useState("");
   const [dadosExtraidos, setDadosExtraidos] = useState<DadosPgrExtraidos | null>(null);
+  /*
+   * O que o arquivo é, conferido antes de gravar. Existe porque um PGRS
+   * (resíduos sólidos) foi enviado no lugar do PGR e a importação não
+   * reclamou — leu, não achou risco nenhum e seguiu em frente.
+   */
+  const [reconhecimento, setReconhecimento] = useState<Reconhecimento | null>(null);
+  const [importarAssimMesmo, setImportarAssimMesmo] = useState(false);
 
   const fileInputPdfRef = useRef<HTMLInputElement>(null);
   const fileInputXlsxRef = useRef<HTMLInputElement>(null);
@@ -113,6 +121,7 @@ export default function PgrImportDialog({
     setLoading(false);
     setSalvando(false);
     setDadosExtraidos(null);
+        reconhecer(null);
   };
 
   const fileToBase64 = (file: File): Promise<string> =>
@@ -223,6 +232,29 @@ export default function PgrImportDialog({
     };
   };
 
+  /* O texto cru do arquivo, para reconhecer que documento é. */
+  const textoLidoDoArquivo = useRef<string>("");
+
+  /*
+   * Reconhece o arquivo a cada leitura. O texto do documento manda sobre
+   * o nome: "PGRS.xlsx" e "PGR.xlsx" são um caractere de diferença, e
+   * quem renomeia o arquivo não muda o que está escrito dentro.
+   */
+  const reconhecer = (dados: DadosPgrExtraidos | null) => {
+    setImportarAssimMesmo(false);
+    if (!dados) {
+      setReconhecimento(null);
+      return;
+    }
+    setReconhecimento(
+      reconhecerDocumento({
+        texto: textoLidoDoArquivo.current,
+        nomeArquivo: arquivo?.name || null,
+        riscosEncontrados: dados.inventario?.length || 0,
+      }),
+    );
+  };
+
   const processarDocumentoComIA = async (file: File) => {
     if (file.size > 35 * 1024 * 1024) {
       toast.error("O arquivo excede o limite de 35MB.");
@@ -242,6 +274,7 @@ export default function PgrImportDialog({
         if (!textoDocx || textoDocx.length < 30) {
           throw new Error("O documento Word não possui texto legível suficiente.");
         }
+        textoLidoDoArquivo.current = textoDocx;
 
         const { data, error } = await supabase.functions.invoke("parse-pgr", {
           body: { texto: textoDocx },
@@ -281,6 +314,17 @@ export default function PgrImportDialog({
               ghes: ghesFb,
               inventario: inventarioFb,
             }));
+        reconhecer(completarComOWord({
+              documento: {
+                data_emissao: new Date().toISOString().slice(0, 10),
+                data_vigencia_inicio: new Date().toISOString().slice(0, 10),
+                data_vigencia_fim: new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
+                metodologia_avaliacao: "Matriz 5x5 (NR-01)",
+              },
+              setores: setoresMapeados,
+              ghes: ghesFb,
+              inventario: inventarioFb,
+            }));
             toast.success("Documento Word (.docx) analisado com sucesso!");
             return;
           }
@@ -288,6 +332,7 @@ export default function PgrImportDialog({
 
         if (data?.error) throw new Error(data.error);
         setDadosExtraidos(completarComOWord(data));
+        reconhecer(completarComOWord(data));
         toast.success("Documento Word interpretado com sucesso pela Inteligência Artificial!");
         return;
       }
@@ -336,6 +381,17 @@ export default function PgrImportDialog({
             ghes: ghesFb,
             inventario: inventarioFb,
           });
+        reconhecer({
+            documento: {
+              data_emissao: new Date().toISOString().slice(0, 10),
+              data_vigencia_inicio: new Date().toISOString().slice(0, 10),
+              data_vigencia_fim: new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
+              metodologia_avaliacao: "Matriz de Risco 5x5 (NR-01)",
+            },
+            setores: setoresMapeados,
+            ghes: ghesFb,
+            inventario: inventarioFb,
+          });
           toast.success("PDF analisado com sucesso!");
           return;
         }
@@ -344,6 +400,7 @@ export default function PgrImportDialog({
       if (data?.error) throw new Error(data.error);
 
       setDadosExtraidos(data);
+        reconhecer(data);
       toast.success("PGR interpretado com sucesso pela Inteligência Artificial!");
     } catch (err: any) {
       toast.error("Falha ao analisar o documento: " + (err.message || String(err)));
@@ -398,6 +455,17 @@ export default function PgrImportDialog({
             ghes: ghesFb,
             inventario: inventarioFb,
           });
+        reconhecer({
+            documento: {
+              data_emissao: new Date().toISOString().slice(0, 10),
+              data_vigencia_inicio: new Date().toISOString().slice(0, 10),
+              data_vigencia_fim: new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
+              metodologia_avaliacao: "Matriz 5x5 (NR-01)",
+            },
+            setores: setoresMapeados,
+            ghes: ghesFb,
+            inventario: inventarioFb,
+          });
           toast.success("Texto interpretado com sucesso!");
           return;
         }
@@ -406,6 +474,7 @@ export default function PgrImportDialog({
       if (data?.error) throw new Error(data.error);
 
       setDadosExtraidos(data);
+        reconhecer(data);
       toast.success("Dados do PGR estruturados com sucesso!");
     } catch (err: any) {
       toast.error("Erro ao analisar texto: " + (err.message || String(err)));
@@ -898,6 +967,7 @@ export default function PgrImportDialog({
 
           if (respIa.data && respIa.data.inventario && respIa.data.inventario.length > 0) {
             setDadosExtraidos(respIa.data);
+        reconhecer(respIa.data);
             toast.success(`${respIa.data.inventario.length} riscos estruturados com sucesso via IA!`);
             return;
           }
@@ -913,6 +983,21 @@ export default function PgrImportDialog({
       const vigenciaFim = new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10);
 
       setDadosExtraidos({
+        documento: {
+          empresa_nome: empresaNomeDoc || undefined,
+          cnpj: cnpjDoc || undefined,
+          resp_tec_nome: respTecDoc || undefined,
+          data_emissao: dataDoc || hoje,
+          data_vigencia_inicio: dataDoc || hoje,
+          data_vigencia_fim: vigenciaFim,
+          metodologia_avaliacao: "Matriz 5x5 (NR-01)",
+        },
+        setores: Array.from(setoresSet).map((s) => ({ nome: s })),
+        ghes: Array.from(ghesMap.values()),
+        inventario: inventarioItens,
+        acoes: acoesExtraidas,
+      });
+        reconhecer({
         documento: {
           empresa_nome: empresaNomeDoc || undefined,
           cnpj: cnpjDoc || undefined,
@@ -1683,6 +1768,39 @@ export default function PgrImportDialog({
           </div>
         )}
 
+        {/*
+          * O veredito sobre o arquivo, antes de qualquer gravação.
+          *
+          * Vem com as palavras que foram lidas no próprio documento: o
+          * técnico confere se bate com o que ele mandou, em vez de
+          * acreditar num "arquivo inválido" sem explicação. E a liberação
+          * é explícita — quem decide importar assim mesmo é ele.
+          */}
+        {reconhecimento && reconhecimento.serveParaPgr === false && (
+          <div className="mx-6 mb-2 rounded-lg border border-amber-300 bg-amber-50 p-4">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+              <div className="space-y-2 text-sm">
+                <p className="font-semibold text-amber-900">{reconhecimento.veredito}</p>
+                {reconhecimento.evidencias.length > 0 && (
+                  <p className="text-xs text-amber-800">
+                    Lido no documento: {reconhecimento.evidencias.map((e) => `"${e}"`).join(", ")}.
+                  </p>
+                )}
+                <label className="flex items-center gap-2 pt-1 text-xs font-medium text-amber-900">
+                  <input
+                    type="checkbox"
+                    checked={importarAssimMesmo}
+                    onChange={(e) => setImportarAssimMesmo(e.target.checked)}
+                    className="h-4 w-4 rounded border-amber-400"
+                  />
+                  Importar assim mesmo — eu conferi e é este o arquivo
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+
         <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-2 pt-2 border-t">
           <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={salvando}>
             Cancelar
@@ -1690,7 +1808,7 @@ export default function PgrImportDialog({
           {dadosExtraidos && (
             <Button
               onClick={handleConfirmarImportacao}
-              disabled={salvando}
+              disabled={salvando || (reconhecimento?.serveParaPgr === false && !importarAssimMesmo)}
               /*
                * O aviso de empresa errada não bloqueia — empresa sem CNPJ
                * cadastrado cairia no bloqueio sem erro nenhum. O botão
