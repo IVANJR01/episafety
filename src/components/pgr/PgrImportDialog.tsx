@@ -5,7 +5,8 @@ import {
   tipoDeExposicao,
 } from "@/lib/celulasDoInventario";
 import { chaveDoGes, codigoVisivelDoGes, nomeVisivelDoGes } from "@/lib/chaveDoGes";
-import { medidasExistentes, epiDoRisco, cabecalhoCombinado } from "@/lib/medidasDoInventario";
+import { medidasExistentes, epiDoRisco } from "@/lib/medidasDoInventario";
+import { combinarCabecalhos, pareceSubCabecalho, mapearColunas, camposCriticosPerdidos } from "@/lib/colunasDaPlanilha";
 import JSZip from "jszip";
 import {
   responsavelTecnicoDoWord, unidadesDoWord, type UnidadeDoWord,
@@ -675,97 +676,48 @@ export default function PgrImportDialog({
         headerIdx = 0;
       }
 
-      let headers = rawRows[headerIdx].map((c) => normalizarChave(String(c || "")));
+      /*
+       * Qual coluna é qual: regra em src/lib/colunasDaPlanilha.ts.
+       *
+       * Isto morava aqui dentro, sem teste, e errava calado. Na planilha
+       * da G91 a busca por probabilidade aceitava o termo "p" e parava
+       * na coluna PROCESSO; a de severidade aceitava "s" e parava em
+       * SETOR. Nenhuma das duas virava nota, as duas caíam no padrão
+       * 2x2, e os 66 riscos entraram como "Tolerável" — inclusive os 13
+       * que a planilha classifica como MODERADO.
+       */
+      let headers = combinarCabecalhos(rawRows[headerIdx], []);
       let startRow = headerIdx + 1;
 
-      // Se a linha seguinte for sub-cabeçalho (EPC, EPI, Atenuação), combina
-      if (headerIdx + 1 < rawRows.length) {
-        const nextRow = rawRows[headerIdx + 1].map((c) => normalizarChave(String(c || "")));
-        const nextStr = nextRow.join(" ");
-        if (
-          nextStr.includes("epc") ||
-          nextStr.includes("epi") ||
-          nextStr.includes("atenuacao") ||
-          nextStr.includes("procedimento")
-        ) {
-          headers = headers.map((h, col) => cabecalhoCombinado(h, nextRow[col] || ""));
-          startRow = headerIdx + 2;
-        }
+      if (headerIdx + 1 < rawRows.length && pareceSubCabecalho(rawRows[headerIdx + 1])) {
+        headers = combinarCabecalhos(rawRows[headerIdx], rawRows[headerIdx + 1]);
+        startRow = headerIdx + 2;
       }
 
-      const findExactOrIncludes = (exactTerms: string[], fallbackTerms: string[] = [], excludeTerms: string[] = []) => {
-        // 1. Correspondência exata
-        let idx = headers.findIndex((h) => exactTerms.some((t) => h === t));
-        if (idx >= 0) return idx;
+      const colunas = mapearColunas(headers);
+      const cSetor = colunas.setor;
+      const cAmbiente = colunas.ambiente;
+      const cGes = colunas.ges;
+      const cFuncao = colunas.funcao;
+      const cAgente = colunas.agente;
+      const cTipoAgente = colunas.tipoAgente;
+      const cPerigo = colunas.perigo;
+      const cFonte = colunas.fonte;
+      const cLesoes = colunas.lesoes;
+      const cMedidas = colunas.medidas;
+      const cEpi = colunas.epi;
+      const cProb = colunas.probabilidade;
+      const cSev = colunas.severidade;
+      const cProcesso = colunas.processo;
+      const cLimite = colunas.limite;
+      const cIntensidade = colunas.intensidade;
+      const cExposicao = colunas.exposicao;
+      const cTecnica = colunas.tecnica;
+      const cAtenuacao = colunas.atenuacao;
+      const cClassificacao = colunas.classificacao;
 
-        // 2. Prefixo
-        idx = headers.findIndex((h) => exactTerms.some((t) => h.startsWith(t)) && !excludeTerms.some((e) => h.includes(e)));
-        if (idx >= 0) return idx;
-
-        // 3. Contém
-        idx = headers.findIndex((h) => exactTerms.some((t) => h.includes(t)) && !excludeTerms.some((e) => h.includes(e)));
-        if (idx >= 0) return idx;
-
-        // 4. Termos secundários de fallback
-        if (fallbackTerms.length > 0) {
-          idx = headers.findIndex((h) => fallbackTerms.some((t) => h.includes(t)) && !excludeTerms.some((e) => h.includes(e)));
-          if (idx >= 0) return idx;
-        }
-        return -1;
-      };
-
-      // Mapeamento prioritário e sem ambiguidades
-      const cSetor = findExactOrIncludes(
-        ["setor", "setores", "nomedosetor", "setorarea"],
-        ["area", "departamento", "secao", "posto", "unidade", "localdetrabalho", "postodetrabalho", "local"],
-        ["ambiente", "descricaodoambiente"] // NUNCA confundir Setor com Ambiente
-      );
-      const cAmbiente = findExactOrIncludes(["descricaodoambiente", "ambiente"], ["localizacao", "instalacao"]);
-      const cGes = findExactOrIncludes(["ges", "ghe", "codigoges", "codigoghe"], ["grupodeexposicao", "grupo", "homogeneo"]);
-      const cFuncao = findExactOrIncludes(["funcao", "funcoes", "cargo", "cargos"], ["ocupacao", "trabalhadores", "atividade"]);
-      const cAgente = findExactOrIncludes(["agente", "grupoderisco", "categoria", "natureza"], ["tipoagente", "tipo"]);
-      const cTipoAgente = findExactOrIncludes(["tipodeagente", "tipoagente"]);
-      const cPerigo = findExactOrIncludes(
-        ["perigo", "descricaodoperigo", "fator", "fatorederisco", "fatorrisco"],
-        ["evento", "causa", "situacaoperigosa", "risco"]
-      );
-      const cFonte = findExactOrIncludes(["fonte", "fontegeradora", "circunstancia", "origem"]);
-      const cLesoes = findExactOrIncludes(["lesoes", "possiveislesoes", "danos", "agravos", "efeito", "consequencia"]);
-      const cMedidas = findExactOrIncludes(["medidas", "controles", "prevencao", "epc", "procedimento"]);
-      /*
-       * "equipamento" aparece no título da coluna do PROCEDIMENTO
-       * ("Procedimento Administrativo/ Equipamento"), que vem antes da
-       * coluna EPI. Sem excluir, a busca parava nela e o mesmo texto
-       * entrava como medida e como EPI.
-       */
-      const cEpi = findExactOrIncludes(
-        ["epi", "protecaoint", "equipamento"],
-        [],
-        ["procedimento", "administrativo", "medidas", "epc", "organizacao"],
-      );
-      const cProb = findExactOrIncludes(["prob", "probabilidade", "p"]);
-      const cSev = findExactOrIncludes(["sev", "severidade", "gravidade", "s"]);
-
-      /*
-       * Colunas que a planilha traz e a importação descartava.
-       *
-       * Na planilha real do cliente elas estão preenchidas em quase toda
-       * linha — ambiente, processo, limite, intensidade, tipo/tempo de
-       * exposição, técnica, atenuação —, e sem elas o inventário entra
-       * no sistema pela metade. A CLASSIFICAÇÃO é a mais importante: é a
-       * palavra que o técnico escreveu (TRIVIAL, TOLERÁVEL, MODERADO) e
-       * que decide a prioridade das ações; recalcular por fora é trocar
-       * o julgamento dele por uma conta.
-       */
-      const cProcesso = findExactOrIncludes(["processo"], [], ["agente", "perigo"]);
-      const cLimite = findExactOrIncludes(["limitedeexposicao", "limite"]);
-      const cIntensidade = findExactOrIncludes(["intens", "concentracao"]);
-      const cExposicao = findExactOrIncludes(
-        ["tipotempodeexposicao", "tempodeexposicao", "tipodeexposicao"], [], ["limite"],
-      );
-      const cTecnica = findExactOrIncludes(["tecnicautilizada", "tecnica"]);
-      const cAtenuacao = findExactOrIncludes(["atenuacao", "fatordeprotecao"]);
-      const cClassificacao = findExactOrIncludes(["classificacaodorisco", "classificacao"]);
+      /* Coluna crítica não encontrada é aviso na tela, não silêncio. */
+      const colunasPerdidas = camposCriticosPerdidos(colunas);
 
       const setoresSet = new Set<string>();
       const ghesMap = new Map<string, any>();
@@ -1073,9 +1025,22 @@ export default function PgrImportDialog({
         acoes: acoesExtraidas,
       });
 
-      toast.success(
-        `Planilha lida com sucesso! ${inventarioItens.length} riscos e ${ghesMap.size} GES identificados.`
-      );
+      if (colunasPerdidas.length > 0) {
+        /*
+         * Sem probabilidade e severidade, todo risco cai no padrão e o
+         * inventário inteiro vira "Tolerável". Melhor o técnico saber
+         * antes de gravar do que descobrir na fiscalização.
+         */
+        toast.warning(
+          `${inventarioItens.length} riscos lidos, mas não achei estas colunas na planilha: ` +
+          `${colunasPerdidas.join(", ")}. Confira o cabeçalho antes de importar.`,
+          { duration: 12000 },
+        );
+      } else {
+        toast.success(
+          `Planilha lida com sucesso! ${inventarioItens.length} riscos e ${ghesMap.size} GES identificados.`
+        );
+      }
     } catch (err: any) {
       toast.error("Erro ao processar planilha: " + (err.message || String(err)));
     } finally {
