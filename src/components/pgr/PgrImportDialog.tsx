@@ -10,7 +10,7 @@ import {
 } from "@/lib/dadosDoWordPgr";
 import { avisoDeEmpresa } from "@/lib/conferirEmpresaDoDocumento";
 import { indiceDeGes, gesDaEstrutura } from "@/lib/vinculosDoInventario";
-import { vinculosDeSetorFaltantes, vinculosDeFuncaoFaltantes } from "@/lib/vinculosDoGes";
+import { vinculosDeSetorFaltantes, vinculosDeFuncaoFaltantes, type ItemDoInventario } from "@/lib/vinculosDoGes";
 import { conferirImportacao, textoDaConferencia } from "@/lib/conferenciaDaImportacao";
 import { reconhecerDocumento, type Reconhecimento } from "@/lib/reconhecerDocumentoPgr";
 import { mesclarExtracoes, resumoDaExtracao, type ExtracaoDePgr } from "@/lib/mesclarExtracoes";
@@ -1152,8 +1152,8 @@ export default function PgrImportDialog({
       }
 
       // 4. Cria / Sincroniza GES
-      const vinculosDeSetorDoDocumento: { ghe_id: string; setor_id: string }[] = [];
-      const vinculosDeFuncaoDoDocumento: { ghe_id: string; funcao_id: string }[] = [];
+      const vinculosDeSetorDoDocumento: ItemDoInventario[] = [];
+      const vinculosDeFuncaoDoDocumento: ItemDoInventario[] = [];
       const mapaGes = new Map<string, string>(); // codigoGes -> id
       const { data: gesExistentes } = await (supabase.from as any)("ghe_ges")
         .select("id, codigo, nome")
@@ -1200,12 +1200,22 @@ export default function PgrImportDialog({
         if (gesId) {
           const setorId = ghe.setor ? mapaSetores.get(ghe.setor.trim().toLowerCase()) : null;
           if (setorId) {
-            vinculosDeSetorDoDocumento.push({ ghe_id: gesId, setor_id: setorId });
+            vinculosDeSetorDoDocumento.push({
+              empresa_id: empresaId,
+              ghe_id: gesId,
+              setor_id: setorId,
+              setor: ghe.setor,
+            });
           }
           for (const funcNome of ghe.funcoes || []) {
             const funcaoId = mapaFuncoes.get(funcNome.trim().toLowerCase());
             if (funcaoId) {
-              vinculosDeFuncaoDoDocumento.push({ ghe_id: gesId, funcao_id: funcaoId });
+              vinculosDeFuncaoDoDocumento.push({
+                empresa_id: empresaId,
+                ghe_id: gesId,
+                funcao_id: funcaoId,
+                funcao_nome: funcNome,
+              });
             }
           }
         }
@@ -1338,15 +1348,24 @@ export default function PgrImportDialog({
         vinculosFuncaoJaGravados || [],
       );
 
+      /*
+       * Vínculo que falha não derruba a importação — o inventário já está
+       * gravado e é o que mais custa refazer —, mas TEM de aparecer.
+       *
+       * Antes o erro ia só para o console. O Postgres vinha recusando
+       * toda linha porque faltavam empresa_id e nome, que a tabela exige,
+       * e ninguém via: a importação dizia sucesso e os 22 setores ficavam
+       * "Sem GES". Agora a falha entra no resumo do fim.
+       */
+      let falhaAoLigar: string | null = null;
+
       if (novosVinculosDeSetor.length > 0) {
         const { error: vincErr } = await (supabase.from as any)("ghe_setores")
           .insert(novosVinculosDeSetor);
-        /*
-         * Vínculo que falha não derruba a importação: o inventário já
-         * está gravado e é o que mais custa a refazer. O aviso sai no
-         * resumo, e a reimportação tenta de novo.
-         */
-        if (vincErr) console.error("Falha ao ligar GES a setores:", vincErr);
+        if (vincErr) {
+          console.error("Falha ao ligar GES a setores:", vincErr);
+          falhaAoLigar = vincErr.message || "erro ao gravar os vínculos de setor";
+        }
       }
 
       if (novosVinculosDeFuncao.length > 0) {
@@ -1417,6 +1436,11 @@ export default function PgrImportDialog({
         acoes: acoesParaInserir.length,
       });
       const conferencia = textoDaConferencia(resumo);
+      if (falhaAoLigar) {
+        conferencia.linhas.push(`Os GES não puderam ser ligados aos setores: ${falhaAoLigar}`);
+        conferencia.completo = false;
+        conferencia.titulo = "PGR importado, com pendências";
+      }
 
       /* Pendência não é sucesso: o aviso fica na tela até ser lido. */
       if (conferencia.completo) {

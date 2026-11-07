@@ -22,16 +22,35 @@ export interface ItemDoInventario {
   setor_id?: string | null;
   /** Função ligada ao risco, quando a planilha traz. */
   funcao_id?: string | null;
+  /** Empresa dona da linha — a tabela exige e recusa sem. */
+  empresa_id?: string | null;
+  /** Nome do setor, como está escrito no inventário. */
+  setor?: string | null;
+  /** Nome da função, quando houver. */
+  funcao_nome?: string | null;
 }
 
+/*
+ * As linhas saem COMPLETAS, prontas para gravar.
+ *
+ * ghe_setores exige empresa_id, ghe_id e nome; ghe_funcoes exige
+ * empresa_id, ghe_id e nome_funcao. Faltando qualquer um, o banco recusa
+ * a linha inteira. Era exatamente isso que vinha acontecendo: a gravação
+ * mandava só os dois ids, o Postgres recusava, e o erro ia para o
+ * console — ninguém via, e os setores ficavam "Sem GES" para sempre.
+ */
 export interface VinculoDeSetor {
+  empresa_id: string;
   ghe_id: string;
   setor_id: string;
+  nome: string;
 }
 
 export interface VinculoDeFuncao {
+  empresa_id: string;
   ghe_id: string;
   funcao_id: string;
+  nome_funcao: string;
 }
 
 function chave(a: string, b: string): string {
@@ -56,12 +75,20 @@ export function vinculosDeSetorFaltantes(
   for (const item of itens) {
     const ghe = item.ghe_id?.trim();
     const setor = item.setor_id?.trim();
-    if (!ghe || !setor) continue;
+    const empresa = item.empresa_id?.trim();
+    /* Sem empresa a linha é recusada pelo banco; melhor nem montar. */
+    if (!ghe || !setor || !empresa) continue;
 
     const k = chave(ghe, setor);
     if (vistos.has(k)) continue;
     vistos.add(k);
-    saida.push({ ghe_id: ghe, setor_id: setor });
+    saida.push({
+      empresa_id: empresa,
+      ghe_id: ghe,
+      setor_id: setor,
+      /* A coluna guarda o nome do SETOR — é a convenção das linhas que já existem. */
+      nome: item.setor?.trim() || "Setor",
+    });
   }
 
   return saida;
@@ -78,12 +105,18 @@ export function vinculosDeFuncaoFaltantes(
   for (const item of itens) {
     const ghe = item.ghe_id?.trim();
     const funcao = item.funcao_id?.trim();
-    if (!ghe || !funcao) continue;
+    const empresa = item.empresa_id?.trim();
+    if (!ghe || !funcao || !empresa) continue;
 
     const k = chave(ghe, funcao);
     if (vistos.has(k)) continue;
     vistos.add(k);
-    saida.push({ ghe_id: ghe, funcao_id: funcao });
+    saida.push({
+      empresa_id: empresa,
+      ghe_id: ghe,
+      funcao_id: funcao,
+      nome_funcao: item.funcao_nome?.trim() || "Função",
+    });
   }
 
   return saida;
