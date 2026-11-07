@@ -66,7 +66,7 @@ describe("o que a tela diz no fim", () => {
   it("sem pendência, confirma que conferiu", () => {
     const texto = textoDaConferencia({
       riscos: 66, riscosSemGes: 0, riscosSemSetor: 0,
-      setoresLigados: 22, setoresSemGes: 0, acoes: 12,
+      setoresLigados: 22, setoresSemGes: 0, riscosSemMedida: 0, acoes: 12,
     });
     expect(texto.completo).toBe(true);
     expect(texto.titulo).toMatch(/conferido/i);
@@ -81,7 +81,7 @@ describe("o que a tela diz no fim", () => {
      */
     const texto = textoDaConferencia({
       riscos: 66, riscosSemGes: 0, riscosSemSetor: 66,
-      setoresLigados: 0, setoresSemGes: 22, acoes: 0,
+      setoresLigados: 0, setoresSemGes: 22, riscosSemMedida: 0, acoes: 0,
     });
     expect(texto.completo).toBe(false);
     expect(texto.titulo).not.toMatch(/sucesso/i);
@@ -96,7 +96,7 @@ describe("o que a tela diz no fim", () => {
      */
     const texto = textoDaConferencia({
       riscos: 0, riscosSemGes: 0, riscosSemSetor: 0,
-      setoresLigados: 0, setoresSemGes: 22, acoes: 0,
+      setoresLigados: 0, setoresSemGes: 22, riscosSemMedida: 0, acoes: 0,
     });
     expect(texto.completo).toBe(false);
     expect(texto.titulo).toMatch(/nenhum risco/i);
@@ -107,7 +107,7 @@ describe("o que a tela diz no fim", () => {
   it("fala no singular quando é um só", () => {
     const texto = textoDaConferencia({
       riscos: 1, riscosSemGes: 0, riscosSemSetor: 0,
-      setoresLigados: 1, setoresSemGes: 1, acoes: 1,
+      setoresLigados: 1, setoresSemGes: 1, riscosSemMedida: 0, acoes: 1,
     });
     const tudo = texto.linhas.join(" ");
     expect(tudo).toMatch(/1 risco no invent/);
@@ -118,8 +118,46 @@ describe("o que a tela diz no fim", () => {
   it("não cita plano de ação quando não houve nenhuma", () => {
     const texto = textoDaConferencia({
       riscos: 10, riscosSemGes: 0, riscosSemSetor: 0,
-      setoresLigados: 2, setoresSemGes: 0, acoes: 0,
+      setoresLigados: 2, setoresSemGes: 0, riscosSemMedida: 0, acoes: 0,
     });
     expect(texto.linhas.join(" ")).not.toMatch(/plano de ação/i);
+  });
+});
+
+describe("risco sem medida de prevenção", () => {
+  it("é contado a partir da lista vazia de controles", () => {
+    const r = conferirImportacao({
+      itens: [
+        { ghe_id: "g", setor_id: "s", controles_existentes: ["Enclausuramento"] },
+        { ghe_id: "g", setor_id: "s", controles_existentes: [] },
+        { ghe_id: "g", setor_id: "s" },
+      ],
+      vinculosDeSetor: [{ setor_id: "s" }],
+      setores: [{ id: "s" }],
+      acoes: 0,
+    });
+    expect(r.riscosSemMedida).toBe(2);
+  });
+
+  it("aparece na conferência, em vez de sumir em branco na tela", () => {
+    /*
+     * A importação escrevia "Medidas preventivas gerais" nesses riscos.
+     * O técnico lia uma frase que não era dele e seguia em frente,
+     * achando que o risco estava controlado.
+     */
+    const texto = textoDaConferencia({
+      riscos: 66, riscosSemGes: 0, riscosSemSetor: 0,
+      setoresLigados: 22, setoresSemGes: 0, riscosSemMedida: 11, acoes: 12,
+    });
+    expect(texto.completo).toBe(false);
+    expect(texto.linhas.join(" ")).toMatch(/11 riscos estão sem medida de prevenção/);
+  });
+
+  it("inventário todo com medida não vira pendência", () => {
+    const texto = textoDaConferencia({
+      riscos: 66, riscosSemGes: 0, riscosSemSetor: 0,
+      setoresLigados: 22, setoresSemGes: 0, riscosSemMedida: 0, acoes: 12,
+    });
+    expect(texto.completo).toBe(true);
   });
 });

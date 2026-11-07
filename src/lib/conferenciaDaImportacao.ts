@@ -26,13 +26,19 @@ export interface ResumoDaImportacao {
   setoresLigados: number;
   /** Setores que continuaram sem GES nenhum. */
   setoresSemGes: number;
+  /** Riscos que entraram sem nenhuma medida de prevenção registrada. */
+  riscosSemMedida: number;
   /** Ações do plano de ação gravadas. */
   acoes: number;
 }
 
 /** O que a tela precisa para montar a conferência. */
 export interface DadosDaImportacao {
-  itens: { ghe_id?: string | null; setor_id?: string | null }[];
+  itens: {
+    ghe_id?: string | null;
+    setor_id?: string | null;
+    controles_existentes?: unknown[] | null;
+  }[];
   /** Pares GES↔setor existentes depois da importação. */
   vinculosDeSetor: { setor_id: string }[];
   /** Todos os setores da empresa. */
@@ -47,6 +53,13 @@ export function conferirImportacao(dados: DadosDaImportacao): ResumoDaImportacao
     riscos: dados.itens.length,
     riscosSemGes: dados.itens.filter((i) => !i.ghe_id).length,
     riscosSemSetor: dados.itens.filter((i) => !i.setor_id).length,
+    /*
+     * Antes a importação escrevia "Medidas preventivas gerais" nesses
+     * riscos — uma frase que o técnico não escreveu — e eles entravam
+     * parecendo controlados. Agora ficam em branco, e o branco precisa
+     * ser contado em voz alta aqui.
+     */
+    riscosSemMedida: dados.itens.filter((i) => (i.controles_existentes?.length ?? 0) === 0).length,
     setoresLigados: dados.setores.filter((s) => comGes.has(s.id)).length,
     setoresSemGes: dados.setores.filter((s) => !comGes.has(s.id)).length,
     acoes: dados.acoes,
@@ -103,6 +116,12 @@ export function textoDaConferencia(r: ResumoDaImportacao): TextoDaConferencia {
   if (r.riscosSemSetor > 0) {
     pendencias.push(
       `${r.riscosSemSetor} ${r.riscosSemSetor === 1 ? "risco ficou" : "riscos ficaram"} sem setor.`,
+    );
+  }
+  if (r.riscosSemMedida > 0) {
+    pendencias.push(
+      `${r.riscosSemMedida} ${r.riscosSemMedida === 1 ? "risco está" : "riscos estão"} ` +
+      "sem medida de prevenção no documento — confira se precisam de plano de ação.",
     );
   }
 

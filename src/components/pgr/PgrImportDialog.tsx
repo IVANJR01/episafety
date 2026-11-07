@@ -5,6 +5,7 @@ import {
   tipoDeExposicao,
 } from "@/lib/celulasDoInventario";
 import { chaveDoGes, codigoVisivelDoGes, nomeVisivelDoGes } from "@/lib/chaveDoGes";
+import { medidasExistentes, epiDoRisco, cabecalhoCombinado } from "@/lib/medidasDoInventario";
 import JSZip from "jszip";
 import {
   responsavelTecnicoDoWord, unidadesDoWord, type UnidadeDoWord,
@@ -687,10 +688,7 @@ export default function PgrImportDialog({
           nextStr.includes("atenuacao") ||
           nextStr.includes("procedimento")
         ) {
-          headers = headers.map((h, col) => {
-            const sub = nextRow[col] || "";
-            return sub ? `${h}_${sub}` : h;
-          });
+          headers = headers.map((h, col) => cabecalhoCombinado(h, nextRow[col] || ""));
           startRow = headerIdx + 2;
         }
       }
@@ -734,7 +732,17 @@ export default function PgrImportDialog({
       const cFonte = findExactOrIncludes(["fonte", "fontegeradora", "circunstancia", "origem"]);
       const cLesoes = findExactOrIncludes(["lesoes", "possiveislesoes", "danos", "agravos", "efeito", "consequencia"]);
       const cMedidas = findExactOrIncludes(["medidas", "controles", "prevencao", "epc", "procedimento"]);
-      const cEpi = findExactOrIncludes(["epi", "protecaoint", "equipamento"]);
+      /*
+       * "equipamento" aparece no título da coluna do PROCEDIMENTO
+       * ("Procedimento Administrativo/ Equipamento"), que vem antes da
+       * coluna EPI. Sem excluir, a busca parava nela e o mesmo texto
+       * entrava como medida e como EPI.
+       */
+      const cEpi = findExactOrIncludes(
+        ["epi", "protecaoint", "equipamento"],
+        [],
+        ["procedimento", "administrativo", "medidas", "epc", "organizacao"],
+      );
       const cProb = findExactOrIncludes(["prob", "probabilidade", "p"]);
       const cSev = findExactOrIncludes(["sev", "severidade", "gravidade", "s"]);
 
@@ -897,9 +905,9 @@ export default function PgrImportDialog({
         const P = num(cProb, 2);
         const S = num(cSev, 2);
 
-        const controlesArr: string[] = [];
-        if (medidas && medidas !== "N.A" && medidas !== "-") controlesArr.push(medidas);
-        if (epi && epi !== "N.A" && epi !== "-") controlesArr.push(`EPI: ${epi}`);
+        /* A atenuação tem coluna própria no risco; aqui ela repetiria. */
+        const controlesArr = medidasExistentes({ procedimento: medidas, epi });
+        const epiDaLinha = epiDoRisco({ procedimento: medidas, epi });
 
         inventarioItens.push({
           setor,
@@ -909,8 +917,16 @@ export default function PgrImportDialog({
           perigo_descricao: perigoDesc,
           fonte_geradora: fonte && fonte !== "N.A" ? fonte : null,
           lesoes: lesoes && lesoes !== "N.A" ? lesoes : null,
-          controles_existentes: controlesArr.length > 0 ? controlesArr : ["Medidas preventivas gerais"],
-          epi: epi || null,
+          /*
+           * Risco sem medida fica SEM medida.
+           *
+           * Aqui se escrevia "Medidas preventivas gerais" — uma frase
+           * que o técnico não escreveu — e o risco entrava no inventário
+           * parecendo controlado. É justamente esse risco que precisa de
+           * plano de ação.
+           */
+          controles_existentes: controlesArr,
+          epi: epiDaLinha,
           probabilidade: P,
           severidade: S,
           /* Ver o bloco de colunas acima. */
