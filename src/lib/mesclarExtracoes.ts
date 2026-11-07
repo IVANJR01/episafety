@@ -14,6 +14,8 @@
  * Aqui não há banco, nem IA, nem React: entram duas leituras, sai uma.
  */
 
+import { chaveDoGes } from "./chaveDoGes";
+
 export interface ExtracaoDePgr {
   documento?: Record<string, unknown> | null;
   unidades?: unknown[] | null;
@@ -123,7 +125,12 @@ export function mesclarExtracoes(
       (u) => normalizar(u?.nome ?? u?.cnpj),
     ),
     setores: unirListas(atual.setores, novo.setores, (s) => normalizar(s?.nome)),
-    ghes: unirListas(atual.ghes, novo.ghes, (g) => normalizar(g?.codigo || g?.nome)),
+    /*
+     * O GES é comparado pela chave canônica: o Word escrevendo "GES 01"
+     * e a planilha escrevendo 1.0 são o mesmo grupo, e juntar os dois
+     * arquivos não pode produzir dois.
+     */
+    ghes: unirListas(atual.ghes, novo.ghes, (g) => chaveDoGes(g?.codigo) || normalizar(g?.nome)),
     inventario: unirListas(atual.inventario, novo.inventario, chaveDoRisco),
   };
 }

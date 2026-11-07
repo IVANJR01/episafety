@@ -4,6 +4,7 @@ import {
   textoDaCelula, notaDeRisco, codigoDoGes, grupoDoRisco, classeDaPlanilha,
   tipoDeExposicao,
 } from "@/lib/celulasDoInventario";
+import { chaveDoGes, codigoVisivelDoGes, nomeVisivelDoGes } from "@/lib/chaveDoGes";
 import JSZip from "jszip";
 import {
   responsavelTecnicoDoWord, unidadesDoWord, type UnidadeDoWord,
@@ -845,7 +846,15 @@ export default function PgrImportDialog({
 
         // Se o setor ainda for vazio, mas a empresa tiver o nome da unidade ou estabelecimento
         setor = setor || ant.setor || "Operacional";
-        gesCodigo = gesCodigo || "GES 01";
+        /*
+         * Linha sem GES fica SEM GES.
+         *
+         * Aqui se escrevia o texto "GES 01" por padrão. Isso criava no
+         * banco um GES chamado "GES 01" ao lado do GES 01 de verdade
+         * (que a planilha escreve como 1.0) — dois registros para um
+         * grupo só, e o de verdade sem risco nenhum pendurado.
+         */
+        gesCodigo = codigoVisivelDoGes(gesCodigo);
         perigoDesc = perigoDesc || agenteStr || "Risco ocupacional identificado";
 
         setoresSet.add(setor);
@@ -858,15 +867,20 @@ export default function PgrImportDialog({
               .filter(Boolean)
           : [];
 
-        if (!ghesMap.has(gesCodigo)) {
-          ghesMap.set(gesCodigo, {
-            codigo: gesCodigo,
-            nome: gesCodigo.toLowerCase().startsWith("ges") ? gesCodigo : `GES ${gesCodigo}`,
+        /*
+         * A chave do mapa é canônica: "1.0", "01" e "GES 01" caem no
+         * mesmo GES em vez de virarem três.
+         */
+        const chaveGes = chaveDoGes(gesCodigo);
+        if (chaveGes && !ghesMap.has(chaveGes)) {
+          ghesMap.set(chaveGes, {
+            codigo: codigoVisivelDoGes(gesCodigo),
+            nome: nomeVisivelDoGes(gesCodigo),
             setor: setor,
             funcoes: funcoesArr,
           });
-        } else {
-          const g = ghesMap.get(gesCodigo);
+        } else if (chaveGes) {
+          const g = ghesMap.get(chaveGes);
           funcoesArr.forEach((f) => {
             if (!g.funcoes.includes(f)) g.funcoes.push(f);
           });
@@ -1159,14 +1173,25 @@ export default function PgrImportDialog({
         .select("id, codigo, nome")
         .eq("empresa_id", empresaId);
 
+      /*
+       * O que já está no banco entra pela chave canônica.
+       *
+       * Antes a chave era o texto cru em minúsculas. O GES gravado como
+       * "GES 01" nunca era encontrado por um risco que procurava "01", e
+       * reimportar o mesmo PGR criava o irmão gêmeo: no banco do cliente
+       * sobraram 34 GES onde a planilha tem 25.
+       */
       (gesExistentes || []).forEach((g: any) => {
-        if (g.codigo) mapaGes.set(g.codigo.trim().toLowerCase(), g.id);
-        if (g.nome) mapaGes.set(g.nome.trim().toLowerCase(), g.id);
+        /* Chave vazia casaria com qualquer risco sem GES; não entra. */
+        const porCodigo = chaveDoGes(g.codigo);
+        const porNome = chaveDoGes(g.nome);
+        if (porCodigo) mapaGes.set(porCodigo, g.id);
+        if (porNome) mapaGes.set(porNome, g.id);
       });
 
       for (const ghe of dadosExtraidos.ghes || []) {
-        const chaveCodigo = (ghe.codigo || "").trim().toLowerCase();
-        const chaveNome = (ghe.nome || "").trim().toLowerCase();
+        const chaveCodigo = chaveDoGes(ghe.codigo);
+        const chaveNome = chaveDoGes(ghe.nome);
 
         let gesId = mapaGes.get(chaveCodigo) || mapaGes.get(chaveNome);
 
@@ -1174,8 +1199,8 @@ export default function PgrImportDialog({
           const { data: gesNovo } = await (supabase.from as any)("ghe_ges")
             .insert({
               empresa_id: empresaId,
-              codigo: ghe.codigo || "GES 01",
-              nome: ghe.nome || ghe.codigo || "GES Geral",
+              codigo: codigoVisivelDoGes(ghe.codigo) || "01",
+              nome: nomeVisivelDoGes(ghe.codigo, ghe.nome),
               descricao: ghe.descricao || null,
             })
             .select("id")
@@ -1183,8 +1208,8 @@ export default function PgrImportDialog({
 
           if (gesNovo) {
             gesId = gesNovo.id;
-            mapaGes.set(chaveCodigo, gesNovo.id);
-            mapaGes.set(chaveNome, gesNovo.id);
+            if (chaveCodigo) mapaGes.set(chaveCodigo, gesNovo.id);
+            if (chaveNome) mapaGes.set(chaveNome, gesNovo.id);
           }
         }
 
@@ -1247,7 +1272,7 @@ export default function PgrImportDialog({
           || classificarRisco(S, P)
           || (nivel <= 3 ? "trivial" : nivel <= 8 ? "toleravel" : nivel <= 12 ? "moderado" : nivel <= 15 ? "substancial" : "intoleravel");
 
-        const gesId = item.ges_codigo ? mapaGes.get(item.ges_codigo.trim().toLowerCase()) : null;
+        const gesId = item.ges_codigo ? mapaGes.get(chaveDoGes(item.ges_codigo)) : null;
         const setorId = item.setor ? mapaSetores.get(item.setor.trim().toLowerCase()) : null;
 
         return {

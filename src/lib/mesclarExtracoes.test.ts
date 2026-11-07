@@ -133,3 +133,25 @@ describe("casos de borda", () => {
     expect(resumoDaExtracao(j)).toEqual({ setores: 3, ges: 2, riscos: 2, unidades: 0 });
   });
 });
+
+describe("o mesmo GES escrito de dois jeitos", () => {
+  it("o Word com 'GES 01' e a planilha com 1.0 não viram dois GES", () => {
+    /*
+     * Foi assim que o banco do cliente ficou com um "GES 01" sem risco
+     * nenhum ao lado do GES 01 de verdade.
+     */
+    const j = mesclarExtracoes(
+      { ghes: [{ codigo: "GES 01", nome: "GES 01" }] },
+      { ghes: [{ codigo: "01", nome: "GES 01" }] },
+    );
+    expect(j.ghes).toHaveLength(1);
+  });
+
+  it("GES diferentes continuam dois", () => {
+    const j = mesclarExtracoes(
+      { ghes: [{ codigo: "03" }] },
+      { ghes: [{ codigo: "3.1" }] },
+    );
+    expect(j.ghes).toHaveLength(2);
+  });
+});
