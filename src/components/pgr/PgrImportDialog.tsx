@@ -13,9 +13,9 @@ import { indiceDeGes, gesDaEstrutura } from "@/lib/vinculosDoInventario";
 import { vinculosDeSetorFaltantes, vinculosDeFuncaoFaltantes } from "@/lib/vinculosDoGes";
 import { conferirImportacao, textoDaConferencia } from "@/lib/conferenciaDaImportacao";
 import { reconhecerDocumento, type Reconhecimento } from "@/lib/reconhecerDocumentoPgr";
+import { mesclarExtracoes, resumoDaExtracao, type ExtracaoDePgr } from "@/lib/mesclarExtracoes";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,7 +95,6 @@ export default function PgrImportDialog({
   empresaId,
   onImportadoSucesso,
 }: Props) {
-  const [tab, setTab] = useState<"pdf" | "texto" | "xlsx">("pdf");
   /** Dados da empresa aberta, para conferir de quem é o documento. */
   const [empresaAtiva, setEmpresaAtiva] = useState<{ nome: string; cnpj: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -111,17 +110,72 @@ export default function PgrImportDialog({
    */
   const [reconhecimento, setReconhecimento] = useState<Reconhecimento | null>(null);
   const [importarAssimMesmo, setImportarAssimMesmo] = useState(false);
+  /* O que cada arquivo trouxe, para a tela prestar contas arquivo a arquivo. */
+  const [arrastando, setArrastando] = useState(false);
+  const [colarAberto, setColarAberto] = useState(false);
+  const [arquivosLidos, setArquivosLidos] = useState<
+    { nome: string; estado: "lendo" | "lido" | "erro"; riscos?: number; detalhe?: string }[]
+  >([]);
 
   const fileInputPdfRef = useRef<HTMLInputElement>(null);
-  const fileInputXlsxRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
     setArquivo(null);
     setTextoLivre("");
     setLoading(false);
     setSalvando(false);
+    /*
+     * Limpa de verdade: acumular(null) não limparia nada, porque juntar
+     * com nada devolve o que já estava — é justamente o que faz os
+     * arquivos somarem.
+     */
     setDadosExtraidos(null);
-        reconhecer(null);
+    setReconhecimento(null);
+    setImportarAssimMesmo(false);
+    setArquivosLidos([]);
+    textoLidoDoArquivo.current = "";
+  };
+
+  /**
+   * Lê vários arquivos de uma vez, cada um pelo caminho certo.
+   *
+   * É o que o técnico pediu: soltar o Word e a planilha juntos, numa área
+   * só, em vez de escolher uma aba por vez e perder o que a anterior
+   * tinha lido. A leitura é em fila, não em paralelo: a IA do servidor
+   * atende um pedido por vez, e enfileirar dá erro menos confuso que
+   * disparar três e receber dois estouros.
+   */
+  const processarVariosArquivos = async (lista: File[]) => {
+    for (const file of lista) {
+      const nome = file.name;
+      const ehPlanilha = /\.(xlsx|xlsm|xls|csv)$/i.test(nome);
+      setArquivosLidos((atual) => [...atual, { nome, estado: "lendo" }]);
+
+      const antes = (dadosRef.current?.inventario?.length || 0);
+      try {
+        if (ehPlanilha) {
+          await processarPlanilhaXlsx(file);
+        } else {
+          await processarDocumentoComIA(file);
+        }
+        const depois = (dadosRef.current?.inventario?.length || 0);
+        setArquivosLidos((atual) =>
+          atual.map((a) =>
+            a.nome === nome && a.estado === "lendo"
+              ? { nome, estado: "lido", riscos: depois - antes }
+              : a,
+          ),
+        );
+      } catch (err: unknown) {
+        setArquivosLidos((atual) =>
+          atual.map((a) =>
+            a.nome === nome && a.estado === "lendo"
+              ? { nome, estado: "erro", detalhe: (err as Error)?.message || "Falha na leitura" }
+              : a,
+          ),
+        );
+      }
+    }
   };
 
   const fileToBase64 = (file: File): Promise<string> =>
@@ -234,12 +288,40 @@ export default function PgrImportDialog({
 
   /* O texto cru do arquivo, para reconhecer que documento é. */
   const textoLidoDoArquivo = useRef<string>("");
+  /* Espelho do acumulado, para contar quanto cada arquivo somou. */
+  const dadosRef = useRef<DadosPgrExtraidos | null>(null);
 
   /*
    * Reconhece o arquivo a cada leitura. O texto do documento manda sobre
    * o nome: "PGRS.xlsx" e "PGR.xlsx" são um caractere de diferença, e
    * quem renomeia o arquivo não muda o que está escrito dentro.
    */
+  /*
+   * Cada arquivo lido SOMA ao que já havia, em vez de substituir.
+   *
+   * O PGR vem em dois arquivos: o Word com empresa, responsável e GES, a
+   * planilha com o inventário. Antes, a segunda leitura jogava a
+   * primeira fora, e importar completo era importar duas vezes perdendo
+   * metade no caminho.
+   */
+  const acumular = (novos: DadosPgrExtraidos | null) => {
+    setDadosExtraidos((anteriores) => {
+      /*
+       * O cast passa pelo `unknown` porque DadosPgrExtraidos descreve os
+       * campos com tipos fechados e ExtracaoDePgr trabalha genérico: a
+       * junção não inventa campo nenhum, só decide de qual arquivo cada
+       * um vem.
+       */
+      const juntos = mesclarExtracoes(
+        anteriores as unknown as ExtracaoDePgr,
+        novos as unknown as ExtracaoDePgr,
+      ) as unknown as DadosPgrExtraidos;
+      dadosRef.current = juntos;
+      reconhecer(juntos);
+      return juntos;
+    });
+  };
+
   const reconhecer = (dados: DadosPgrExtraidos | null) => {
     setImportarAssimMesmo(false);
     if (!dados) {
@@ -274,7 +356,7 @@ export default function PgrImportDialog({
         if (!textoDocx || textoDocx.length < 30) {
           throw new Error("O documento Word não possui texto legível suficiente.");
         }
-        textoLidoDoArquivo.current = textoDocx;
+        textoLidoDoArquivo.current += `\n${textoDocx}`;
 
         const { data, error } = await supabase.functions.invoke("parse-pgr", {
           body: { texto: textoDocx },
@@ -303,18 +385,7 @@ export default function PgrImportDialog({
               });
             });
 
-            setDadosExtraidos(completarComOWord({
-              documento: {
-                data_emissao: new Date().toISOString().slice(0, 10),
-                data_vigencia_inicio: new Date().toISOString().slice(0, 10),
-                data_vigencia_fim: new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
-                metodologia_avaliacao: "Matriz 5x5 (NR-01)",
-              },
-              setores: setoresMapeados,
-              ghes: ghesFb,
-              inventario: inventarioFb,
-            }));
-        reconhecer(completarComOWord({
+            acumular(completarComOWord({
               documento: {
                 data_emissao: new Date().toISOString().slice(0, 10),
                 data_vigencia_inicio: new Date().toISOString().slice(0, 10),
@@ -331,8 +402,7 @@ export default function PgrImportDialog({
         }
 
         if (data?.error) throw new Error(data.error);
-        setDadosExtraidos(completarComOWord(data));
-        reconhecer(completarComOWord(data));
+        acumular(completarComOWord(data));
         toast.success("Documento Word interpretado com sucesso pela Inteligência Artificial!");
         return;
       }
@@ -370,18 +440,7 @@ export default function PgrImportDialog({
             });
           });
 
-          setDadosExtraidos({
-            documento: {
-              data_emissao: new Date().toISOString().slice(0, 10),
-              data_vigencia_inicio: new Date().toISOString().slice(0, 10),
-              data_vigencia_fim: new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
-              metodologia_avaliacao: "Matriz de Risco 5x5 (NR-01)",
-            },
-            setores: setoresMapeados,
-            ghes: ghesFb,
-            inventario: inventarioFb,
-          });
-        reconhecer({
+          acumular({
             documento: {
               data_emissao: new Date().toISOString().slice(0, 10),
               data_vigencia_inicio: new Date().toISOString().slice(0, 10),
@@ -399,8 +458,7 @@ export default function PgrImportDialog({
 
       if (data?.error) throw new Error(data.error);
 
-      setDadosExtraidos(data);
-        reconhecer(data);
+      acumular(data);
       toast.success("PGR interpretado com sucesso pela Inteligência Artificial!");
     } catch (err: any) {
       toast.error("Falha ao analisar o documento: " + (err.message || String(err)));
@@ -444,18 +502,7 @@ export default function PgrImportDialog({
             });
           });
 
-          setDadosExtraidos({
-            documento: {
-              data_emissao: new Date().toISOString().slice(0, 10),
-              data_vigencia_inicio: new Date().toISOString().slice(0, 10),
-              data_vigencia_fim: new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
-              metodologia_avaliacao: "Matriz 5x5 (NR-01)",
-            },
-            setores: setoresMapeados,
-            ghes: ghesFb,
-            inventario: inventarioFb,
-          });
-        reconhecer({
+          acumular({
             documento: {
               data_emissao: new Date().toISOString().slice(0, 10),
               data_vigencia_inicio: new Date().toISOString().slice(0, 10),
@@ -473,8 +520,7 @@ export default function PgrImportDialog({
 
       if (data?.error) throw new Error(data.error);
 
-      setDadosExtraidos(data);
-        reconhecer(data);
+      acumular(data);
       toast.success("Dados do PGR estruturados com sucesso!");
     } catch (err: any) {
       toast.error("Erro ao analisar texto: " + (err.message || String(err)));
@@ -966,8 +1012,7 @@ export default function PgrImportDialog({
           });
 
           if (respIa.data && respIa.data.inventario && respIa.data.inventario.length > 0) {
-            setDadosExtraidos(respIa.data);
-        reconhecer(respIa.data);
+            acumular(respIa.data);
             toast.success(`${respIa.data.inventario.length} riscos estruturados com sucesso via IA!`);
             return;
           }
@@ -982,22 +1027,7 @@ export default function PgrImportDialog({
       const hoje = new Date().toISOString().slice(0, 10);
       const vigenciaFim = new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10);
 
-      setDadosExtraidos({
-        documento: {
-          empresa_nome: empresaNomeDoc || undefined,
-          cnpj: cnpjDoc || undefined,
-          resp_tec_nome: respTecDoc || undefined,
-          data_emissao: dataDoc || hoje,
-          data_vigencia_inicio: dataDoc || hoje,
-          data_vigencia_fim: vigenciaFim,
-          metodologia_avaliacao: "Matriz 5x5 (NR-01)",
-        },
-        setores: Array.from(setoresSet).map((s) => ({ nome: s })),
-        ghes: Array.from(ghesMap.values()),
-        inventario: inventarioItens,
-        acoes: acoesExtraidas,
-      });
-        reconhecer({
+      acumular({
         documento: {
           empresa_nome: empresaNomeDoc || undefined,
           cnpj: cnpjDoc || undefined,
@@ -1426,146 +1456,162 @@ export default function PgrImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      {/*
+        * sm:max-w-4xl, não max-w-4xl.
+        *
+        * O DialogContent base já define sm:max-w-lg (512px). Pedir
+        * max-w-4xl sem o prefixo não substitui nada: são variantes
+        * diferentes, as duas ficam valendo e a do breakpoint ganha no
+        * desktop. O diálogo abria com 512px e o conteúdo vazava para
+        * fora — era a barra de rolagem horizontal que aparecia na tela.
+        */}
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-bold">
             <Sparkles className="h-5 w-5 text-indigo-600" />
-            Importação Inteligente de PGR (PDF / IA)
+            Importar PGR existente
           </DialogTitle>
           <DialogDescription>
-            Importe o documento PDF do PGR existente para extrair a estrutura, cargos, GES e inventário de riscos sem digitação manual.
+            Solte o documento e a planilha do PGR. O sistema lê os dois juntos e
+            mostra o que encontrou antes de gravar qualquer coisa.
           </DialogDescription>
         </DialogHeader>
 
         {!dadosExtraidos ? (
           <div className="space-y-4 py-2">
-            <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
-              <TabsList className="grid grid-cols-3 w-full">
-                <TabsTrigger value="pdf" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                  <FileText className="w-4 h-4" /> PDF ou Word (.docx)
-                </TabsTrigger>
-                <TabsTrigger value="xlsx" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                  <FileSpreadsheet className="w-4 h-4" /> Planilha Excel (GRO)
-                </TabsTrigger>
-                <TabsTrigger value="texto" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                  <FileText className="w-4 h-4" /> Colar Texto
-                </TabsTrigger>
-              </TabsList>
+            {/*
+              * Uma área só, vários arquivos.
+              *
+              * Eram três abas — PDF/Word, planilha, colar texto — e cada
+              * uma aceitava um arquivo, jogando fora o que a anterior
+              * tinha lido. Mas o PGR vem em dois arquivos: o Word com
+              * empresa, responsável e GES; a planilha com o inventário.
+              * Importar completo exigia duas idas e perdia metade.
+              */}
+            <div
+              onClick={() => fileInputPdfRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setArrastando(true); }}
+              onDragLeave={() => setArrastando(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setArrastando(false);
+                const lista = Array.from(e.dataTransfer.files || []);
+                if (lista.length) processarVariosArquivos(lista);
+              }}
+              className={`rounded-xl border-2 border-dashed p-8 text-center transition-all ${
+                loading ? "cursor-wait" : "cursor-pointer"
+              } ${
+                arrastando
+                  ? "border-indigo-500 bg-indigo-50"
+                  : "border-indigo-200 bg-indigo-50/20 hover:border-indigo-500 hover:bg-indigo-50/50"
+              }`}
+            >
+              <input
+                ref={fileInputPdfRef}
+                type="file"
+                multiple
+                accept=".pdf,.docx,.xlsx,.xlsm,.xls,.csv"
+                className="hidden"
+                onChange={(e) => {
+                  const lista = Array.from(e.target.files || []);
+                  if (lista.length) processarVariosArquivos(lista);
+                  e.target.value = "";
+                }}
+              />
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" />}
+              </div>
+              <p className="mt-3 text-sm font-semibold text-slate-800 sm:text-base">
+                Solte aqui os arquivos do PGR — pode ser mais de um
+              </p>
+              <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
+                O documento em Word ou PDF e a planilha do inventário, juntos.
+                Cada arquivo soma ao anterior: o Word costuma trazer empresa,
+                responsável e GES; a planilha, os riscos.
+              </p>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                .docx · .pdf · .xlsx · .xlsm · .csv — até 35 MB cada
+              </p>
+            </div>
 
-              {/* ABA 1: UPLOAD DE PDF OU WORD */}
-              <TabsContent value="pdf" className="mt-4 space-y-4">
-                <div
-                  onClick={() => fileInputPdfRef.current?.click()}
-                  className="border-2 border-dashed border-indigo-200 hover:border-indigo-500 bg-indigo-50/20 hover:bg-indigo-50/50 rounded-xl p-8 text-center cursor-pointer transition-all space-y-3"
-                >
-                  <input
-                    ref={fileInputPdfRef}
-                    type="file"
-                    accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) processarDocumentoComIA(f);
-                    }}
-                  />
-                  <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center mx-auto text-indigo-600">
-                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Upload className="w-6 h-6" />}
+            {/* O que cada arquivo trouxe */}
+            {arquivosLidos.length > 0 && (
+              <div className="space-y-1.5 rounded-xl border bg-slate-50/70 p-3">
+                {arquivosLidos.map((a, i) => (
+                  <div key={`${a.nome}-${i}`} className="flex items-center gap-2 text-xs">
+                    {a.estado === "lendo" && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-indigo-600" />}
+                    {a.estado === "lido" && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
+                    {a.estado === "erro" && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" />}
+                    <span className="truncate font-medium text-slate-800">{a.nome}</span>
+                    <span className="shrink-0 text-muted-foreground">
+                      {a.estado === "lendo" && "lendo..."}
+                      {a.estado === "lido" && (
+                        a.riscos && a.riscos > 0
+                          ? `${a.riscos} ${a.riscos === 1 ? "risco" : "riscos"}`
+                          : "lido, sem risco novo"
+                      )}
+                      {a.estado === "erro" && (a.detalhe || "falhou")}
+                    </span>
                   </div>
-                  <div>
-                    <p className="font-semibold text-slate-800 text-sm sm:text-base">
-                      {arquivo ? arquivo.name : "Clique para selecionar o PDF ou Word (.docx) do PGR"}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-                      Arquivos PDF ou Word (.docx) até 35MB. A Inteligência Artificial fará a leitura e classificação automática.
-                    </p>
-                  </div>
-                </div>
-
-                {loading && (
-                  <div className="flex items-center justify-center gap-3 p-4 bg-indigo-50 rounded-lg text-indigo-800 text-sm">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Lendo documento, identificando setores, funções, GES e perigos...</span>
-                  </div>
+                ))}
+                {dadosExtraidos && (
+                  <p className="border-t pt-2 text-xs font-semibold text-slate-900">
+                    Somando tudo: {resumoDaExtracao(dadosExtraidos as unknown as ExtracaoDePgr).riscos} riscos,{" "}
+                    {resumoDaExtracao(dadosExtraidos as unknown as ExtracaoDePgr).ges} GES,{" "}
+                    {resumoDaExtracao(dadosExtraidos as unknown as ExtracaoDePgr).setores} setores.
+                  </p>
                 )}
-              </TabsContent>
+              </div>
+            )}
 
-              {/* ABA 2: COLAR TEXTO */}
-              <TabsContent value="texto" className="mt-4 space-y-4">
-                <div>
-                  <Label className="text-xs font-medium text-slate-700">
-                    Cole o conteúdo textual do documento PGR (tabelas, cargos ou inventário):
-                  </Label>
-                  <Textarea
-                    rows={8}
-                    placeholder="Exemplo: Setor Operacional. GES 01 - Costura. Funções: Costureira, Ajudante. Perigo: Ruído contínuo..."
-                    value={textoLivre}
-                    onChange={(e) => setTextoLivre(e.target.value)}
-                    className="mt-1 font-mono text-xs"
-                  />
-                </div>
+            {/* Modelo de planilha e colar texto: saídas secundárias, fora do caminho */}
+            <div className="flex flex-col gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleBaixarModelo}
+                disabled={baixandoModelo}
+                className="gap-1.5 text-xs text-emerald-800 hover:bg-emerald-50"
+              >
+                {baixandoModelo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                Não tem a planilha? Baixar o modelo oficial (.xlsx)
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setColarAberto((v) => !v)}
+                className="gap-1.5 text-xs text-slate-600"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                {colarAberto ? "Fechar" : "Colar texto em vez de arquivo"}
+              </Button>
+            </div>
+
+            {colarAberto && (
+              <div className="space-y-2 rounded-xl border bg-slate-50/70 p-3">
+                <Label className="text-xs font-medium text-slate-700">
+                  Cole o trecho do PGR — tabela de riscos, lista de GES ou de funções:
+                </Label>
+                <Textarea
+                  rows={6}
+                  placeholder="Exemplo: Setor Costura. GES 01. Funções: Costureira, Ajudante. Perigo: Ruído contínuo..."
+                  value={textoLivre}
+                  onChange={(e) => setTextoLivre(e.target.value)}
+                  className="font-mono text-xs"
+                />
                 <Button
                   onClick={processarTextoComIA}
                   disabled={loading || !textoLivre.trim()}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2"
+                  size="sm"
+                  className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700"
                 >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  Interpretar Texto com IA
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  Interpretar texto e somar ao que já foi lido
                 </Button>
-              </TabsContent>
-
-              {/* ABA 3: PLANILHA EXCEL */}
-              <TabsContent value="xlsx" className="mt-4 space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200">
-                  <div className="text-xs text-emerald-950">
-                    <p className="font-semibold text-emerald-900 flex items-center gap-1.5">
-                      <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-                      Planilha Oficial de GRO / PGR (NR-01)
-                    </p>
-                    <p className="text-emerald-800 text-[11px] mt-0.5">
-                      Possui abas pré-formatadas para Inventário de Riscos, Plano de Ação 5W2H e Matriz 5x5.
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleBaixarModelo}
-                    disabled={baixandoModelo}
-                    className="shrink-0 text-emerald-800 border-emerald-300 hover:bg-emerald-100 text-xs gap-1.5 shadow-sm"
-                  >
-                    {baixandoModelo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                    Baixar Modelo Oficial (.xlsx)
-                  </Button>
-                </div>
-
-                <div
-                  onClick={() => fileInputXlsxRef.current?.click()}
-                  className="border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50/50 hover:bg-emerald-50/30 rounded-xl p-8 text-center cursor-pointer transition-all space-y-3"
-                >
-                  <input
-                    ref={fileInputXlsxRef}
-                    type="file"
-                    accept=".xlsx,.xls,.csv"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) processarPlanilhaXlsx(f);
-                    }}
-                  />
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto text-emerald-600">
-                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <FileSpreadsheet className="w-6 h-6" />}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-800 text-sm">
-                      {arquivo ? arquivo.name : "Clique para selecionar a Planilha Excel (.xlsx)"}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-                      Carrega inventário com colunas de Setor, GES, Função, Perigo, Agente e Controles. Suporta células mescladas e abas de Plano de Ação.
-                    </p>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+              </div>
+            )}
           </div>
         ) : (
           /* PAINEL DE CONFERÊNCIA E APROVAÇÃO (REVIEW) */
