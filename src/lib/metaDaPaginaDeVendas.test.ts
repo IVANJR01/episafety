@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   aplicarMetaDaPaginaDeVendas,
   META_DA_PAGINA_DE_VENDAS,
+  marcacaoDoPixelDaMeta,
 } from "./metaDaPaginaDeVendas";
 
 /**
@@ -108,5 +109,53 @@ describe("a prévia do link no WhatsApp", () => {
     const descricoes = comAspas.match(/<meta name="description" content="([^"]*)"/);
     expect(descricoes).not.toBeNull();
     expect(comAspas).not.toContain('content="O sistema recusa EPI com CA vencido" ');
+  });
+});
+
+describe("Pixel da Meta", () => {
+  const HTML = `<!doctype html><html><head><title>EPISafety</title></head><body></body></html>`;
+
+  it("entra na página de vendas com o id certo", () => {
+    const saida = aplicarMetaDaPaginaDeVendas(HTML, "v1");
+    expect(saida).toContain("connect.facebook.net/en_US/fbevents.js");
+    expect(saida).toContain("fbq('init', '1734362404017048')");
+    expect(saida).toContain("fbq('track', 'PageView')");
+  });
+
+  it("traz o <noscript>, para quem navega sem JavaScript", () => {
+    const saida = aplicarMetaDaPaginaDeVendas(HTML, "v1");
+    expect(saida).toContain("facebook.com/tr?id=1734362404017048");
+    expect(saida).toContain("ev=PageView");
+  });
+
+  it("o & da URL do noscript vai escapado, senão o HTML quebra", () => {
+    const saida = aplicarMetaDaPaginaDeVendas(HTML, "v1");
+    expect(saida).toContain("&amp;ev=PageView");
+    expect(saida).not.toMatch(/tr\?id=\d+&ev=/);
+  });
+
+  it("fica dentro do <head>", () => {
+    const saida = aplicarMetaDaPaginaDeVendas(HTML, "v1");
+    expect(saida.indexOf("fbevents.js")).toBeLessThan(saida.indexOf("</head>"));
+  });
+
+  it("não entra duas vezes: a visita seria contada em dobro", () => {
+    const uma = aplicarMetaDaPaginaDeVendas(HTML, "v1");
+    const duas = aplicarMetaDaPaginaDeVendas(uma, "v1");
+    expect(duas.match(/fbevents\.js/g)).toHaveLength(1);
+  });
+
+  it("id que não é número não vira script na página", () => {
+    /*
+     * Um id torto — vazio, com aspas, com script dentro — produziria
+     * HTML quebrado numa página pública. Melhor não gerar nada.
+     */
+    for (const ruim of ["", "   ", "abc", "123", "'); alert(1); //", "17343624040170489999999"]) {
+      expect(marcacaoDoPixelDaMeta(ruim), `aceitou o id ${ruim}`).toBe("");
+    }
+  });
+
+  it("id válido com espaço em volta é aceito, limpo", () => {
+    expect(marcacaoDoPixelDaMeta(" 1734362404017048 ")).toContain("fbq('init', '1734362404017048')");
   });
 });

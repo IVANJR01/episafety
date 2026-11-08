@@ -28,6 +28,49 @@ export const META_DA_PAGINA_DE_VENDAS = {
   site: "https://safetysolucoes.com",
 } as const;
 
+/**
+ * O Pixel da Meta, só nesta página.
+ *
+ * Ele fica na página de vendas e em lugar nenhum mais. O resto do
+ * sistema trata nome, CPF, exame médico e ficha de EPI de trabalhador —
+ * dado pessoal, e dado de saúde, que a LGPD trata como sensível. Nada
+ * disso passa por rastreador de anúncio.
+ *
+ * Por isso o pixel entra aqui, na função que gera o dist/planos.html, e
+ * não no index.html, que é o que serve o sistema inteiro.
+ */
+export const PIXEL_DA_META = "1734362404017048";
+
+/** Só dígitos: um id torto viraria script quebrado na página. */
+function idDePixelValido(id: string): boolean {
+  return /^[0-9]{6,20}$/.test(id.trim());
+}
+
+/** O trecho do Pixel, exatamente como a Meta publica. */
+export function marcacaoDoPixelDaMeta(id: string): string {
+  if (!idDePixelValido(id)) return "";
+  const pixel = id.trim();
+
+  return `  <!-- Meta Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '${pixel}');
+  fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=${pixel}&amp;ev=PageView&amp;noscript=1"
+  /></noscript>
+  <!-- End Meta Pixel Code -->
+`;
+}
+
 /** Escapa o que vai dentro de content="..." para não quebrar o HTML. */
 function texto(valor: string): string {
   return valor
@@ -92,6 +135,12 @@ export function aplicarMetaDaPaginaDeVendas(html: string, versao: string): strin
   /* Sem o canônico, buscador e prévia podem tratar / e /planos como a mesma página repetida. */
   if (!saida.includes('rel="canonical"')) {
     saida = saida.replace("</head>", `  <link rel="canonical" href="${url}">\n  </head>`);
+  }
+
+  /* Inserido uma vez só: rodar duas vezes contaria a visita em dobro. */
+  const pixel = marcacaoDoPixelDaMeta(PIXEL_DA_META);
+  if (pixel && !saida.includes("connect.facebook.net")) {
+    saida = saida.replace("</head>", `${pixel}  </head>`);
   }
 
   return saida;
