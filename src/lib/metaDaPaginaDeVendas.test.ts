@@ -3,6 +3,7 @@ import {
   aplicarMetaDaPaginaDeVendas,
   META_DA_PAGINA_DE_VENDAS,
   marcacaoDoPixelDaMeta,
+  liberarPixelNaPolitica,
 } from "./metaDaPaginaDeVendas";
 
 /**
@@ -157,5 +158,52 @@ describe("Pixel da Meta", () => {
 
   it("id válido com espaço em volta é aceito, limpo", () => {
     expect(marcacaoDoPixelDaMeta(" 1734362404017048 ")).toContain("fbq('init', '1734362404017048')");
+  });
+});
+
+describe("política de segurança da página", () => {
+  const CSP =
+    `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; ` +
+    `img-src 'self' data: blob: https:; ` +
+    `connect-src 'self' https://*.supabase.co wss://*.supabase.co; ` +
+    `frame-ancestors 'none'; object-src 'none';`;
+  const COM_CSP =
+    `<!doctype html><html><head>` +
+    `<meta http-equiv="Content-Security-Policy-Report-Only" content="${CSP}" />` +
+    `<title>x</title></head><body></body></html>`;
+
+  it("libera o script da Meta, senão o Pixel para de carregar quando a política virar obrigatória", () => {
+    const saida = aplicarMetaDaPaginaDeVendas(COM_CSP, "v1");
+    expect(saida).toMatch(/script-src [^;]*https:\/\/connect\.facebook\.net/);
+  });
+
+  it("libera também a conexão, que é por onde o Pixel manda o evento", () => {
+    const saida = aplicarMetaDaPaginaDeVendas(COM_CSP, "v1");
+    expect(saida).toMatch(/connect-src [^;]*https:\/\/www\.facebook\.com/);
+  });
+
+  it("não afrouxa mais nada da política", () => {
+    /*
+     * A página é pública, mas sai do mesmo HTML do sistema. Abrir uma
+     * diretiva a mais aqui é abrir um buraco que ninguém pediu.
+     */
+    const saida = liberarPixelNaPolitica(COM_CSP);
+    expect(saida).toContain("default-src 'self'");
+    expect(saida).toContain("frame-ancestors 'none'");
+    expect(saida).toContain("object-src 'none'");
+    expect(saida).toContain("https://*.supabase.co");
+  });
+
+  it("rodar duas vezes não repete o host na diretiva", () => {
+    const uma = liberarPixelNaPolitica(COM_CSP);
+    const duas = liberarPixelNaPolitica(uma);
+    expect(duas.match(/connect\.facebook\.net/g)).toHaveLength(2);
+    expect(duas).toBe(uma);
+  });
+
+  it("página sem política nenhuma não quebra", () => {
+    const simples = `<!doctype html><html><head><title>x</title></head><body></body></html>`;
+    expect(() => aplicarMetaDaPaginaDeVendas(simples, "v1")).not.toThrow();
+    expect(aplicarMetaDaPaginaDeVendas(simples, "v1")).toContain("fbevents.js");
   });
 });

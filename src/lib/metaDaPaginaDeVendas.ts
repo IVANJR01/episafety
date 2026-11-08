@@ -71,6 +71,40 @@ export function marcacaoDoPixelDaMeta(id: string): string {
 `;
 }
 
+/**
+ * Abre a política de segurança desta página para o Pixel.
+ *
+ * O index.html traz uma Content-Security-Policy que só permite script do
+ * próprio site. Hoje ela está em modo "report-only" — avisa e deixa
+ * passar —, mas o comentário no próprio arquivo diz que vai virar
+ * obrigatória. No dia em que virar, o Pixel para de carregar sem avisar
+ * ninguém, e a conta de anúncio simplesmente deixa de receber visita.
+ *
+ * Então a liberação entra junto com o Pixel, na mesma página e só nela:
+ * o sistema continua com a política fechada.
+ */
+const HOSTS_DO_PIXEL = {
+  script: "https://connect.facebook.net",
+  conexao: "https://www.facebook.com https://connect.facebook.net",
+};
+
+export function liberarPixelNaPolitica(html: string): string {
+  return html.replace(
+    /(<meta http-equiv="Content-Security-Policy(?:-Report-Only)?" content=")([^"]*)(")/,
+    (_todo, abre, politica: string, fecha) => {
+      let nova = politica;
+      /* Já liberado: mexer de novo só repetiria o host na diretiva. */
+      if (!nova.includes(HOSTS_DO_PIXEL.script)) {
+        nova = nova.replace(/script-src ([^;]*)/, `script-src $1 ${HOSTS_DO_PIXEL.script}`);
+      }
+      if (!nova.includes("https://www.facebook.com")) {
+        nova = nova.replace(/connect-src ([^;]*)/, `connect-src $1 ${HOSTS_DO_PIXEL.conexao}`);
+      }
+      return `${abre}${nova}${fecha}`;
+    },
+  );
+}
+
 /** Escapa o que vai dentro de content="..." para não quebrar o HTML. */
 function texto(valor: string): string {
   return valor
@@ -139,7 +173,8 @@ export function aplicarMetaDaPaginaDeVendas(html: string, versao: string): strin
 
   /* Inserido uma vez só: rodar duas vezes contaria a visita em dobro. */
   const pixel = marcacaoDoPixelDaMeta(PIXEL_DA_META);
-  if (pixel && !saida.includes("connect.facebook.net")) {
+  if (pixel && !saida.includes("fbevents.js")) {
+    saida = liberarPixelNaPolitica(saida);
     saida = saida.replace("</head>", `${pixel}  </head>`);
   }
 
