@@ -68,11 +68,34 @@ export function recadoDeErro(entrada: {
     };
   }
 
+  if (falhaQueNaoAdiantaRepetir(tecnico)) {
+    return { mensagem: recadoDeFalhaDoSistema(entrada.acao), tecnico };
+  }
+
   if (!tecnico) {
     return { mensagem: recadoPadrao(entrada.acao), tecnico: null };
   }
 
   return { mensagem: recadoPadrao(entrada.acao), tecnico };
+}
+
+/**
+ * A falha é do sistema, e tentar de novo não resolve.
+ *
+ * Aconteceu de verdade: a API respondeu 404 em
+ * /rest/v1/rpc/assinar_entregas_publico durante quatro dias, porque o
+ * catálogo dela estava desatualizado e a função não aparecia. A
+ * trabalhadora tirou a selfie, clicou em "Confirmar e Assinar" e leu
+ * "Tente de novo" — sete vezes, pelos registros. Nenhuma delas tinha
+ * chance de funcionar, e o técnico não ficou sabendo de nada.
+ *
+ * Quando o motivo é esse, mandar tentar de novo é mentira. O recado tem
+ * que ser: pare e avise alguém.
+ */
+function falhaQueNaoAdiantaRepetir(tecnico: string | null): boolean {
+  if (!tecnico) return false;
+  return /PGRST\d+|could not find the function|schema cache|does not exist|permission denied|42883|42501/i
+    .test(tecnico);
 }
 
 function pareceFalhaDeRede(tecnico: string | null): boolean {
@@ -93,4 +116,20 @@ function recadoPadrao(acao: "carregar" | "assinar"): string {
   return acao === "carregar"
     ? "Não foi possível abrir seus EPIs pendentes agora. Tente de novo em alguns minutos; se continuar assim, avise o responsável pela entrega dos EPIs na sua empresa."
     : "Não foi possível registrar sua assinatura agora. Tente de novo; se continuar assim, avise o responsável pela entrega dos EPIs na sua empresa.";
+}
+
+/**
+ * O recado de quando repetir não adianta.
+ *
+ * Nenhuma menção a "tente de novo": o problema está do lado do sistema e
+ * só quem administra resolve. A frase manda avisar AGORA, porque a
+ * entrega fica sem assinatura até alguém mexer.
+ */
+function recadoDeFalhaDoSistema(acao: "carregar" | "assinar"): string {
+  const oQue = acao === "carregar" ? "abrir seus EPIs pendentes" : "registrar sua assinatura";
+  return (
+    `O sistema está com uma falha e não consegue ${oQue}. ` +
+    "Não é problema do seu celular, e tentar de novo não vai adiantar. " +
+    "Avise agora o responsável pela entrega dos EPIs na sua empresa."
+  );
 }
