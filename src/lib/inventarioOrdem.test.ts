@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ordenarInventario } from "./inventarioOrdem";
+import { ordenarInventario, alcanceDoBloco, abreBloco } from "./inventarioOrdem";
 
 /**
  * "GES 01 primeiro, depois 02."
@@ -104,5 +104,80 @@ describe("ordenarInventario", () => {
 
   it("lista vazia não quebra", () => {
     expect(ordenarInventario([], ler)).toEqual([]);
+  });
+});
+
+describe("células mescladas da tabela", () => {
+  /*
+   * As quatro primeiras linhas do inventário da G91: quatro setores
+   * diferentes, todos do GES 01, cada um com o seu ambiente e as suas
+   * funções. Na planilha o GES é uma célula só cobrindo as quatro.
+   */
+  const G91 = [
+    { setor: "FINANCEIRO", ges: "01", funcoes: "Assistente Financeiro" },
+    { setor: "PCP", ges: "01", funcoes: "Supervisor de Produção" },
+    { setor: "RH", ges: "01", funcoes: "Auxiliar Administrativo" },
+    { setor: "SESMT", ges: "01", funcoes: "Técnico em Segurança do Trabalho" },
+    { setor: "DISTRIBUIÇÃO", ges: "02", funcoes: "Encarregado" },
+  ];
+  const porGes = (x: { ges: string }) => x.ges;
+  const porSetor = (x: { setor: string }) => x.setor;
+
+  it("o GES 01 vira uma célula só, cobrindo os quatro setores", () => {
+    expect(alcanceDoBloco(G91, 0, porGes)).toBe(4);
+    expect(abreBloco(G91, 0, porGes)).toBe(true);
+  });
+
+  it("as linhas de dentro do bloco não abrem célula nova", () => {
+    expect(abreBloco(G91, 1, porGes)).toBe(false);
+    expect(abreBloco(G91, 2, porGes)).toBe(false);
+    expect(abreBloco(G91, 3, porGes)).toBe(false);
+  });
+
+  it("o GES seguinte abre a sua própria célula", () => {
+    expect(abreBloco(G91, 4, porGes)).toBe(true);
+    expect(alcanceDoBloco(G91, 4, porGes)).toBe(1);
+  });
+
+  it("o setor continua uma célula por setor, sem se juntar ao vizinho", () => {
+    /* Juntar os setores apagaria da tela a quem o risco pertence. */
+    for (let i = 0; i < G91.length; i++) {
+      expect(alcanceDoBloco(G91, i, porSetor), `setor ${G91[i].setor} juntou com o vizinho`).toBe(1);
+    }
+  });
+
+  it("conteúdo diferente nunca é escondido debaixo de uma célula só", () => {
+    /*
+     * As funções mudam de setor para setor mesmo dentro do GES 01.
+     * Mesclar por GES esconderia três listas de funções atrás da
+     * primeira — e a ficha sairia dizendo que o SESMT é "Assistente
+     * Financeiro".
+     */
+    const porFuncao = (x: { ges: string; funcoes: string }) => `${x.ges}§${x.funcoes}`;
+    for (let i = 0; i < 4; i++) {
+      expect(alcanceDoBloco(G91, i, porFuncao)).toBe(1);
+    }
+  });
+
+  it("a soma dos blocos cobre todas as linhas, sem sobra nem buraco", () => {
+    let i = 0;
+    let total = 0;
+    while (i < G91.length) {
+      const n = alcanceDoBloco(G91, i, porGes);
+      expect(n).toBeGreaterThan(0);
+      total += n;
+      i += n;
+    }
+    expect(total).toBe(G91.length);
+  });
+
+  it("lista vazia não produz bloco", () => {
+    expect(alcanceDoBloco([], 0, porGes)).toBe(0);
+    expect(alcanceDoBloco(G91, 99, porGes)).toBe(0);
+  });
+
+  it("GES vazio em linhas seguidas junta, porque mostram a mesma coisa", () => {
+    const semGes = [{ ges: "" }, { ges: "" }, { ges: "03" }];
+    expect(alcanceDoBloco(semGes, 0, porGes)).toBe(2);
   });
 });

@@ -23,7 +23,7 @@ import {
 import { ExpandableText } from "@/components/ui/ExpandableText";
 import { candidatosDeGes, indexarVinculos, type AlvoVinculo } from "@/lib/pgrGesVinculo";
 import { descreverAmbiente, descreverProcesso, nomesUnicos } from "@/lib/sstEstrutura";
-import { ordenarInventario } from "@/lib/inventarioOrdem";
+import { ordenarInventario, alcanceDoBloco, abreBloco } from "@/lib/inventarioOrdem";
 
 /** Linha de pgr_levantamento_preliminar, na forma que esta tela consome. */
 interface Levantado {
@@ -437,9 +437,49 @@ export default function InventarioTab({
    * dela, dois grupos do MESMO setor viravam blocos separados e o parágrafo do
    * ambiente saía reimpresso por inteiro em cada um.
    */
+  /**
+   * O texto da coluna Função, numa definição só.
+   *
+   * Sem repetir nome: o vínculo do grupo traz uma linha por cópia da
+   * função no cadastro, e o GES 01 desta base tem "Ajudante de Confecção"
+   * e "Analista de PCP" duas vezes. Sem função cadastrada no grupo, vale
+   * o que foi gravado no próprio item.
+   */
+  const textoDasFuncoes = (i: any) => {
+    const vivas = nomesUnicos(i.ghe?.funcoes?.map((f: any) => f.nome_funcao));
+    if (vivas.length > 0) return vivas.join(", ");
+    const doSnapshot = nomesUnicos(i.funcoes_snapshot);
+    return doSnapshot.length > 0 ? doSnapshot.join(", ") : NA;
+  };
+
   const chaveSetor = (i: any) =>
     [i.setor || "", ambienteDe(i), i.processo || ""].join("§");
   const chaveGes = (i: any) => [chaveSetor(i), i.ghe?.codigo || ""].join("§");
+
+  /*
+   * A coluna GES mescla pelo CÓDIGO, não pelo setor.
+   *
+   * O GES 01 da G91 atende PCP, FINANCEIRO, RH e SESMT. Com a chave do
+   * setor dentro, ele saía escrito quatro vezes, em quatro células
+   * seguidas. Na planilha que gerou o PGR é uma célula só cobrindo as
+   * quatro linhas — e é assim que o técnico lê o documento.
+   *
+   * As outras chaves continuam com o setor, de propósito: dois riscos
+   * iguais em setores diferentes precisam continuar sendo duas linhas.
+   */
+  const chaveDaColunaDeGes = (i: any) => i.ghe?.codigo || "";
+
+  /*
+   * A função acompanha o GES, mas o texto entra na chave.
+   *
+   * Quando o grupo não tem função cadastrada, a tela cai no que foi
+   * gravado em cada item — e aí o texto muda de setor para setor dentro
+   * do mesmo GES. Mesclar só pelo código esconderia as outras listas
+   * atrás da primeira, e o SESMT apareceria como "Assistente
+   * Financeiro".
+   */
+  const chaveDaColunaDeFuncao = (i: any) =>
+    [chaveDaColunaDeGes(i), textoDasFuncoes(i)].join("§");
   const chaveAgente = (i: any) => [chaveGes(i), i.grupo || ""].join("§");
 
   /**
@@ -723,26 +763,25 @@ export default function InventarioTab({
                   {filtrados.map((i: any, idx: number) => {
                     const ambiente = ambienteDe(i);
                     const gesCod = i.ghe?.codigo || "";
-                    const prev = idx > 0 ? filtrados[idx - 1] : null;
 
-                    /** Quantas linhas seguidas, a partir daqui, compartilham a chave. */
-                    const alcance = (chaveDe: (x: any) => string) => {
-                      let n = 1;
-                      for (let j = idx + 1; j < filtrados.length; j++) {
-                        if (chaveDe(filtrados[j]) !== chaveDe(i)) break;
-                        n++;
-                      }
-                      return n;
-                    };
+                    /*
+                     * Mesclar é juntar linhas vizinhas que mostram a mesma
+                     * coisa. A regra está em src/lib/inventarioOrdem.ts, com
+                     * teste — antes vivia aqui dentro, sem teste nenhum.
+                     */
+                    const alcance = (chaveDe: (x: any) => string) =>
+                      alcanceDoBloco(filtrados, idx, chaveDe);
                     const primeiroDe = (chaveDe: (x: any) => string) =>
-                      !prev || chaveDe(prev) !== chaveDe(i);
+                      abreBloco(filtrados, idx, chaveDe);
 
                     // Ambiente, Setor e Processo saem uma vez por SETOR; GES e
                     // Função, uma vez por GES; o resto, uma vez por risco.
                     const abreSetor = primeiroDe(chaveSetor);
                     const linhasDoSetor = abreSetor ? alcance(chaveSetor) : 1;
-                    const abreGes = primeiroDe(chaveGes);
-                    const linhasDoGes = abreGes ? alcance(chaveGes) : 1;
+                    const abreGes = abreBloco(filtrados, idx, chaveDaColunaDeGes);
+                    const linhasDoGes = abreGes ? alcanceDoBloco(filtrados, idx, chaveDaColunaDeGes) : 1;
+                    const abreFuncao = abreBloco(filtrados, idx, chaveDaColunaDeFuncao);
+                    const linhasDaFuncao = abreFuncao ? alcanceDoBloco(filtrados, idx, chaveDaColunaDeFuncao) : 1;
                     const abreAgente = primeiroDe(chaveAgente);
                     const linhasDoAgente = abreAgente ? alcance(chaveAgente) : 1;
                     const isFirstOfRisk = primeiroDe(chaveRisco);
@@ -755,14 +794,7 @@ export default function InventarioTab({
                     const total = i.nivel_risco ?? i.severidade * i.probabilidade;
                     const controles = Array.isArray(i.controles_existentes) && i.controles_existentes.length > 0
                       ? i.controles_existentes.join("; ") : NA;
-                    // Sem repetir nome: o vínculo do grupo traz uma linha por
-                    // cópia da função no cadastro, e o GES 01 desta base tem
-                    // "Ajudante de Confecção" e "Analista de PCP" duas vezes.
-                    const vivas = nomesUnicos(i.ghe?.funcoes?.map((f: any) => f.nome_funcao));
-                    const doSnapshot = nomesUnicos(i.funcoes_snapshot);
-                    const funcoes = vivas.length > 0
-                      ? vivas.join(", ")
-                      : (doSnapshot.length > 0 ? doSnapshot.join(", ") : NA);
+                    const funcoes = textoDasFuncoes(i);
                     const intensidade = i.medicao_valor != null
                       ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}` : NA;
                     const tecnica = val(i.metodologia_avaliacao ?? i.tecnica_utilizada ?? i.tipo_avaliacao);
@@ -799,8 +831,8 @@ export default function InventarioTab({
                           </td>
                         )}
                         {/* As funções vêm do GES — uma vez por grupo. */}
-                        {abreGes && (
-                          <td rowSpan={linhasDoGes} className="p-1.5 pt-2 border align-middle">
+                        {abreFuncao && (
+                          <td rowSpan={linhasDaFuncao} className="p-1.5 pt-2 border align-middle">
                             <ExpandableText text={funcoes} />
                           </td>
                         )}

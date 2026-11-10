@@ -88,3 +88,44 @@ export function ordenarInventario<T>(linhas: T[], ler: LeituraDaLinha<T>): T[] {
     return ler.desempate(a).localeCompare(ler.desempate(b));
   });
 }
+
+/**
+ * Quantas linhas seguidas, a partir de `inicio`, mostram o mesmo conteúdo
+ * naquela coluna — ou seja, o tamanho da célula mesclada.
+ *
+ * O que motivou isto: na tela do inventário o GES só se juntava DENTRO de
+ * um setor. O GES 01 da G91 atende quatro setores — PCP, FINANCEIRO, RH e
+ * SESMT — e aparecia escrito quatro vezes, em quatro células seguidas,
+ * uma embaixo da outra. Na planilha que originou o PGR ele é UMA célula
+ * mesclada cobrindo as quatro linhas, e é assim que o técnico lê.
+ *
+ * A regra aqui não sabe o que é setor nem o que é GES: ela junta linhas
+ * vizinhas que mostram a mesma coisa. Quem chama diz o que é "a mesma
+ * coisa" para cada coluna — e, por isso, nenhuma célula some escondendo
+ * conteúdo diferente embaixo dela.
+ */
+export function alcanceDoBloco<T>(
+  linhas: T[],
+  inicio: number,
+  chaveDe: (linha: T) => string,
+): number {
+  if (!linhas || inicio < 0 || inicio >= linhas.length) return 0;
+
+  const chave = chaveDe(linhas[inicio]);
+  let n = 1;
+  for (let j = inicio + 1; j < linhas.length; j++) {
+    if (chaveDe(linhas[j]) !== chave) break;
+    n++;
+  }
+  return n;
+}
+
+/** Esta linha abre um bloco novo naquela coluna? */
+export function abreBloco<T>(
+  linhas: T[],
+  indice: number,
+  chaveDe: (linha: T) => string,
+): boolean {
+  if (indice <= 0) return true;
+  return chaveDe(linhas[indice - 1]) !== chaveDe(linhas[indice]);
+}
