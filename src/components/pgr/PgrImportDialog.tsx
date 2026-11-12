@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 import {
-  textoDaCelula, notaDeRisco, codigoDoGes, grupoDoRisco, classeDaPlanilha,
+  textoDaCelula, notaDeRisco, codigoDoGes, grupoDoRisco, classeDaPlanilha, tipoDoAgente,
   tipoDeExposicao,
 } from "@/lib/celulasDoInventario";
 import { chaveDoGes, codigoVisivelDoGes, nomeVisivelDoGes } from "@/lib/chaveDoGes";
@@ -865,7 +865,8 @@ export default function PgrImportDialog({
           setor,
           ges_codigo: gesCodigo,
           grupo,
-          tipo_agente: agenteStr || perigoDesc,
+          /* O agente específico (Ruído, Trabalho em Pé...), não o grupo. */
+          tipo_agente: tipoDoAgente({ tipoDeAgente: val(cTipoAgente), agente: agenteStr }) || perigoDesc,
           perigo_descricao: perigoDesc,
           fonte_geradora: fonte && fonte !== "N.A" ? fonte : null,
           lesoes: lesoes && lesoes !== "N.A" ? lesoes : null,

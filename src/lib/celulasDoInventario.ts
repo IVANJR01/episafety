@@ -151,3 +151,25 @@ export function tipoDeExposicao(valor: unknown): TipoDeExposicao | null {
   /* Palavra que não é nenhuma das quatro: não se inventa uma. */
   return null;
 }
+
+/**
+ * O "tipo de agente" de um risco: o agente específico, não o grupo.
+ *
+ * A planilha do PGR tem duas colunas vizinhas que se confundem pelo nome:
+ *
+ *   Agente          -> o GRUPO: Ergonômico, Físico, Químico, Acidente
+ *   Tipo de Agente  -> o AGENTE: Ruído, Poeira de algodão, Trabalho em Pé,
+ *                      Psicossocial, Postura Inadequada, Choque...
+ *
+ * A importação gravava a coluna Agente nos dois lugares. Na G91 os 66
+ * riscos entraram com o tipo igual ao grupo — 51 "Ergonômico" —, e os 26
+ * tipos que o técnico escreveu sumiram. É o tipo que diz QUAL é o risco
+ * ergonômico: "Trabalho em Pé" e "Psicossocial" pedem exames e medidas
+ * diferentes, e o PCMSO lê exatamente esse campo.
+ *
+ * Planilha sem a coluna de tipo cai no grupo, como antes — melhor que
+ * deixar vazio.
+ */
+export function tipoDoAgente(celulas: { tipoDeAgente?: unknown; agente?: unknown }): string | null {
+  return textoDaCelula(celulas.tipoDeAgente) ?? textoDaCelula(celulas.agente);
+}

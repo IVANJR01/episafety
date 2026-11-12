@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   textoDaCelula, notaDeRisco, codigoDoGes, grupoDoRisco, classeDaPlanilha,
-  semColunasGeradas, tipoDeExposicao,
+  semColunasGeradas, tipoDeExposicao, tipoDoAgente,
 } from "./celulasDoInventario";
 
 /**
@@ -188,5 +188,38 @@ describe("o tipo de exposição", () => {
       const v = tipoDeExposicao(texto);
       if (v !== null) expect(aceitos, `"${texto}" saiu fora da lista`).toContain(v);
     }
+  });
+});
+
+
+describe("tipo de agente", () => {
+  /*
+   * Os pares abaixo são da planilha real da G91. A coluna Agente traz o
+   * grupo; a coluna Tipo de Agente traz o agente. A importação gravava o
+   * grupo nos dois, e 51 riscos apareceram como "Ergonômico".
+   */
+  it("grava o agente específico, não o grupo", () => {
+    expect(tipoDoAgente({ agente: "Ergonômico", tipoDeAgente: "Trabalho em Pé" })).toBe("Trabalho em Pé");
+    expect(tipoDoAgente({ agente: "Químico", tipoDeAgente: "Poeira de algodão" })).toBe("Poeira de algodão");
+    expect(tipoDoAgente({ agente: "Físico", tipoDeAgente: "Ruído " })).toBe("Ruído");
+  });
+
+  it("dois riscos ergonômicos diferentes continuam diferentes", () => {
+    const a = tipoDoAgente({ agente: "Ergonômico", tipoDeAgente: "Psicossocial" });
+    const b = tipoDoAgente({ agente: "Ergonômico", tipoDeAgente: "Postura Inadequada" });
+    expect(a).not.toBe(b);
+  });
+
+  it("planilha sem a coluna de tipo cai no grupo, em vez de ficar vazia", () => {
+    expect(tipoDoAgente({ agente: "Ergonômico" })).toBe("Ergonômico");
+    expect(tipoDoAgente({ agente: "Ergonômico", tipoDeAgente: "" })).toBe("Ergonômico");
+  });
+
+  it("N.A na coluna de tipo não vira tipo", () => {
+    expect(tipoDoAgente({ agente: "Acidente", tipoDeAgente: "N.A" })).toBe("Acidente");
+  });
+
+  it("sem nada, sem tipo", () => {
+    expect(tipoDoAgente({})).toBeNull();
   });
 });

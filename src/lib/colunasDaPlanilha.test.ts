@@ -44,6 +44,12 @@ describe("a planilha real da G91", () => {
     expect(COLUNAS.perigo).toBe(7);
   });
 
+  it("separa Agente (o grupo) de Tipo de Agente (o agente)", () => {
+    /* Vizinhas e com nomes parecidos: trocadas, o inventário perde o agente. */
+    expect(COLUNAS.agente).toBe(5);
+    expect(COLUNAS.tipoAgente).toBe(6);
+  });
+
   it("não troca Setor por Descrição do ambiente", () => {
     /* São colunas vizinhas e as duas falam de lugar. */
     expect(COLUNAS.ambiente).toBe(0);
