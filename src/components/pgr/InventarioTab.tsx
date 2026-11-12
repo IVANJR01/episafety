@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -59,6 +59,26 @@ const val = (v: any) => (v === null || v === undefined || v === "" ? NA : v);
  * que passa por baixo durante a rolagem aparece através da célula.
  */
 const CTX_TH = "p-1.5 text-left border border-amber-400 sticky top-0 z-50 bg-amber-200";
+
+/**
+ * Títulos girados das colunas estreitas, com teto de altura.
+ *
+ * Cada título girado era uma linha só, sem quebra. O mais comprido —
+ * "Atenuação / fator de proteção" — esticava o cabeçalho inteiro até
+ * ~175 px, e como o cabeçalho fica preso no topo da tabela ao rolar, ele
+ * cobria quase metade da área visível num notebook: sobravam duas linhas
+ * de risco à mostra.
+ *
+ * Com o teto, o título quebra em duas linhas verticais e o cabeçalho cai
+ * para menos da metade da altura. No modo vertical, a "altura" é o
+ * comprimento da linha — por isso o teto vai em maxHeight.
+ */
+const ROTULO_GIRADO: CSSProperties = {
+  writingMode: "vertical-rl",
+  transform: "rotate(180deg)",
+  maxHeight: 78,
+};
+const ROTULO_GIRADO_CLASSE = "mx-auto whitespace-normal leading-tight text-center";
 const AMBAR_CHAPADO = "bg-[#fffbeb]";
 
 export default function InventarioTab({
@@ -687,8 +707,22 @@ export default function InventarioTab({
               {editavel && <p className="text-xs text-muted-foreground mt-1">Clique em “Novo item”: escolhido o GES, ambiente, setor, processo e funções vêm junto.</p>}
             </div>
           ) : (
-            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] -mx-3 px-3">
-              <table className="w-full text-[11px] border-collapse">
+            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-190px)] min-h-[360px] -mx-3 px-3">
+              {/*
+                A área da tabela ocupava 100vh − 320 px. Num notebook de 720 px
+                de altura isso dava 400 px — e, com o cabeçalho preso no topo,
+                sobravam ~200 px para os riscos. A conta agora desconta só o
+                que fica de fato em volta (barra do sistema e botões de
+                Voltar/Continuar), com um piso para telas muito baixas.
+              */}
+              {/*
+                Sem a borda de cima nos títulos: com bordas coladas
+                (border-collapse), o Chrome não leva essa borda junto quando
+                o cabeçalho fica preso no topo. Sobrava 1 px transparente, e
+                o texto das linhas passava por ali como um fiapo picotado em
+                cima do cabeçalho.
+              */}
+              <table className="w-full text-[11px] border-collapse [&_thead_th]:border-t-0">
                 {/*
                   z-50 aqui, e não z-30, por causa de uma armadilha de
                   empilhamento: `z-30` no <thead> CRIA um contexto próprio, e
@@ -710,7 +744,7 @@ export default function InventarioTab({
                     <th className={`${CTX_TH} w-[200px] min-w-[200px] max-w-[200px] left-0`}>Descrição do ambiente</th>
                     <th className={`${CTX_TH} w-[130px] min-w-[130px] max-w-[130px] left-[200px]`}>Setor</th>
                     <th className={`${CTX_TH} w-[48px] min-w-[48px] max-w-[48px] left-[330px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>
-                      <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap">GES</div>
+                      <div style={ROTULO_GIRADO} className={`${ROTULO_GIRADO_CLASSE}`}>GES</div>
                     </th>
                     <th className="p-1.5 text-center border border-amber-400 w-[180px] min-w-[180px]">Função</th>
                     <th className="p-1.5 text-center border border-amber-400 w-[400px] min-w-[400px]">Processo</th>
@@ -720,40 +754,40 @@ export default function InventarioTab({
                     <th className="p-1.5 text-center border border-amber-400 w-[250px] min-w-[250px]">Possíveis lesões ou<br/>agravos à saúde</th>
                     {detalhes && (
                       <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[32px]">
-                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Limite de exposição</div>
+                        <div style={ROTULO_GIRADO} className={`${ROTULO_GIRADO_CLASSE} text-amber-950 font-bold`}>Limite de exposição</div>
                       </th>
                     )}
                     {detalhes && (
                       <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[32px]">
-                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Intensidade / concentração</div>
+                        <div style={ROTULO_GIRADO} className={`${ROTULO_GIRADO_CLASSE} text-amber-950 font-bold`}>Intensidade / concentração</div>
                       </th>
                     )}
                     <th className="p-1.5 text-center border border-amber-400 w-[70px]">Tipo / tempo<br/>de exposição</th>
                     {detalhes && (
                       <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[32px]">
-                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Técnica utilizada</div>
+                        <div style={ROTULO_GIRADO} className={`${ROTULO_GIRADO_CLASSE} text-amber-950 font-bold`}>Técnica utilizada</div>
                       </th>
                     )}
                     <th className="p-1.5 text-center border border-amber-400 w-[130px]">Proc. administrativo / EPC /<br/>organização do trabalho</th>
                     <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[24px]">
-                      <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">EPI</div>
+                      <div style={ROTULO_GIRADO} className={`${ROTULO_GIRADO_CLASSE} text-amber-950 font-bold`}>EPI</div>
                     </th>
                     {detalhes && (
                       <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[32px]">
-                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Atenuação / fator de proteção</div>
+                        <div style={ROTULO_GIRADO} className={`${ROTULO_GIRADO_CLASSE} text-amber-950 font-bold`}>Atenuação / fator de proteção</div>
                       </th>
                     )}
                     <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[24px]">
-                      <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Prob.</div>
+                      <div style={ROTULO_GIRADO} className={`${ROTULO_GIRADO_CLASSE} text-amber-950 font-bold`}>Prob.</div>
                     </th>
                     <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[24px]">
-                      <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Sev.</div>
+                      <div style={ROTULO_GIRADO} className={`${ROTULO_GIRADO_CLASSE} text-amber-950 font-bold`}>Sev.</div>
                     </th>
                     <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[24px]">
-                      <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Total</div>
+                      <div style={ROTULO_GIRADO} className={`${ROTULO_GIRADO_CLASSE} text-amber-950 font-bold`}>Total</div>
                     </th>
                     <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[32px]">
-                      <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Classificação do risco</div>
+                      <div style={ROTULO_GIRADO} className={`${ROTULO_GIRADO_CLASSE} text-amber-950 font-bold`}>Classificação do risco</div>
                     </th>
                     {/* Ações não precisa de texto para economizar espaço */}
                     <th className="p-1 border border-amber-400 bg-amber-200"></th>
