@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Save, Send, Loader2, Camera, Image as ImageIcon, X, Search } from "lucide-react";
+import { Plus, Trash2, Save, Send, Loader2, Camera, Image as ImageIcon, X, Search, ChevronDown, CalendarDays, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import {
   ACCEPTED_IMG_TYPES, MAX_IMG_BYTES,
@@ -18,6 +18,9 @@ import {
   buscarFotoDoAcervoPorCa,
 } from "@/lib/solicitacaoMateriaisImagens";
 import { enviarEmailSolicitacao } from "@/lib/solicitacaoMateriaisEmail";
+import {
+  nomeDoSolicitante, solicitanteAindaAutomatico, preenchidosNosDetalhes, itemTemNotas, dataBrasileira,
+} from "@/lib/solicitacaoMateriaisFormulario";
 
 interface Props {
   open: boolean;
@@ -139,6 +142,44 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     head.local_obra?.trim() || head.setor?.trim()
     || head.justificativa?.trim() || head.observacoes?.trim()
   );
+  const preenchidos = preenchidosNosDetalhes(head);
+
+  /*
+   * "Mais informações" abre por clique, e abre sozinha quando chega
+   * conteúdo — solicitação existente carregada ou rascunho recuperado.
+   * Antes era um <details> do navegador: texto miúdo, sem cara de botão, e
+   * com o contorno preto de foco do Windows em volta da linha inteira.
+   */
+  const [detalhesAbertos, setDetalhesAbertos] = useState(false);
+
+  /*
+   * O nome do perfil, para o campo Solicitante. Sem ele vinha o pedaço do
+   * e-mail ("ivanjr.tstconsultoria"), e era isso que saía no PDF e no
+   * e-mail mandado ao fornecedor.
+   */
+  const [nomePerfil, setNomePerfil] = useState<string>("");
+  useEffect(() => {
+    if (!open || !user?.id) return;
+    let vivo = true;
+    (async () => {
+      const { data } = await (supabase.from as any)("profiles")
+        .select("nome").eq("user_id", user.id).maybeSingle();
+      const nome = ((data as { nome?: string } | null)?.nome || "").trim();
+      if (!vivo || !nome) return;
+      setNomePerfil(nome);
+      /* Só troca o valor automático; o que foi digitado ou recuperado fica. */
+      if (!solicitacaoId) {
+        setHead((h) => solicitanteAindaAutomatico(h.solicitante_nome, userEmail)
+          ? { ...h, solicitante_nome: nome } : h);
+      }
+    })();
+    return () => { vivo = false; };
+  }, [open, user?.id, solicitacaoId, userEmail]);
+  useEffect(() => { if (temDetalhes) setDetalhesAbertos(true); }, [temDetalhes]);
+
+  /** Itens com a área de justificativa/observação aberta, pelo índice. */
+  const [notasAbertas, setNotasAbertas] = useState<Set<number>>(new Set());
+  const notasVisiveis = (idx: number, it: ItemForm) => notasAbertas.has(idx) || itemTemNotas(it);
 
   // Grava o rascunho a cada mudanca, so em solicitacao nova.
   useEffect(() => {
@@ -179,7 +220,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     setIdSalvo(null);
     setNumeroSalvo(null);
     if (!solicitacaoId) {
-      const base = { ...emptyHead(), solicitante_nome: userEmail.split("@")[0] || "" };
+      const base = { ...emptyHead(), solicitante_nome: nomeDoSolicitante(null, userEmail) };
       let recuperado = false;
       try {
         const bruto = localStorage.getItem(chaveRascunho);
@@ -326,6 +367,9 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     descartarPreview(it?.imagem_preview_url);
     if (it?.imagem_path) removeItemImage(it.imagem_path).catch(() => {});
     setItens((p) => p.filter((_, i) => i !== idx));
+    /* As notas abertas são guardadas pelo índice: quem vinha depois do item
+       removido sobe uma posição, e a marca tem que subir junto. */
+    setNotasAbertas((s) => new Set([...s].filter((i) => i !== idx).map((i) => (i > idx ? i - 1 : i))));
   }
 
   /*
@@ -823,7 +867,19 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         "sm:inset-0 sm:m-auto sm:translate-x-0 sm:translate-y-0",
         ].join(" ")}
       >
-        <DialogHeader className="p-4 border-b shrink-0">
+        {/*
+          Todo ajuste aqui leva o prefixo `sm:` também. O DialogHeader de base
+          traz `sm:p-0 sm:border-0`, e um `p-4 border-b` sem prefixo não vale
+          contra eles no computador: o título saía colado na borda da tela, sem
+          margem e sem a linha que separa o cabeçalho do formulário.
+        */}
+        {/* No celular o X tem 44 px de altura (tamanho mínimo de toque) e
+            começa a 16 px do topo, mais o recorte da tela (safe-area): o
+            centro dele fica em 38 px. Medido, o título ficava em 21 — o X
+            parecia caído para fora do cabeçalho. 29 px de respiro em cima
+            põem o centro do título nos mesmos 38. `pr-12` reserva o lugar do
+            X para o título nunca passar por baixo dele. */}
+        <DialogHeader className="static mx-0 mt-0 shrink-0 border-b px-5 pb-4 pr-12 pt-[calc(29px+env(safe-area-inset-top))] text-left sm:border-b sm:px-5 sm:pb-3 sm:pr-12 sm:pt-3">
           <DialogTitle>{solicitacaoId ? "Editar Solicitação" : "Nova Solicitação de Materiais"}</DialogTitle>
         </DialogHeader>
 
@@ -865,7 +921,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                   Sem isso, um rotulo que quebra em duas linhas ("Data de
                   Necessidade" numa coluna estreita de celular) empurra o campo
                   dele para baixo e ele fica desencontrado do vizinho. */}
-              <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 [&>*]:min-w-0 [&>div]:flex [&>div]:flex-col [&>div]:justify-end">
+              <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 [&>*]:min-w-0 [&>div]:flex [&>div]:flex-col [&>div]:justify-end [&>div]:gap-1.5">
                 {rascunhoRecuperado && (
                   <div className="sm:col-span-3 flex flex-wrap items-center gap-2 rounded border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900">
                     <span>
@@ -876,7 +932,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       type="button" size="sm" variant="ghost" className="h-7 text-xs ml-auto"
                       onClick={() => {
                         try { localStorage.removeItem(chaveRascunho); } catch { /* nada a fazer */ }
-                        setHead({ ...emptyHead(), solicitante_nome: userEmail.split("@")[0] || "" });
+                        setHead({ ...emptyHead(), solicitante_nome: nomeDoSolicitante(nomePerfil, userEmail) });
                         setItens([emptyItem()]);
                         setRascunhoRecuperado(false);
                       }}
@@ -923,19 +979,28 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                     </Select>
                   </div>
                 )}
-                <div className="col-span-2 lg:col-span-1">
-                  <Label>Solicitante</Label>
-                  <Input value={head.solicitante_nome} onChange={(e) => setHead({ ...head, solicitante_nome: e.target.value })} disabled={readOnly} />
-                </div>
-                <div>
-                  <Label>Data da Solicitação</Label>
-                  <Input type="date" value={head.data_solicitacao} onChange={(e) => setHead({ ...head, data_solicitacao: e.target.value })} disabled={readOnly} />
-                </div>
+                {/* Quem pede e quando: o sistema já sabe. Eram dois campos
+                    abertos no meio do formulário, pedindo uma informação que
+                    ninguém precisa digitar. Viram uma linha de leitura; para
+                    pedir em nome de outra pessoa ou corrigir a data, os campos
+                    continuam em "Mais informações". */}
+                {/* <p>, e não <div>: a grade empilha e alinha pela base todo
+                    <div> filho dela, e esta linha precisa ficar deitada. */}
+                <p className="col-span-2 flex flex-wrap items-center gap-x-5 gap-y-1 self-end pb-2.5 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <UserRound className="h-4 w-4" />
+                    Solicitado por <b className="font-medium text-foreground">{head.solicitante_nome || "—"}</b>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <CalendarDays className="h-4 w-4" />
+                    em <b className="font-medium text-foreground">{dataBrasileira(head.data_solicitacao) || "—"}</b>
+                  </span>
+                </p>
                 <div>
                   <Label>Data de Necessidade</Label>
                   <Input type="date" value={head.data_necessidade} onChange={(e) => setHead({ ...head, data_necessidade: e.target.value })} disabled={readOnly} />
                 </div>
-                <div className="col-span-2 lg:col-span-1">
+                <div className="lg:col-span-1">
                   <Label>Prioridade</Label>
                   <Select value={head.prioridade} onValueChange={(v: any) => setHead({ ...head, prioridade: v })} disabled={readOnly}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -953,11 +1018,35 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                     2/3 da largura, deixando uma coluna vazia ao lado. Ficam
                     recolhidos ate serem pedidos. O resumo diz o que ja tem
                     conteudo, para nada ficar escondido sem aviso. */}
-                <details className="col-span-2 lg:col-span-4 rounded-lg border bg-muted/30 px-3 py-2" open={temDetalhes}>
-                  <summary className="cursor-pointer select-none text-xs font-medium text-slate-700">
-                    Detalhes {temDetalhes ? "— preenchidos" : "(opcional)"}
-                  </summary>
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+<div className="col-span-2 lg:col-span-4 rounded-lg border bg-muted/30">
+                  <button
+                    type="button"
+                    onClick={() => setDetalhesAbertos((v) => !v)}
+                    aria-expanded={detalhesAbertos}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-foreground hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${detalhesAbertos ? "rotate-180" : ""}`} />
+                    <span className="whitespace-nowrap">Mais informações</span>
+                    {/* No celular a lista inteira não cabe: fica só o essencial. */}
+                    <span className="truncate font-normal text-muted-foreground sm:hidden">
+                      {preenchidos.length > 0 ? `· ${preenchidos.length} preenchido${preenchidos.length > 1 ? "s" : ""}` : "(opcional)"}
+                    </span>
+                    <span className="hidden truncate font-normal text-muted-foreground sm:inline">
+                      {preenchidos.length > 0
+                        ? `— ${preenchidos.join(", ")} preenchido${preenchidos.length > 1 ? "s" : ""}`
+                        : "(opcional) — solicitante, local, setor, justificativa, observações"}
+                    </span>
+                  </button>
+                  {detalhesAbertos && (
+                  <div className="grid grid-cols-1 gap-3 border-t px-3 pb-3 pt-3 sm:grid-cols-2">
+                    <div>
+                      <Label>Solicitante</Label>
+                      <Input value={head.solicitante_nome} onChange={(e) => setHead({ ...head, solicitante_nome: e.target.value })} disabled={readOnly} />
+                    </div>
+                    <div>
+                      <Label>Data da Solicitação</Label>
+                      <Input type="date" value={head.data_solicitacao} onChange={(e) => setHead({ ...head, data_solicitacao: e.target.value })} disabled={readOnly} />
+                    </div>
                     <div>
                       <Label>Local (texto livre)</Label>
                       <Input value={head.local_obra} onChange={(e) => setHead({ ...head, local_obra: e.target.value })} disabled={readOnly} placeholder="Ex: Obra Rua X - Bloco B" />
@@ -975,7 +1064,8 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       <Textarea rows={2} value={head.observacoes} onChange={(e) => setHead({ ...head, observacoes: e.target.value })} disabled={readOnly} />
                     </div>
                   </div>
-                </details>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -1156,14 +1246,32 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                         sumia para fora do campo. De quebra, a altura que sobrava
                         embaixo dos campos passa a ser usada por eles.
                     */}
-                    <div className="col-span-6 md:col-span-6">
-                      <Label className="text-xs">Justificativa do item</Label>
-                      <TextoQueCresce value={it.justificativa_item} onChange={(v) => updateItem(idx, { justificativa_item: v })} disabled={readOnly} />
-                    </div>
-                    <div className="col-span-6 md:col-span-6">
-                      <Label className="text-xs">Observações</Label>
-                      <TextoQueCresce value={it.observacoes} onChange={(v) => updateItem(idx, { observacoes: v })} disabled={readOnly} />
-                    </div>
+                    {/* Justificativa e observação do item: recolhidas até
+                        serem pedidas. Eram duas caixas de texto vazias em
+                        todo item — com dez itens, vinte caixas que quase
+                        ninguém preenche. Com conteúdo, aparecem sempre. */}
+                    {notasVisiveis(idx, it) ? (
+                      <>
+                        <div className="col-span-6 md:col-span-6">
+                          <Label className="text-xs">Justificativa do item</Label>
+                          <TextoQueCresce value={it.justificativa_item} onChange={(v) => updateItem(idx, { justificativa_item: v })} disabled={readOnly} />
+                        </div>
+                        <div className="col-span-6 md:col-span-6">
+                          <Label className="text-xs">Observações</Label>
+                          <TextoQueCresce value={it.observacoes} onChange={(v) => updateItem(idx, { observacoes: v })} disabled={readOnly} />
+                        </div>
+                      </>
+                    ) : !readOnly && (
+                      <div className="col-span-6 md:col-span-12">
+                        <button
+                          type="button"
+                          onClick={() => setNotasAbertas((s) => new Set(s).add(idx))}
+                          className="inline-flex items-center gap-1 rounded text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Justificativa ou observação
+                        </button>
+                      </div>
+                    )}
                   </div>
                     </div>
 

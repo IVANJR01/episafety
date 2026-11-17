@@ -4,13 +4,14 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import EPIs from "@/pages/EPIs";
 import InventarioTab from "@/components/pgr/InventarioTab";
+import SolicitacaoMaterialFormDialog from "@/components/epis/SolicitacaoMaterialFormDialog";
 import { dadosPorTabela } from "./stubSupabase";
 import { inventarioFicticio } from "./stubDados";
 import "@/index.css";
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
-/* ?tela=inventario monta o inventário de riscos; sem nada, a tela de EPIs. */
+/* ?tela=inventario: inventário de riscos; ?tela=solicitacao: nova solicitação de materiais; sem nada, a tela de EPIs. */
 const tela = new URLSearchParams(location.search).get("tela");
 if (tela === "inventario") dadosPorTabela.pgr_inventario_itens = inventarioFicticio;
 
@@ -20,7 +21,9 @@ createRoot(document.getElementById("root")!).render(
       <div className="min-h-screen bg-background p-6">
         {tela === "inventario"
           ? <InventarioTab pgrId="pgr-ficticio" empresaId="emp-ficticia" status={"rascunho" as any} canEdit />
-          : <EPIs />}
+          : tela === "solicitacao"
+            ? <SolicitacaoMaterialFormDialog open onOpenChange={() => {}} solicitacaoId={null} onSaved={() => {}} />
+            : <EPIs />}
       </div>
     </MemoryRouter>
   </QueryClientProvider>,
