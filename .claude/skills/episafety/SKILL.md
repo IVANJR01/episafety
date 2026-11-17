@@ -58,6 +58,21 @@ extraia a função, não copie.
 - `ghe_id` aponta para a tabela `ghe_ges`; `ges_id` aponta para
   `sst_ges`. São tabelas diferentes — trocar uma pela outra estoura FK.
 - Antes de alterar schema, leia as tabelas existentes.
+- **Função com `set search_path to 'public'` não enxerga o esquema
+  `extensions`** (pgcrypto: `digest`, `gen_random_bytes`; e outras
+  extensões). E a restrição vale para tudo o que ela dispara: gatilho
+  que chama função que usa `digest()` sem esquema quebra só quando é
+  chamado de dentro dela. Escreva `extensions.digest(...)` e dê à função
+  o próprio `set search_path to ''`. Foi isso que derrubou assinatura
+  pelo link, devolução e substituição de EPI em novembro/2026.
+- **404 da API em `/rpc/...` não prova que a função não existe.** A API
+  traduz o erro 42883 (função inexistente) em 404 — inclusive quando a
+  função inexistente é outra, chamada lá dentro. Antes de concluir
+  qualquer coisa, procure o erro real no log do Postgres
+  (`source='postgres_logs'`) no mesmo segundo do 404.
+- Para testar uma função que grava sem deixar rastro: chame dentro de um
+  bloco `do $$ ... $$` e termine com `raise exception` mostrando o
+  resultado. O erro desfaz tudo o que ela gravou.
 
 ## Teste
 
