@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getSyncQueue, removeFromSyncQueue, preCacheAllData, SyncOperation } from "@/lib/offlineStorage";
+import { decisaoDaFila } from "@/lib/filaOffline";
 import { useToast } from "@/hooks/use-toast";
 import { uploadInspecaoPhoto } from "@/lib/inspecoesStorage";
 import {
@@ -178,7 +179,8 @@ export function useOfflineSync() {
           error = res.error;
         }
 
-        if (error) {
+        /* 23505 numa inserção com id próprio: já estava no servidor. */
+        if (decisaoDaFila(op, error) === "tentar_de_novo") {
           console.error("Sync error:", error);
           failed++;
         } else {

@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import { dataHoraComSegundos } from "./codigoAssinatura";
+import { imagemSoNoServidor } from "./cacheOfflineLeve";
 
 interface EmpresaData {
   nome: string;
@@ -497,6 +498,22 @@ export function gerarFichaEPI(data: FichaData) {
           doc.text(desc, cx, cy + 4, { align: "center" });
           doc.setTextColor(0);
         }
+      } else if (imagemSoNoServidor(entrega.assinatura_colaborador)) {
+        /*
+         * Ficha gerada sem internet: a cópia do aparelho não guarda a
+         * imagem da assinatura (não cabia). Caixa em branco seria lida como
+         * "não assinou" — então o papel diz o que é.
+         */
+        const cx = sigX + sigW / 2;
+        doc.setFontSize(6.5);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 100, 0);
+        doc.text("ASSINADO", cx, y + 4, { align: "center" });
+        doc.setFontSize(5);
+        doc.setFont("helvetica", "normal");
+        doc.text("imagem no servidor - gere", cx, y + 7, { align: "center" });
+        doc.text("com internet para exibir", cx, y + 9.5, { align: "center" });
+        doc.setTextColor(0);
       } else {
         try {
           doc.addImage(entrega.assinatura_colaborador, "PNG", sigX + 2, y + 1, sigW - 4, ROW_H * 0.55);

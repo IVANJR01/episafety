@@ -7,6 +7,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData, getSyncQueue, removeFromSyncQueue } from "@/lib/offlineStorage";
+
+/**
+ * Põe na fila a assinatura de várias entregas e diz se TODAS couberam.
+ *
+ * O retorno de addToSyncQueue era ignorado em três lugares: com o
+ * aparelho sem espaço, a assinatura não era guardada e a tela dizia
+ * "Assinatura salva offline" do mesmo jeito. O colaborador ia embora
+ * achando que tinha assinado.
+ */
+function enfileirarAssinaturas(ids: string[], payload: Record<string, unknown>): boolean {
+  let todas = true;
+  for (const id of ids) {
+    if (!addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...payload } })) todas = false;
+  }
+  return todas;
+}
+
+const AVISO_SEM_ESPACO = {
+  title: "Assinatura NÃO foi guardada",
+  description: "O aparelho está sem espaço para guardar offline. Conecte-se à internet e assine de novo.",
+  variant: "destructive" as const,
+};
 import { isNetworkFailure } from "@/lib/offlineViewCache";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -273,8 +295,9 @@ export default function Entregas() {
           const updatePayload = { assinatura_colaborador: dataUrl };
 
           if (!isOnline()) {
-            for (const id of ids) {
-              addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...updatePayload } });
+            if (!enfileirarAssinaturas(ids, updatePayload)) {
+              toast(AVISO_SEM_ESPACO);
+              return;
             }
             const cached = getCachedData<Entrega>("entregas") || [];
             setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
@@ -291,8 +314,9 @@ export default function Entregas() {
               if (failed.length > 0) {
                 const hasNetErr = failed.some(f => isNetworkFailure(f.error));
                 if (hasNetErr) {
-                  for (const id of ids) {
-                    addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...updatePayload } });
+                  if (!enfileirarAssinaturas(ids, updatePayload)) {
+                    toast(AVISO_SEM_ESPACO);
+                    return;
                   }
                   const cached = getCachedData<Entrega>("entregas") || [];
                   setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
@@ -309,8 +333,9 @@ export default function Entregas() {
                 toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
               }
             } catch (err) {
-              for (const id of ids) {
-                addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...updatePayload } });
+              if (!enfileirarAssinaturas(ids, updatePayload)) {
+                toast(AVISO_SEM_ESPACO);
+                return;
               }
               const cached = getCachedData<Entrega>("entregas") || [];
               setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
@@ -713,6 +738,26 @@ export default function Entregas() {
         title: insertedIds.length === epiList.length ? "Salvo offline" : "Salvo parcialmente offline",
         description: `${insertedIds.length} de ${epiList.length} item(ns) salvo(s).`,
       });
+
+      /*
+       * A troca do EPI antigo não é feita sem internet: ela é uma função do
+       * banco, e a fila offline só sabe gravar linha por linha. Antes isso
+       * acontecia calado — a entrega nova subia depois e o colaborador
+       * ficava com os dois EPIs ativos na ficha. Agora pelo menos avisa.
+       */
+      if (descarteSubstituicao) {
+        const antigos = epiList
+          .filter((item) => entregaAtivaParaSubstituir(entregas, form.funcionario_id, item.epi.source_epi_id || item.epi.id))
+          .map((item) => item.epi.nome);
+        if (antigos.length > 0) {
+          toast({
+            title: "O EPI antigo continua ativo",
+            description: `Sem internet, a troca não encerra o anterior de: ${antigos.join(", ")}. Quando tiver sinal, faça a devolução dele.`,
+            variant: "destructive",
+            duration: 15000,
+          });
+        }
+      }
       setPendingEntrega({ funcionario_id: form.funcionario_id, entrega_ids: insertedIds });
       setOpen(false);
       resetForm();
@@ -782,13 +827,28 @@ export default function Entregas() {
         const cached = getCachedData<Entrega>("entregas") || [];
         for (const item of epiList) {
           const tempId = crypto.randomUUID();
-          addToSyncQueue({
+          /* O retorno era ignorado: sem espaço, a entrega não era guardada e
+             a tela dizia "salva com segurança no aparelho". */
+          const guardada = addToSyncQueue({
             table: "entregas",
             type: "insert",
             payload: registroOffline({ form, item, status, empresaId, idProvisorio: tempId }),
           });
+          if (!guardada) {
+            toast({
+              title: "Entrega NÃO foi guardada",
+              description: `${item.epi.nome}: o aparelho está sem espaço para guardar offline. Tente de novo com internet.`,
+              variant: "destructive",
+            });
+            continue;
+          }
           insertedIds.push(tempId);
           cached.unshift(linhaDoCache({ form, item, status, idProvisorio: tempId }) as Entrega);
+        }
+        if (insertedIds.length === 0) {
+          /* Nada coube: o formulário fica aberto, com o que foi digitado. */
+          setSaving(false);
+          return;
         }
         setCachedData("entregas", cached);
         toast({
@@ -884,6 +944,20 @@ export default function Entregas() {
 
   const confirmDevolver = async () => {
     if (!devolucaoTarget) return;
+    /*
+     * A devolução é uma função do banco (grava a devolução e encerra a
+     * entrega numa transação só) e ainda não entra na fila offline. Sem
+     * internet a chamada falhava e a tela mostrava "Failed to fetch", em
+     * inglês. O mesmo vale para o estorno, que já avisava.
+     */
+    if (!isOnline()) {
+      toast({
+        title: "Devolução precisa de internet",
+        description: "Sem sinal agora. Nada foi alterado — faça a devolução quando a conexão voltar.",
+        variant: "destructive",
+      });
+      return;
+    }
     setDevolucaoSaving(true);
 
     const entrega = devolucaoTarget;

@@ -1,6 +1,7 @@
 // Offline cache and sync queue for Supabase data
 
 import { supabase } from "@/integrations/supabase/client";
+import { linhasParaCache } from "./cacheOfflineLeve";
 
 const CACHE_PREFIX = "offline_cache_";
 const SYNC_QUEUE_KEY = "offline_sync_queue";
@@ -154,9 +155,19 @@ export function setCachedData<T>(key: string, data: T[], ttlMs = 7 * 24 * 60 * 6
   // Refuse to write tenant data without a user scope — prevents leaking unscoped cache to another user.
   if (!getScope()) return;
   try {
-    localStorage.setItem(buildKey(key), JSON.stringify({ data, expiry: Date.now() + ttlMs }));
-  } catch {
-    // storage full – silently fail
+    /*
+     * Sem as imagens de assinatura: elas enchiam o limite de ~5 MB do
+     * navegador e não deixavam espaço para a fila do que é feito offline.
+     * Ver src/lib/cacheOfflineLeve.ts.
+     */
+    localStorage.setItem(buildKey(key), JSON.stringify({ data: linhasParaCache(data), expiry: Date.now() + ttlMs }));
+  } catch (erro) {
+    /*
+     * Antes: "storage full – silently fail". A cópia não cabia, a lista
+     * offline aparecia vazia e ninguém sabia por quê. Continua sem
+     * derrubar a tela, mas deixa rastro para quem investigar.
+     */
+    console.warn(`[offline] a cópia de "${key}" não coube no aparelho:`, erro);
   }
 }
 
