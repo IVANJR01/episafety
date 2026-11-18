@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { precisaReatarStream, podeCapturar, temQuadro } from "@/lib/scannerCamera";
+import { acabarPagina, LADO_MAXIMO_PAGINA } from "@/lib/acabamentoScanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Camera, Check, Trash2, Loader2, Image as ImageIcon, VideoOff, Plus, Maximize, Zap, ZapOff, X, ChevronLeft } from "lucide-react";
@@ -19,14 +20,14 @@ interface Props {
 }
 
 /**
- * Lado maior da imagem guardada, em pixels.
+ * Lado maior da imagem guardada, em pixels: A4 a 300 DPI.
  *
- * A foto do celular vem com 3000, 4000 pixels de lado. Documento não precisa
- * disso: 1600 já lê texto de contrato sem esforço, o tratamento pixel a pixel
- * roda rápido em vez de travar o aparelho, e o PDF de três páginas sai com
- * poucos megabytes em vez de dezenas.
+ * Era 1600 (~137 DPI), com a justificativa de deixar o arquivo leve. Só
+ * que documento de dossiê é prova: ASO, laudo, CNH, certificado de NR — e
+ * letra miúda, CPF e número de registro saíam serrilhados. Ver
+ * src/lib/acabamentoScanner.ts.
  */
-const LADO_MAXIMO = 1600;
+const LADO_MAXIMO = LADO_MAXIMO_PAGINA;
 
 /**
  * Recuo inicial dos cantos de ajuste em relação às bordas da foto (6%).
@@ -88,74 +89,35 @@ function tratarPagina(
   altura: number,
   modo: ModoCor,
 ) {
+  /*
+   * Antes: uma curva de contraste única para a página inteira. Com a sombra
+   * da mão num canto, o papel ali saía cinza-sujo — e no preto e branco, uma
+   * mancha preta por cima do texto. Agora o fundo é estimado região por
+   * região e a página é dividida por ele: sombra e luz amarela somem, a
+   * tinta e as cores ficam. A regra, com teste, está em acabamentoScanner.
+   */
   const imagem = ctx.getImageData(0, 0, largura, altura);
-  const d = imagem.data;
-  const total = largura * altura;
-
-  // Usa apenas o canal verde (ou luma) para achar a tinta e o papel
-  const histograma = new Uint32Array(256);
-  for (let i = 0; i < d.length; i += 4) {
-    histograma[(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0]++;
-  }
-
-  let acumulado = 0;
-  let tinta = 0;
-  // Acha o pico das partes escuras (textos/caneta)
-  for (let v = 0; v < 256; v++) {
-    acumulado += histograma[v];
-    if (acumulado >= total * 0.03) { tinta = v; break; }
-  }
-  acumulado = 0;
-  let papel = 255;
-  // Acha o pico do claro (fundo da folha)
-  for (let v = 255; v >= 0; v--) {
-    acumulado += histograma[v];
-    if (acumulado >= total * 0.35) { papel = v; break; }
-  }
-
-  // Se a foto tiver sombra de lateral muito forte, o 'papel' pode ser 150 e a 'tinta' 40.
-  // Vamos esticar a distância entre tinta e papel para gerar o efeito "Clear Scanner" puro!
-  const tabela = new Uint8ClampedArray(256);
-
-  // Efeito Magic Color (Escaneamento de Alta Definição)
-  // Limiarizamos os fundos mais escuros para preto, e o fundo do papel para puramente branco.
-  let pontoPreto = Math.max(0, tinta - 20); // Tudo abaixo disso vira 0 (Preto puro)
-  let pontoBranco = Math.min(255, papel + 15); // Tudo acima disso vira 255 (Branco folha)
-
-  if (modo === "pb") {
-    // Para modo de fotocópia (P&B), o contraste é extremamente agressivo e cortante
-    pontoPreto = tinta + 20; 
-    pontoBranco = papel - 30;
-  }
-
-  const escala = pontoBranco - pontoPreto > 10 ? 255 / (pontoBranco - pontoPreto) : 1;
-
-  for (let v = 0; v < 256; v++) {
-    tabela[v] = Math.max(0, Math.min(255, Math.round((v - pontoPreto) * escala)));
-  }
-
-  if (modo === "cor") {
-    for (let i = 0; i < d.length; i += 4) {
-      // Aplica a tabela em cada canal preservando cores
-      d[i] = tabela[d[i]];
-      d[i + 1] = tabela[d[i + 1]];
-      d[i + 2] = tabela[d[i + 2]];
-    }
-  } else {
-    // Modo cinza ou PB
-    for (let i = 0; i < d.length; i += 4) {
-      const v = tabela[(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0];
-      // Se for pb "duro", binariza o resultado esticado para sumir de vez com sombras no meio do documento
-      if (modo === "pb") {
-        const binario = v > 150 ? 255 : 0;
-        d[i] = d[i + 1] = d[i + 2] = binario;
-      } else {
-        d[i] = d[i + 1] = d[i + 2] = v;
-      }
-    }
-  }
+  acabarPagina(imagem.data, largura, altura, modo);
   ctx.putImageData(imagem, 0, 0);
 }
+
+/**
+ * Como a página tratada é codificada.
+ *
+ * Preto e branco vai em PNG: só tem dois tons, o PNG fica pequeno e não
+ * borra a borda das letras como o JPEG faz. Colorido e cinza vão em JPEG
+ * de alta qualidade (0,92; antes 0,85 e 0,82).
+ */
+function codificarPagina(canvas: HTMLCanvasElement, modo: ModoCor): string {
+  return modo === "pb" ? canvas.toDataURL("image/png") : canvas.toDataURL("image/jpeg", 0.92);
+}
+
+/**
+ * A página endireitada, antes do acabamento. Fica guardada para reaplicar
+ * outro modo sem nova foto — por isso vai com a maior qualidade possível:
+ * cada recompressão em JPEG perde detalhe, e esta é a matriz das outras.
+ */
+const QUALIDADE_DA_BASE = 0.97;
 
 /** Reaplica o acabamento sobre a página endireitada original. */
 async function renderizarPagina(base: string, modo: ModoCor): Promise<string> {
@@ -172,7 +134,7 @@ async function renderizarPagina(base: string, modo: ModoCor): Promise<string> {
   if (!ctx) throw new Error("Não foi possível preparar a imagem.");
   ctx.drawImage(img, 0, 0);
   tratarPagina(ctx, canvas.width, canvas.height, modo);
-  return canvas.toDataURL("image/jpeg", modo === "cor" ? 0.85 : 0.82);
+  return codificarPagina(canvas, modo);
 }
 
 /** Reduz a imagem e devolve o canvas, sem tratar ainda. */
@@ -257,7 +219,12 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
     try {
       // Câmera traseira e resolução alta: é a de documento, não a de selfie.
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        /*
+         * Pede o máximo e o navegador entrega o que a câmera tiver. Pedir
+         * 1920x1080 era o TETO: num celular com câmera de 12 MP, o
+         * documento saía de um quadro de vídeo de 2 MP.
+         */
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 4096 }, height: { ideal: 3072 } },
         audio: false,
       });
       streamRef.current = stream;
@@ -439,6 +406,37 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     }
   };
 
+  /**
+   * Tira a FOTO, e não um quadro do vídeo.
+   *
+   * O botão capturava o quadro que estava na tela — o vídeo da câmera,
+   * que no celular vem em 1920x1080 no máximo, comprimido para vídeo e sem
+   * foco travado. A folha ocupa só parte do quadro, então a página saía
+   * com ~90 DPI: era o "péssimo" que aparecia no dossiê.
+   *
+   * `takePhoto()` (ImageCapture) pede à câmera uma foto de verdade, na
+   * resolução cheia do sensor e com o foco que a câmera usa para foto.
+   * Existe no Chrome e no Edge do Android. Onde não existe (Safari do
+   * iPhone) ou falha, cai no quadro do vídeo, que é o que havia antes —
+   * só que agora pedindo a maior resolução que a câmera oferecer.
+   */
+  const fotografar = async (video: HTMLVideoElement) => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    const ImageCaptureCtor = (window as any).ImageCapture;
+    if (track && ImageCaptureCtor) {
+      try {
+        const blob: Blob = await new ImageCaptureCtor(track).takePhoto();
+        const bitmap = await createImageBitmap(blob);
+        try {
+          return reduzir(bitmap, bitmap.width, bitmap.height);
+        } finally {
+          bitmap.close?.();
+        }
+      } catch { /* câmera sem suporte a foto: segue com o quadro do vídeo */ }
+    }
+    return reduzir(video, video.videoWidth, video.videoHeight);
+  };
+
   const capturar = async () => {
     const video = videoRef.current;
     if (!temQuadro(video)) {
@@ -446,8 +444,8 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
       return;
     }
     try {
-      const { canvas, largura, altura } = reduzir(video, video.videoWidth, video.videoHeight);
-      const url = canvas.toDataURL("image/jpeg", 0.92);
+      const { canvas, largura, altura } = await fotografar(video!);
+      const url = canvas.toDataURL("image/jpeg", QUALIDADE_DA_BASE);
       
       // Tenta achar a folha A4 automaticamente com o algoritmo aprimorado
       let cantosAuto = detectarCantos(canvas, largura, altura);
@@ -481,7 +479,7 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     img.onload = () => {
       try {
         const { canvas, largura, altura } = reduzir(img, img.naturalWidth, img.naturalHeight);
-        irParaAjuste(canvas.toDataURL("image/jpeg", 0.92), largura, altura);
+        irParaAjuste(canvas.toDataURL("image/jpeg", QUALIDADE_DA_BASE), largura, altura);
       } catch { /* imagem ilegível */ }
       URL.revokeObjectURL(img.src);
     };
@@ -522,9 +520,9 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
       const sctx = saida.getContext("2d", { willReadFrequently: true })!;
       sctx.putImageData(reto, 0, 0);
       
-      const base = saida.toDataURL("image/jpeg", 0.92);
+      const base = saida.toDataURL("image/jpeg", QUALIDADE_DA_BASE);
       tratarPagina(sctx, largura, altura, modo);
-      const urlFinal = saida.toDataURL("image/jpeg", modo === "cor" ? 0.85 : 0.82);
+      const urlFinal = codificarPagina(saida, modo);
       
       return { base, final: urlFinal };
     } catch (e: any) {
@@ -691,7 +689,8 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
           img.src = pagina;
         });
         const escala = Math.min((larguraPagina - margem * 2) / dim.w, (alturaPagina - margem * 2) / dim.h);
-        pdf.addImage(pagina, "JPEG", (larguraPagina - larg(dim.w, escala)) / 2, (alturaPagina - alt(dim.h, escala)) / 2, larg(dim.w, escala), alt(dim.h, escala));
+        /* Preto e branco agora é PNG; dizer "JPEG" aqui estragaria a página. */
+        pdf.addImage(pagina, pagina.startsWith("data:image/png") ? "PNG" : "JPEG", (larguraPagina - larg(dim.w, escala)) / 2, (alturaPagina - alt(dim.h, escala)) / 2, larg(dim.w, escala), alt(dim.h, escala));
       }
       const blob = pdf.output("blob");
       const base = (nomeSugerido || "documento")
