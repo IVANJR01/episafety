@@ -1,7 +1,9 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { precisaReatarStream, podeCapturar, temQuadro, encaixarNaArea, videoParaTela } from "@/lib/scannerCamera";
 import { detectarFolha } from "@/lib/deteccaoFolha";
-import { acompanharFolha, SEM_FOLHA, type EstadoDaFolha } from "@/lib/folhaAoVivo";
+import {
+  acompanharFolha, SEM_FOLHA, decidirCaptura, progressoDaCaptura, videoBastaComoFoto, type EstadoDaFolha,
+} from "@/lib/folhaAoVivo";
 import { acabarPagina, LADO_MAXIMO_PAGINA } from "@/lib/acabamentoScanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -244,6 +246,26 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
   const [endireitando, setEndireitando] = useState(false);
   /* Entre o clique e a tela de ajuste: o botão mostra que está trabalhando. */
   const [fotografando, setFotografando] = useState(false);
+  /*
+   * Captura automática: achou a folha e ela ficou parada, fotografa sem
+   * ninguém tocar no botão. Fica ligada por padrão; a escolha é lembrada
+   * neste aparelho.
+   */
+  const [automatico, setAutomatico] = useState<boolean>(() => {
+    try { return localStorage.getItem("scanner.automatico") !== "nao"; } catch { return true; }
+  });
+  const automaticoRef = useRef(automatico);
+  automaticoRef.current = automatico;
+  const alternarAutomatico = () => {
+    setAutomatico((a) => {
+      try { localStorage.setItem("scanner.automatico", a ? "nao" : "sim"); } catch { /* sem armazenamento */ }
+      return !a;
+    });
+  };
+  /* 0 a 1: o anel que enche enquanto a folha fica parada. */
+  const [progressoAuto, setProgressoAuto] = useState(0);
+  /* O laço ao vivo chama a versão mais nova de capturar(). */
+  const capturarRef = useRef<() => void>(() => {});
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   /** Controle de ajuste sequencial do modo lote. */
   const [ajustandoLote, setAjustandoLote] = useState<number | null>(null);
@@ -410,7 +432,7 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
   const fotografar = async (video: HTMLVideoElement) => {
     const track = streamRef.current?.getVideoTracks()[0];
     const ImageCaptureCtor = (window as any).ImageCapture;
-    if (track && ImageCaptureCtor) {
+    if (track && ImageCaptureCtor && !videoBastaComoFoto(video.videoWidth, video.videoHeight)) {
       try {
         /*
          * Prazo para a câmera responder: há aparelhos em que a foto nunca
@@ -441,6 +463,7 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
     const quadro = document.createElement("canvas");
     let parado = false;
     let acompanhamento: EstadoDaFolha = SEM_FOLHA;
+    let gatilho = { armado: true };
     const id = window.setInterval(() => {
       const v = videoRef.current;
       if (parado || processandoRef.current || !temQuadro(v)) return;
@@ -453,11 +476,15 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
       const achados = detectarFolha(ctx.getImageData(0, 0, quadro.width, quadro.height));
       const r = acompanharFolha(acompanhamento, achados, Math.max(quadro.width, quadro.height));
       acompanhamento = r.estado;
+      const d = decidirCaptura(gatilho, acompanhamento, r.mostrar);
+      gatilho = d.gatilho;
+      setProgressoAuto(automaticoRef.current && gatilho.armado && r.mostrar ? progressoDaCaptura(acompanhamento) : 0);
       const noVideo = r.mostrar ? r.mostrar.map((p) => ({ x: p.x / escala, y: p.y / escala })) : null;
       folhaAoVivoRef.current = noVideo;
       setFolhaAoVivo(noVideo);
       setTelaCamera({ l: v!.clientWidth, a: v!.clientHeight });
-    }, 250);
+      if (d.fotografar && automaticoRef.current) capturarRef.current();
+    }, 200);
     return () => { parado = true; window.clearInterval(id); };
   }, [open, camera, previaPronta, ajuste]);
 
@@ -512,6 +539,13 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
       setFotografando(false);
     }
   };
+
+  /* As mesmas regras valem para o botão e para a captura automática. */
+  const capturaBloqueada = fotografando || !podeCapturar(camera, previaPronta, gerando) ||
+    (modoCaptura === "identidade" && paginas.length >= 2) ||
+    (modoCaptura === "simples" && paginas.length >= 1) ||
+    (modoCaptura === "passaporte" && paginas.length >= 1);
+  capturarRef.current = () => { if (!capturaBloqueada) void capturar(); };
 
   const daGaleria = (e: React.ChangeEvent<HTMLInputElement>) => {
     const arquivo = (e.target.files || [])[0];
@@ -908,7 +942,9 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
                       {naTela.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={7} fill="#22c55e" stroke="white" strokeWidth={2} />)}
                     </svg>
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-green-600/90 px-3 py-1 text-xs font-semibold text-white shadow pointer-events-none">
-                      Folha encontrada
+                      {automatico && progressoAuto > 0 && !fotografando
+                        ? `Segure firme… ${Math.round(progressoAuto * 100)}%`
+                        : "Folha encontrada"}
                     </div>
                   </>
                 );
@@ -932,7 +968,10 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
                   className="flex items-center gap-1 text-white text-sm font-medium">
                   <X className="w-5 h-5" /> Cancelar
                 </button>
-                <span className="text-white text-sm font-semibold opacity-80">Digitalizar</span>
+                <button type="button" onClick={alternarAutomatico} aria-pressed={automatico}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold border ${automatico ? "bg-green-600 border-green-500 text-white" : "bg-black/30 border-white/30 text-white/80"}`}>
+                  {automatico ? "Automático: ligado" : "Automático: desligado"}
+                </button>
                 <button
                   type="button"
                   onClick={() => void alternarTocha()}
@@ -1030,13 +1069,17 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
                 <button
                   type="button"
                   onClick={capturar}
-                  disabled={fotografando || !podeCapturar(camera, previaPronta, gerando) ||
-                    (modoCaptura === "identidade" && paginas.length >= 2) ||
-                    (modoCaptura === "simples" && paginas.length >= 1) ||
-                    (modoCaptura === "passaporte" && paginas.length >= 1)}
-                  className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-xl disabled:opacity-40 active:scale-95 transition-transform"
+                  disabled={capturaBloqueada}
+                  className="relative w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-xl disabled:opacity-40 active:scale-95 transition-transform"
                   aria-label="Capturar"
                 >
+                  {automatico && progressoAuto > 0 && !fotografando && (
+                    <svg className="absolute inset-0 w-20 h-20 -rotate-90 pointer-events-none" viewBox="0 0 80 80" aria-hidden>
+                      <circle cx="40" cy="40" r="37" fill="none" stroke="#22c55e" strokeWidth="5"
+                        strokeDasharray={2 * Math.PI * 37} strokeDashoffset={(1 - progressoAuto) * 2 * Math.PI * 37}
+                        style={{ transition: "stroke-dashoffset 200ms linear" }} />
+                    </svg>
+                  )}
                   <div className="w-16 h-16 rounded-full border-[3px] border-black/20 bg-white flex items-center justify-center">
                     {fotografando
                       ? <Loader2 className="w-8 h-8 text-black/80 animate-spin" />
