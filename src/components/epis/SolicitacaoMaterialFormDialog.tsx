@@ -17,7 +17,7 @@ import {
   getSignedImageUrl, removeItemImage, descartarPreview, imagemDeTransferencia,
   buscarFotoDoAcervoPorCa,
 } from "@/lib/solicitacaoMateriaisImagens";
-import { enviarEmailSolicitacao } from "@/lib/solicitacaoMateriaisEmail";
+import { enviarEmailSolicitacao, obterEmailsCompras, separarEmails } from "@/lib/solicitacaoMateriaisEmail";
 import {
   nomeDoSolicitante, solicitanteAindaAutomatico, preenchidosNosDetalhes, itemTemNotas, dataBrasileira,
 } from "@/lib/solicitacaoMateriaisFormulario";
@@ -94,6 +94,8 @@ const emptyHead = () => ({
   prioridade: "normal" as "baixa" | "normal" | "alta" | "urgente",
   justificativa: "",
   observacoes: "",
+  /** O "Enviar para" desta solicitação, como texto: vírgula ou um por linha. */
+  emails_destino: "",
 });
 
 export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, solicitacaoId, onSaved }: Props) {
@@ -176,6 +178,30 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     return () => { vivo = false; };
   }, [open, user?.id, solicitacaoId, userEmail]);
   useEffect(() => { if (temDetalhes) setDetalhesAbertos(true); }, [temDetalhes]);
+
+  /*
+   * "Enviar para": a lista padrão da empresa entra uma vez por abertura,
+   * quando a solicitação ainda não tem a sua. Depois disso, o que estiver no
+   * campo é decisão de quem pede — inclusive apagar alguém.
+   */
+  const [padraoDestino, setPadraoDestino] = useState<string[]>([]);
+  const preencheuDestino = useRef(false);
+  useEffect(() => {
+    preencheuDestino.current = false;
+    if (!open || !empresaId) return;
+    let vivo = true;
+    obterEmailsCompras(empresaId).then((lista) => { if (vivo) setPadraoDestino(lista); });
+    return () => { vivo = false; };
+  }, [open, empresaId]);
+  useEffect(() => {
+    if (!open || loading || preencheuDestino.current || padraoDestino.length === 0) return;
+    preencheuDestino.current = true;
+    setHead((h) => ((h.emails_destino || "").trim() ? h : { ...h, emails_destino: padraoDestino.join(", ") }));
+  }, [open, loading, padraoDestino]);
+  const destino = separarEmails(head.emails_destino);
+  const destinoEhPadrao =
+    destino.validos.map((e) => e.toLowerCase()).sort().join(",") ===
+    padraoDestino.map((e) => e.toLowerCase()).sort().join(",");
 
   /** Itens com a área de justificativa/observação aberta, pelo índice. */
   const [notasAbertas, setNotasAbertas] = useState<Set<number>>(new Set());
@@ -263,6 +289,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           prioridade: (s as any).prioridade,
           justificativa: (s as any).justificativa || "",
           observacoes: (s as any).observacoes || "",
+          emails_destino: (s as any).emails_destino || "",
         });
       }
       setItens(((is as any[]) || []).map((i) => ({
@@ -551,6 +578,8 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           prioridade: head.prioridade,
           justificativa: head.justificativa || null,
           observacoes: head.observacoes || null,
+          /* Guardado para o reenvio ir às mesmas pessoas do primeiro envio. */
+          ...({ emails_destino: separarEmails(head.emails_destino).validos.join(", ") || null } as Record<string, unknown>),
           status: nextStatus,
           created_by: user?.id || null,
         }).select("id, numero_solicitacao").single();
@@ -571,6 +600,8 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           prioridade: head.prioridade,
           justificativa: head.justificativa || null,
           observacoes: head.observacoes || null,
+          /* Guardado para o reenvio ir às mesmas pessoas do primeiro envio. */
+          ...({ emails_destino: separarEmails(head.emails_destino).validos.join(", ") || null } as Record<string, unknown>),
           status: nextStatus,
         }).eq("id", solicId);
         if (updErr) throw updErr;
@@ -692,7 +723,8 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
             head.setor,
             head.solicitante_nome,
             head.prioridade,
-            head.data_necessidade
+            head.data_necessidade,
+            head.emails_destino,
           );
 
           if (resultado.enviado && resultado.aviso) {
@@ -1282,6 +1314,46 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                 </CardContent>
               </Card>
             ))}
+
+            {/* Para quem vai. Morava no Cadastro Mestre, longe de quem pede, e
+                toda solicitação ia para a mesma lista. Quem recebe é decisão
+                de cada pedido: EPI vai para compras e segurança, ferramenta
+                para compras e manutenção, urgente também para o gerente. */}
+            <Card>
+              <CardContent className="space-y-2 p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <Label htmlFor="emails-destino" className="text-sm font-semibold">Enviar para</Label>
+                  {!readOnly && padraoDestino.length > 0 && !destinoEhPadrao && (
+                    <button
+                      type="button"
+                      onClick={() => setHead({ ...head, emails_destino: padraoDestino.join(", ") })}
+                      className="text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      Voltar à lista padrão
+                    </button>
+                  )}
+                </div>
+                <Textarea
+                  id="emails-destino"
+                  rows={2}
+                  value={head.emails_destino}
+                  onChange={(e) => setHead({ ...head, emails_destino: e.target.value })}
+                  disabled={readOnly}
+                  placeholder="compras@empresa.com, seguranca@empresa.com"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {destino.validos.length > 0
+                    ? `${destino.validos.length} ${destino.validos.length === 1 ? "pessoa recebe" : "pessoas recebem"} o e-mail com o PDF e o link de aprovação`
+                    : padraoDestino.length > 0
+                      ? `Vazio: vai para a lista padrão (${padraoDestino.join(", ")})`
+                      : "Nenhum destinatário. Separe por vírgula ou um por linha."}
+                  {destinoEhPadrao && destino.validos.length > 0 && " — é a lista padrão."}
+                  {destino.invalidos.length > 0 && (
+                    <span className="text-destructive"> · sem formato de e-mail, não será enviado: {destino.invalidos.join(", ")}</span>
+                  )}
+                </p>
+              </CardContent>
+            </Card>
           </div>
         )}
         </NetworkErrorBoundary>

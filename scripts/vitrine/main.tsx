@@ -14,6 +14,9 @@ const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 /* ?tela=inventario: inventário de riscos; ?tela=solicitacao: nova solicitação de materiais; sem nada, a tela de EPIs. */
 const tela = new URLSearchParams(location.search).get("tela");
 if (tela === "inventario") dadosPorTabela.pgr_inventario_itens = inventarioFicticio;
+if (tela === "solicitacao") {
+  dadosPorTabela.empresa_config = [{ email_compras: "compras@empresa-ficticia.com.br, seguranca@empresa-ficticia.com.br" }];
+}
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={qc}>

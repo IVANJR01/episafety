@@ -142,14 +142,6 @@ export default function Empresas() {
     // Endereço malformado é descartado na hora do envio, sem aviso nenhum —
     // a notificação simplesmente não chega para aquela pessoa e ninguém fica
     // sabendo. Barrar aqui é o único momento em que dá para mostrar o erro.
-    if (emailsCompras.invalidos.length > 0) {
-      toast({
-        title: "Confira os e-mails para compras",
-        description: `Sem formato de e-mail: ${emailsCompras.invalidos.join(", ")}`,
-        variant: "destructive",
-      });
-      return;
-    }
     if (emailsSst.invalidos.length > 0) {
       toast({
         title: "Confira os e-mails de alertas de SST",
@@ -160,7 +152,13 @@ export default function Empresas() {
     }
     setSaving(true);
     try {
-      const payload = { ...form, logo_url: logoUrl };
+      /*
+       * `email_compras` fica de fora: a lista agora é cuidada em Solicitação
+       * de Materiais › Destinatários padrão. Mandar o valor carregado aqui
+       * apagaria uma mudança feita lá enquanto esta tela estava aberta.
+       */
+      const { email_compras: _naoMexer, ...semCompras } = form;
+      const payload = { ...semCompras, logo_url: logoUrl };
       if (!existingId) {
         toast({ title: "Empresa não encontrada. Contacte o administrador.", variant: "destructive" });
         setSaving(false);
@@ -289,44 +287,16 @@ export default function Empresas() {
                   <Label>E-mail Principal</Label>
                   <Input className="min-h-[44px]" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="contato@empresa.com" />
                 </div>
-                <div className="sm:col-span-2">
-                  <Label>E-mails para Compras 📧</Label>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Quem recebe automaticamente as notificações de solicitação de materiais.
-                    Para mais de uma pessoa, separe por vírgula ou uma por linha — todas recebem
-                    o mesmo email, com o PDF em anexo e o link de aprovação.
-                  </p>
-                  {emailsCompras.validos.length > 1 && (
-                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mb-2">
-                      Se o envio para vários endereços ainda não estiver liberado, apenas o
-                      primeiro recebe e a tela avisa quem ficou de fora. A liberação é uma
-                      configuração única do sistema, feita pelo administrador — não precisa
-                      ser repetida por empresa.
-                    </p>
-                  )}
-                  {/* Textarea, não Input `type="email"`: aquele campo trata uma
-                      lista separada por vírgula como endereço inválido, e uma
-                      linha só não comporta seis endereços. */}
-                  <Textarea
-                    rows={3}
-                    value={form.email_compras}
-                    onChange={e => setForm({ ...form, email_compras: e.target.value })}
-                    placeholder={"compras@empresa.com, engenharia@empresa.com\nseguranca@empresa.com"}
-                  />
-                  {(emailsCompras.validos.length > 0 || emailsCompras.invalidos.length > 0) && (
-                    <p className="text-xs mt-1.5">
-                      {emailsCompras.validos.length > 0 && (
-                        <span className="text-muted-foreground">
-                          {emailsCompras.validos.length} {emailsCompras.validos.length === 1 ? "destinatário" : "destinatários"}
-                        </span>
-                      )}
-                      {emailsCompras.invalidos.length > 0 && (
-                        <span className="text-destructive">
-                          {emailsCompras.validos.length > 0 ? " · " : ""}
-                          sem formato de e-mail: {emailsCompras.invalidos.join(", ")}
-                        </span>
-                      )}
-                    </p>
+                {/* A lista de quem recebe as solicitações de materiais saiu
+                    daqui: ela é decisão de cada pedido, e não dado cadastral
+                    da empresa. O padrão agora é cuidado na própria tela de
+                    solicitações, e cada solicitação traz o seu "Enviar para". */}
+                <div className="sm:col-span-2 rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">E-mails para compras</span> agora ficam em{" "}
+                  <b>Gestão de EPIs › Solicitação de Materiais › Destinatários padrão</b>, e cada solicitação
+                  pode escolher para quem vai no campo "Enviar para".
+                  {emailsCompras.validos.length > 0 && (
+                    <> Lista atual: {emailsCompras.validos.join(", ")}.</>
                   )}
                 </div>
                 <div className="sm:col-span-2">

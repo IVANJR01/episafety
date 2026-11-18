@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Search, ClipboardList, Pencil, Copy, Trash2, FileDown, FileSpreadsheet, Eye, CheckCircle2, ShoppingCart, PackageCheck, Mail } from "lucide-react";
 import { toast } from "sonner";
 import SolicitacaoMaterialFormDialog from "@/components/epis/SolicitacaoMaterialFormDialog";
+import DestinatariosPadraoDialog from "@/components/epis/DestinatariosPadraoDialog";
 import SolicitacaoAprovacaoDialog from "@/components/epis/SolicitacaoAprovacaoDialog";
 import SolicitacaoRecebimentoDialog from "@/components/epis/SolicitacaoRecebimentoDialog";
 import { gerarSolicitacaoPdf } from "@/lib/solicitacaoMateriaisPdf";
@@ -23,6 +24,8 @@ import { enviarEmailSolicitacao } from "@/lib/solicitacaoMateriaisEmail";
 
 type Solicitacao = {
   id: string;
+  /** "Enviar para" escolhido na solicitação. Nulo nas antigas: vale o padrão. */
+  emails_destino?: string | null;
   empresa_id: string;
   numero_solicitacao: string;
   titulo: string;
@@ -71,6 +74,8 @@ export default function SolicitacoesMateriais() {
   const [priFilter, setPriFilter] = useState("TODAS");
 
   const [formOpen, setFormOpen] = useState(false);
+  /** Lista padrão de quem recebe as solicitações — veio do Cadastro Mestre. */
+  const [destinatariosOpen, setDestinatariosOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [aprovOpen, setAprovOpen] = useState<string | null>(null);
   const [recebOpen, setRecebOpen] = useState<string | null>(null);
@@ -403,7 +408,9 @@ export default function SolicitacoesMateriais() {
         s.setor || undefined,
         s.solicitante_nome || undefined,
         s.prioridade,
-        s.data_necessidade || undefined
+        s.data_necessidade || undefined,
+        /* O reenvio vai às mesmas pessoas do primeiro envio. */
+        s.emails_destino,
       );
 
       if (resultado.enviado && resultado.aviso) {
@@ -434,11 +441,19 @@ export default function SolicitacoesMateriais() {
         title="Solicitação de Materiais"
         subtitle="Solicite EPIs, EPCs e materiais de segurança para compra e controle de recebimento."
         actions={
-          <Button onClick={() => { setEditingId(null); setFormOpen(true); }} className="gap-2">
-            <Plus className="w-4 h-4" /> Nova Solicitação
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {(isPrincipal || isSuperAdmin) && (
+              <Button variant="outline" onClick={() => setDestinatariosOpen(true)} className="gap-2">
+                <Mail className="w-4 h-4" /> Destinatários padrão
+              </Button>
+            )}
+            <Button onClick={() => { setEditingId(null); setFormOpen(true); }} className="gap-2">
+              <Plus className="w-4 h-4" /> Nova Solicitação
+            </Button>
+          </div>
         }
       />
+      <DestinatariosPadraoDialog open={destinatariosOpen} onOpenChange={setDestinatariosOpen} empresaId={empresaId} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">

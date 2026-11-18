@@ -45,12 +45,28 @@ export function separarEmails(texto?: string | null): { validos: string[]; inval
 }
 
 /**
+ * Para quem esta solicitação vai.
+ *
+ * A lista escolhida na própria solicitação manda. Vazia — solicitação
+ * antiga, ou ninguém mexeu —, vale o padrão da empresa. Endereço inválido
+ * da solicitação não é enviado, e se só sobrar inválido, também cai no
+ * padrão: mandar para ninguém seria pior.
+ */
+export function destinatariosDoEnvio(
+  daSolicitacao: string | null | undefined,
+  padraoDaEmpresa: string[],
+): string[] {
+  const escolhidos = separarEmails(daSolicitacao).validos;
+  return escolhidos.length > 0 ? escolhidos : padraoDaEmpresa;
+}
+
+/**
  * Busca os emails do setor de compras da empresa, em ordem de preferência:
  * 1. Campo dedicado de emails para compras na empresa_config (pode ter vários)
  * 2. Email principal da empresa
  * 3. Email do usuário principal
  */
-async function obterEmailsCompras(empresaId: string): Promise<string[]> {
+export async function obterEmailsCompras(empresaId: string): Promise<string[]> {
   try {
     const { data: empresa } = await supabase
       .from("empresa_config")
@@ -161,13 +177,15 @@ export async function enviarEmailSolicitacao(
   setor?: string,
   solicitanteNome?: string,
   prioridade: string = "normal",
-  dataNecessidade?: string
+  dataNecessidade?: string,
+  /** O "Enviar para" desta solicitação. Vazio, vale o padrão da empresa. */
+  emailsDestino?: string | null,
 ): Promise<ResultadoEnvioEmail> {
   try {
-    const emailsCompras = await obterEmailsCompras(empresaId);
+    const emailsCompras = destinatariosDoEnvio(emailsDestino, await obterEmailsCompras(empresaId));
     if (!emailsCompras.length) {
       console.warn("[solicitacao] Nenhum email de compras encontrado para a empresa");
-      return { enviado: false, modoDebug: false, erro: "Nenhum email de compras configurado para a empresa" };
+      return { enviado: false, modoDebug: false, erro: "Nenhum destinatário: preencha \"Enviar para\" na solicitação ou a lista padrão em Solicitação de Materiais" };
     }
     const emailCompras = emailsCompras.length === 1
       ? emailsCompras[0]

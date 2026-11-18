@@ -11,8 +11,8 @@ const vazio = (tabela?: string) => {
   const e: any = {
     select: () => e, eq: () => e, in: () => e, not: () => e, is: () => e,
     order: () => e, limit: () => e, neq: () => e, or: () => e, ilike: () => e,
-    maybeSingle: () => Promise.resolve({ data: null, error: null }),
-    single: () => Promise.resolve({ data: null, error: null }),
+    maybeSingle: () => Promise.resolve({ data: linhas()[0] ?? null, error: null }),
+    single: () => Promise.resolve({ data: linhas()[0] ?? null, error: null }),
     insert: () => e, update: () => e, delete: () => e,
     then: (ok: any) => Promise.resolve({ data: linhas(), error: null }).then(ok),
   };
