@@ -110,20 +110,39 @@ function estimarFundo(d: Uint8ClampedArray, largura: number, altura: number) {
 export function normalizarIluminacao(d: Uint8ClampedArray, largura: number, altura: number): void {
   const { grade, gx, gy, lado } = estimarFundo(d, largura, altura);
 
+  /*
+   * Onde cada coluna cai na grade é igual em todas as linhas: calculado uma
+   * vez só. E cada linha interpola a grade na vertical uma vez (são ~40
+   * blocos), deixando para o pixel só a interpolação horizontal. Antes o
+   * pixel refazia tudo: 620 ms numa página A4 a 300 DPI, num celular
+   * intermediário simulado.
+   */
+  const colX0 = new Int32Array(largura), colX1 = new Int32Array(largura), colTx = new Float32Array(largura);
+  for (let x = 0; x < largura; x++) {
+    const fx = Math.min(gx - 1, Math.max(0, (x + 0.5) / lado - 0.5));
+    const x0 = Math.floor(fx);
+    colX0[x] = x0 * 3;
+    colX1[x] = Math.min(gx - 1, x0 + 1) * 3;
+    colTx[x] = fx - x0;
+  }
+  const linhaDaGrade = new Float32Array(gx * 3);
+
   for (let y = 0; y < altura; y++) {
-    /* Posição na grade, centrada no bloco, para interpolar entre vizinhos. */
     const fy = Math.min(gy - 1, Math.max(0, (y + 0.5) / lado - 0.5));
     const y0 = Math.floor(fy), y1 = Math.min(gy - 1, y0 + 1), ty = fy - y0;
-    for (let x = 0; x < largura; x++) {
-      const fx = Math.min(gx - 1, Math.max(0, (x + 0.5) / lado - 0.5));
-      const x0 = Math.floor(fx), x1 = Math.min(gx - 1, x0 + 1), tx = fx - x0;
-      const i = (y * largura + x) * 4;
-      for (let c = 0; c < 3; c++) {
-        const a = grade[(y0 * gx + x0) * 3 + c] * (1 - tx) + grade[(y0 * gx + x1) * 3 + c] * tx;
-        const b = grade[(y1 * gx + x0) * 3 + c] * (1 - tx) + grade[(y1 * gx + x1) * 3 + c] * tx;
-        const fundo = a * (1 - ty) + b * ty;
-        d[i + c] = Math.min(255, (d[i + c] / fundo) * 255);
-      }
+    const base0 = y0 * gx * 3, base1 = y1 * gx * 3;
+    for (let k = 0; k < gx * 3; k++) linhaDaGrade[k] = grade[base0 + k] * (1 - ty) + grade[base1 + k] * ty;
+
+    let i = y * largura * 4;
+    for (let x = 0; x < largura; x++, i += 4) {
+      const a = colX0[x], b = colX1[x], tx = colTx[x], sx = 1 - tx;
+      const f0 = linhaDaGrade[a] * sx + linhaDaGrade[b] * tx;
+      const f1 = linhaDaGrade[a + 1] * sx + linhaDaGrade[b + 1] * tx;
+      const f2 = linhaDaGrade[a + 2] * sx + linhaDaGrade[b + 2] * tx;
+      const v0 = (d[i] / f0) * 255, v1 = (d[i + 1] / f1) * 255, v2 = (d[i + 2] / f2) * 255;
+      d[i] = v0 > 255 ? 255 : v0;
+      d[i + 1] = v1 > 255 ? 255 : v1;
+      d[i + 2] = v2 > 255 ? 255 : v2;
     }
   }
 }

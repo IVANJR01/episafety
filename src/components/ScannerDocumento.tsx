@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { precisaReatarStream, podeCapturar, temQuadro, encaixarNaArea, videoParaTela } from "@/lib/scannerCamera";
 import { detectarFolha } from "@/lib/deteccaoFolha";
+import { acompanharFolha, SEM_FOLHA, type EstadoDaFolha } from "@/lib/folhaAoVivo";
 import { acabarPagina, LADO_MAXIMO_PAGINA } from "@/lib/acabamentoScanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -152,7 +153,36 @@ function reduzir(origem: CanvasImageSource, larguraOrig: number, alturaOrig: num
   return { canvas, ctx, largura, altura };
 }
 
-interface Captura { url: string; largura: number; altura: number }
+interface Captura {
+  /** Imagem que a TELA mostra. Com `fonte`, é uma prévia reduzida. */
+  url: string;
+  /** Tamanho da foto de verdade — é nele que os cantos são medidos. */
+  largura: number;
+  altura: number;
+  /**
+   * A foto de verdade, ainda na memória. Evita codificar a foto de 300 DPI
+   * em JPEG só para decodificá-la de volta segundos depois — 1,3 s de
+   * toDataURL num celular intermediário, mais o tempo de decodificar.
+   */
+  fonte?: HTMLCanvasElement;
+}
+
+/** Lado maior da prévia mostrada na tela de ajuste: a tela do celular não mostra mais que isso. */
+const LADO_DA_PREVIA = 1600;
+
+/** Quanto esperar a câmera entregar a foto antes de usar o quadro do vídeo. */
+const PRAZO_DA_FOTO_MS = 6000;
+
+/** Prévia leve para a tela; a foto inteira continua na memória. */
+function previaDe(canvas: HTMLCanvasElement): string {
+  const k = Math.min(1, LADO_DA_PREVIA / Math.max(canvas.width, canvas.height));
+  if (k === 1) return canvas.toDataURL("image/jpeg", 0.85);
+  const c = document.createElement("canvas");
+  c.width = Math.round(canvas.width * k);
+  c.height = Math.round(canvas.height * k);
+  c.getContext("2d")!.drawImage(canvas, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.85);
+}
 
 interface Pagina { 
   base: string; 
@@ -198,6 +228,13 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
    */
   const [folhaAoVivo, setFolhaAoVivo] = useState<Ponto[] | null>(null);
   const folhaAoVivoRef = useRef<Ponto[] | null>(null);
+  /*
+   * Enquanto a foto é processada, a procura ao vivo para. Ela seguia
+   * rodando 4 vezes por segundo e disputava o processador com a foto:
+   * 2,4 s dos 7,4 s entre o clique e a tela de ajuste, medidos num celular
+   * intermediário simulado.
+   */
+  const processandoRef = useRef(false);
   const [telaCamera, setTelaCamera] = useState({ l: 0, a: 0 });
 
   // Passo de ajuste: a foto recém-tirada, com os quatro cantos da folha.
@@ -205,6 +242,8 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
   const [cantos, setCantos] = useState<Ponto[]>([]);
   const [arrastando, setArrastando] = useState<number | null>(null);
   const [endireitando, setEndireitando] = useState(false);
+  /* Entre o clique e a tela de ajuste: o botão mostra que está trabalhando. */
+  const [fotografando, setFotografando] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   /** Controle de ajuste sequencial do modo lote. */
   const [ajustandoLote, setAjustandoLote] = useState<number | null>(null);
@@ -323,14 +362,25 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
  * saía CORTADA. O novo erra até 0,6% em todas.
  */
 function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altura: number): Ponto[] | null {
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  /*
+   * Numa cópia pequena: o detector trabalha com 360 px de qualquer jeito.
+   * Ler os 8,7 milhões de pixels da foto inteira (getImageData) só para
+   * reduzi-los custava quase um segundo no celular.
+   */
+  const k = Math.min(1, 480 / Math.max(largura, altura));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(largura * k));
+  c.height = Math.max(1, Math.round(altura * k));
+  const ctx = c.getContext("2d", { willReadFrequently: true });
   if (!ctx) return null;
-  return detectarFolha(ctx.getImageData(0, 0, largura, altura));
+  ctx.drawImage(canvas, 0, 0, c.width, c.height);
+  const achados = detectarFolha(ctx.getImageData(0, 0, c.width, c.height));
+  return achados ? achados.map((p) => ({ x: p.x / k, y: p.y / k })) : null;
 }
 
   /** Abre o passo de ajuste com recuo seguro nas bordas, ou com bordas detectadas automaticamente. */
-  const irParaAjuste = (url: string, largura: number, altura: number, cantosIniciais?: Ponto[]) => {
-    setAjuste({ url, largura, altura });
+  const irParaAjuste = (url: string, largura: number, altura: number, cantosIniciais?: Ponto[], fonte?: HTMLCanvasElement) => {
+    setAjuste({ url, largura, altura, fonte });
     if (cantosIniciais && cantosIniciais.length === 4) {
       setCantos(cantosIniciais);
     } else {
@@ -362,7 +412,14 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
     const ImageCaptureCtor = (window as any).ImageCapture;
     if (track && ImageCaptureCtor) {
       try {
-        const blob: Blob = await new ImageCaptureCtor(track).takePhoto();
+        /*
+         * Prazo para a câmera responder: há aparelhos em que a foto nunca
+         * volta, e a tela ficava parada. Passou do prazo, usa o vídeo.
+         */
+        const blob: Blob = await Promise.race([
+          new ImageCaptureCtor(track).takePhoto(),
+          new Promise<never>((_, rejeitar) => window.setTimeout(() => rejeitar(new Error("tempo")), PRAZO_DA_FOTO_MS)),
+        ]);
         const bitmap = await createImageBitmap(blob);
         try {
           return reduzir(bitmap, bitmap.width, bitmap.height);
@@ -383,9 +440,10 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
     if (!open || !camera || !previaPronta || ajuste) { setFolhaAoVivo(null); folhaAoVivoRef.current = null; return; }
     const quadro = document.createElement("canvas");
     let parado = false;
+    let acompanhamento: EstadoDaFolha = SEM_FOLHA;
     const id = window.setInterval(() => {
       const v = videoRef.current;
-      if (parado || !temQuadro(v)) return;
+      if (parado || processandoRef.current || !temQuadro(v)) return;
       const escala = Math.min(1, 360 / Math.max(v!.videoWidth, v!.videoHeight));
       quadro.width = Math.round(v!.videoWidth * escala);
       quadro.height = Math.round(v!.videoHeight * escala);
@@ -393,7 +451,9 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
       if (!ctx) return;
       ctx.drawImage(v!, 0, 0, quadro.width, quadro.height);
       const achados = detectarFolha(ctx.getImageData(0, 0, quadro.width, quadro.height));
-      const noVideo = achados ? achados.map((p) => ({ x: p.x / escala, y: p.y / escala })) : null;
+      const r = acompanharFolha(acompanhamento, achados, Math.max(quadro.width, quadro.height));
+      acompanhamento = r.estado;
+      const noVideo = r.mostrar ? r.mostrar.map((p) => ({ x: p.x / escala, y: p.y / escala })) : null;
       folhaAoVivoRef.current = noVideo;
       setFolhaAoVivo(noVideo);
       setTelaCamera({ l: v!.clientWidth, a: v!.clientHeight });
@@ -407,9 +467,11 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
       toast({ title: "A câmera ainda está abrindo", description: "Aguarde o vídeo aparecer e toque de novo." });
       return;
     }
+    if (processandoRef.current) return; // toque duplo no botão
+    processandoRef.current = true;
+    setFotografando(true);
     try {
       const { canvas, largura, altura } = await fotografar(video!);
-      const url = canvas.toDataURL("image/jpeg", QUALIDADE_DA_BASE);
       
       // Tenta achar a folha A4 automaticamente com o algoritmo aprimorado
       let cantosAuto = detectarCantosDaFolha(canvas, largura, altura);
@@ -434,14 +496,20 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
       }
       
       if (modoCaptura === "lote") {
-        // No modo Lote, acumula a foto crua como pendente. 
+        // No modo Lote, acumula a foto crua como pendente.
         // O ajuste acontecerá só quando o usuário pedir para gerar o documento.
+        // Aqui a foto vira JPEG: guardar dez fotos de 300 DPI abertas na
+        // memória (~35 MB cada) derrubaria o navegador do celular.
+        const url = canvas.toDataURL("image/jpeg", QUALIDADE_DA_BASE);
         setPaginas(p => [...p, { base: url, final: url, pendente: true, larguraOriginal: largura, alturaOriginal: altura, cantosSugeridos: cantosAuto }]);
       } else {
-        irParaAjuste(url, largura, altura, cantosAuto);
+        irParaAjuste(previaDe(canvas), largura, altura, cantosAuto, canvas);
       }
     } catch (e: any) {
       toast({ title: "Não foi possível capturar", description: e?.message, variant: "destructive" });
+    } finally {
+      processandoRef.current = false;
+      setFotografando(false);
     }
   };
 
@@ -455,8 +523,8 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
         const { canvas, largura, altura } = reduzir(img, img.naturalWidth, img.naturalHeight);
         /* A foto da galeria também tem a folha procurada — antes ia direto
            para os cantos fixos de 6%, e o técnico arrastava os quatro. */
-        irParaAjuste(canvas.toDataURL("image/jpeg", QUALIDADE_DA_BASE), largura, altura,
-          detectarCantosDaFolha(canvas, largura, altura) || undefined);
+        irParaAjuste(previaDe(canvas), largura, altura,
+          detectarCantosDaFolha(canvas, largura, altura) || undefined, canvas);
       } catch { /* imagem ilegível */ }
       URL.revokeObjectURL(img.src);
     };
@@ -475,17 +543,24 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
     }
     setEndireitando(true);
     try {
-      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const i = new Image();
-        i.onload = () => resolve(i);
-        i.onerror = reject;
-        i.src = ajusteLocal.url;
-      });
-      const orig = document.createElement("canvas");
-      orig.width = ajusteLocal.largura;
-      orig.height = ajusteLocal.altura;
-      const octx = orig.getContext("2d", { willReadFrequently: true })!;
-      octx.drawImage(img, 0, 0);
+      let octx: CanvasRenderingContext2D;
+      if (ajusteLocal.fonte) {
+        /* A foto ainda está na memória: sem decodificar JPEG nenhum. */
+        octx = ajusteLocal.fonte.getContext("2d", { willReadFrequently: true })!;
+      } else {
+        /* Lote: a foto foi guardada em JPEG e precisa voltar a ser pixels. */
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const i = new Image();
+          i.onload = () => resolve(i);
+          i.onerror = reject;
+          i.src = ajusteLocal.url;
+        });
+        const orig = document.createElement("canvas");
+        orig.width = ajusteLocal.largura;
+        orig.height = ajusteLocal.altura;
+        octx = orig.getContext("2d", { willReadFrequently: true })!;
+        octx.drawImage(img, 0, 0);
+      }
 
       const { largura, altura } = tamanhoDestino(quad);
       const reto = corrigirPerspectiva(octx.getImageData(0, 0, ajusteLocal.largura, ajusteLocal.altura), quad, largura, altura);
@@ -602,10 +677,17 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
       ctx.beginPath();
       ctx.arc(RAIO_CANVAS, RAIO_CANVAS, RAIO_CANVAS, 0, Math.PI * 2);
       ctx.clip();
+      /*
+       * A conta era p.x / escX / escX: dividia duas vezes, e a lupa ficava
+       * mostrando um pedaço perto do canto superior esquerdo da foto, não o
+       * canto que estava sendo arrastado. A imagem da tela agora pode ser
+       * uma prévia reduzida, então a posição vai para a escala dela.
+       */
+      const k = img.naturalWidth / ajuste.largura;
       ctx.drawImage(
         img,
-        p.x / escX / escX - RAIO_IMG, p.y / escY / escY - RAIO_IMG,
-        RAIO_IMG * 2, RAIO_IMG * 2,
+        (p.x - RAIO_IMG) * k, (p.y - RAIO_IMG) * k,
+        RAIO_IMG * 2 * k, RAIO_IMG * 2 * k,
         0, 0, RAIO_CANVAS * 2, RAIO_CANVAS * 2,
       );
       // Crosshair no centro
@@ -808,6 +890,12 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
               <video ref={videoRef} playsInline muted onLoadedMetadata={anotarFormato} onResize={anotarFormato}
                 className="absolute inset-0 w-full h-full object-cover" />
 
+              {fotografando && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 rounded-full bg-black/75 px-3 py-1.5 text-xs font-semibold text-white shadow pointer-events-none">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Fotografando… segure firme
+                </div>
+              )}
+
               {/* Contorno da folha ao vivo: verde quando achou. */}
               {folhaAoVivo && videoRef.current && telaCamera.l > 0 && (() => {
                 const v = videoRef.current!;
@@ -942,7 +1030,7 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
                 <button
                   type="button"
                   onClick={capturar}
-                  disabled={!podeCapturar(camera, previaPronta, gerando) ||
+                  disabled={fotografando || !podeCapturar(camera, previaPronta, gerando) ||
                     (modoCaptura === "identidade" && paginas.length >= 2) ||
                     (modoCaptura === "simples" && paginas.length >= 1) ||
                     (modoCaptura === "passaporte" && paginas.length >= 1)}
@@ -950,7 +1038,9 @@ function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altur
                   aria-label="Capturar"
                 >
                   <div className="w-16 h-16 rounded-full border-[3px] border-black/20 bg-white flex items-center justify-center">
-                    <Camera className="w-8 h-8 text-black/80" />
+                    {fotografando
+                      ? <Loader2 className="w-8 h-8 text-black/80 animate-spin" />
+                      : <Camera className="w-8 h-8 text-black/80" />}
                   </div>
                 </button>
 

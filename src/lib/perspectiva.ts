@@ -163,28 +163,42 @@ export function corrigirPerspectiva(
   const dst = saida.data;
   const lo = origem.width;
   const al = origem.height;
+  const [h0, h1, h2, h3, h4, h5, h6, h7] = h;
 
+  /*
+   * As mesmas contas de `aplicar`, sem criar um objeto por pixel.
+   *
+   * Uma página A4 a 300 DPI tem 8,7 milhões de pixels. Chamar aplicar()
+   * em cada um criava 8,7 milhões de objetos {x, y} — e o coletor de lixo
+   * do celular parava para recolhê-los. Medido num celular intermediário
+   * simulado: 844 ms só nesta etapa. A parte de cada linha que não
+   * depende de x é calculada uma vez por linha.
+   */
   for (let y = 0; y < alturaDestino; y++) {
-    for (let x = 0; x < larguraDestino; x++) {
-      const p = aplicar(h, { x, y });
-      const i = (y * larguraDestino + x) * 4;
+    const cx = h1 * y + h2, cy = h4 * y + h5, cd = h7 * y + 1;
+    let i = y * larguraDestino * 4;
+    for (let x = 0; x < larguraDestino; x++, i += 4) {
+      const d = h6 * x + cd;
+      const px = (h0 * x + cx) / d;
+      const py = (h3 * x + cy) / d;
 
-      if (p.x < 0 || p.y < 0 || p.x > lo - 1 || p.y > al - 1) {
+      if (px < 0 || py < 0 || px > lo - 1 || py > al - 1) {
         // Fora da folha: branco, como a área que o scanner não cobre.
         dst[i] = dst[i + 1] = dst[i + 2] = 255;
         dst[i + 3] = 255;
         continue;
       }
 
-      const x0 = Math.floor(p.x), y0 = Math.floor(p.y);
-      const x1 = Math.min(x0 + 1, lo - 1), y1 = Math.min(y0 + 1, al - 1);
-      const fx = p.x - x0, fy = p.y - y0;
+      const x0 = px | 0, y0 = py | 0;
+      const x1 = x0 + 1 < lo ? x0 + 1 : lo - 1, y1 = y0 + 1 < al ? y0 + 1 : al - 1;
+      const fx = px - x0, fy = py - y0;
+      const a00 = (y0 * lo + x0) * 4, a01 = (y0 * lo + x1) * 4;
+      const a10 = (y1 * lo + x0) * 4, a11 = (y1 * lo + x1) * 4;
+      const w00 = (1 - fx) * (1 - fy), w01 = fx * (1 - fy), w10 = (1 - fx) * fy, w11 = fx * fy;
 
-      for (let c = 0; c < 3; c++) {
-        const a = src[(y0 * lo + x0) * 4 + c] * (1 - fx) + src[(y0 * lo + x1) * 4 + c] * fx;
-        const b = src[(y1 * lo + x0) * 4 + c] * (1 - fx) + src[(y1 * lo + x1) * 4 + c] * fx;
-        dst[i + c] = a * (1 - fy) + b * fy;
-      }
+      dst[i] = src[a00] * w00 + src[a01] * w01 + src[a10] * w10 + src[a11] * w11;
+      dst[i + 1] = src[a00 + 1] * w00 + src[a01 + 1] * w01 + src[a10 + 1] * w10 + src[a11 + 1] * w11;
+      dst[i + 2] = src[a00 + 2] * w00 + src[a01 + 2] * w01 + src[a10 + 2] * w10 + src[a11 + 2] * w11;
       dst[i + 3] = 255;
     }
   }
