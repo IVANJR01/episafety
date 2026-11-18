@@ -52,3 +52,42 @@ export function podeCapturar(
 export function temQuadro(video: { videoWidth?: number; videoHeight?: number } | null | undefined): boolean {
   return !!video && !!video.videoWidth && !!video.videoHeight;
 }
+
+/**
+ * Onde a foto fica dentro da área de ajuste: o maior retângulo com o
+ * formato dela que cabe na área, centrado.
+ *
+ * A tela de ajuste mostrava a foto com `object-contain` — encaixada, com
+ * faixas pretas — mas calculava os cantos, o arraste e a lupa sobre a
+ * área INTEIRA, faixas incluídas. O canto que o técnico via na borda da
+ * folha correspondia a outro ponto da foto, mais para dentro, e a página
+ * saía cortada. Com o quadro do vídeo, que tinha o formato da tela, as
+ * faixas eram finas e o erro passava quase despercebido; com a foto de
+ * verdade (4:3), ficaram largas e o corte apareceu.
+ */
+export function encaixarNaArea(areaL: number, areaA: number, imgL: number, imgA: number) {
+  if (areaL <= 0 || areaA <= 0 || imgL <= 0 || imgA <= 0) return { largura: 0, altura: 0, esquerda: 0, topo: 0 };
+  const escala = Math.min(areaL / imgL, areaA / imgA);
+  const largura = imgL * escala, altura = imgA * escala;
+  return { largura, altura, esquerda: (areaL - largura) / 2, topo: (areaA - altura) / 2 };
+}
+
+/**
+ * Converte um ponto do vídeo da câmera para a posição na tela.
+ *
+ * A prévia usa `object-cover`: o vídeo é ampliado até cobrir a área e o
+ * que sobra é cortado nas bordas. O contorno da folha, achado nos pixels
+ * do vídeo, precisa da mesma ampliação e do mesmo deslocamento para cair
+ * em cima da folha que aparece na tela.
+ */
+export function videoParaTela(
+  p: { x: number; y: number },
+  videoL: number, videoA: number, telaL: number, telaA: number,
+) {
+  if (videoL <= 0 || videoA <= 0) return { x: 0, y: 0 };
+  const escala = Math.max(telaL / videoL, telaA / videoA);
+  return {
+    x: p.x * escala + (telaL - videoL * escala) / 2,
+    y: p.y * escala + (telaA - videoA * escala) / 2,
+  };
+}

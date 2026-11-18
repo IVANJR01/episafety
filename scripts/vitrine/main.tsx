@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import EPIs from "@/pages/EPIs";
 import InventarioTab from "@/components/pgr/InventarioTab";
 import SolicitacaoMaterialFormDialog from "@/components/epis/SolicitacaoMaterialFormDialog";
+import ScannerDocumento from "@/components/ScannerDocumento";
 import { dadosPorTabela } from "./stubSupabase";
 import { inventarioFicticio } from "./stubDados";
 import "@/index.css";
@@ -24,6 +25,8 @@ createRoot(document.getElementById("root")!).render(
       <div className="min-h-screen bg-background p-6">
         {tela === "inventario"
           ? <InventarioTab pgrId="pgr-ficticio" empresaId="emp-ficticia" status={"rascunho" as any} canEdit />
+          : tela === "scanner"
+            ? <ScannerDocumento open onCancel={() => {}} onReady={() => {}} nomeSugerido="aso" />
           : tela === "solicitacao"
             ? <SolicitacaoMaterialFormDialog open onOpenChange={() => {}} solicitacaoId={null} onSaved={() => {}} />
             : <EPIs />}

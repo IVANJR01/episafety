@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import { precisaReatarStream, podeCapturar, temQuadro } from "@/lib/scannerCamera";
+import { precisaReatarStream, podeCapturar, temQuadro, encaixarNaArea, videoParaTela } from "@/lib/scannerCamera";
+import { detectarFolha } from "@/lib/deteccaoFolha";
 import { acabarPagina, LADO_MAXIMO_PAGINA } from "@/lib/acabamentoScanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -167,6 +168,13 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
   const streamRef = useRef<MediaStream | null>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
   const areaAjusteRef = useRef<HTMLDivElement>(null);
+  /*
+   * A área da tela de ajuste (com as faixas pretas) e, dentro dela, a caixa
+   * com o formato exato da foto. Cantos, arraste e lupa usam a CAIXA — ver
+   * encaixarNaArea em src/lib/scannerCamera.ts.
+   */
+  const areaExternaRef = useRef<HTMLDivElement>(null);
+  const [areaExterna, setAreaExterna] = useState({ l: 0, a: 0 });
   const lupaRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
@@ -183,6 +191,14 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
   // Lanterna
   const [torchAtivo, setTorchAtivo] = useState(false);
   const [torchSuportado, setTorchSuportado] = useState(false);
+  /*
+   * A folha achada ao vivo na prévia, em pixels do vídeo. É o contorno
+   * verde que aparece antes da foto — e os cantos que a tela de ajuste usa
+   * se a foto em si não deixar achar a folha.
+   */
+  const [folhaAoVivo, setFolhaAoVivo] = useState<Ponto[] | null>(null);
+  const folhaAoVivoRef = useRef<Ponto[] | null>(null);
+  const [telaCamera, setTelaCamera] = useState({ l: 0, a: 0 });
 
   // Passo de ajuste: a foto recém-tirada, com os quatro cantos da folha.
   const [ajuste, setAjuste] = useState<Captura | null>(null);
@@ -279,6 +295,16 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
    * e volta sem srcObject, deixando a prévia preta mesmo com a câmera ativa.
    */
   useEffect(() => {
+    const el = areaExternaRef.current;
+    if (!el || !ajuste) return;
+    const medir = () => setAreaExterna({ l: el.clientWidth, a: el.clientHeight });
+    medir();
+    const obs = new ResizeObserver(medir);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [ajuste]);
+
+  useEffect(() => {
     if (precisaReatarStream(videoRef.current, streamRef.current, !!ajuste)) {
       const v = videoRef.current!;
       v.srcObject = streamRef.current;
@@ -287,108 +313,19 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
   }, [ajuste]);
 
 /**
- * Detecta automaticamente os 4 cantos do documento na imagem.
- * Analisa linhas/colunas de pixels procurando onde a cor muda abruptamente
- * (borda do papel sobre a mesa escura). Retorna os cantos detectados ou null
- * se a confiança for baixa e o chamador deve usar o recuo padrão.
+ * Os 4 cantos da folha na foto. A regra está em src/lib/deteccaoFolha.ts,
+ * com teste em oito situações de foto real.
+ *
+ * O detector anterior disparava raios do centro e parava no primeiro
+ * trecho "mais escuro que o centro". Medido nas mesmas cenas de teste:
+ * com mesa clara errava 15,8% e com documento que tem foto 3x4 errava
+ * 16,8% — o raio parava na foto escura achando que era a mesa, e a folha
+ * saía CORTADA. O novo erra até 0,6% em todas.
  */
-function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: number): Ponto[] | null {
+function detectarCantosDaFolha(canvas: HTMLCanvasElement, largura: number, altura: number): Ponto[] | null {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) return null;
-  const dados = ctx.getImageData(0, 0, largura, altura).data;
-
-  const luma = (x: number, y: number) => {
-    if (x < 0 || x >= largura || y < 0 || y >= altura) return 0;
-    const i = (Math.floor(y) * largura + Math.floor(x)) * 4;
-    return dados[i] * 0.299 + dados[i + 1] * 0.587 + dados[i + 2] * 0.114;
-  };
-
-  // 1. Calibração Dinâmica de Iluminação
-  // Amostra uma área no centro da imagem para descobrir o luma médio real do papel
-  let cx = largura / 2;
-  let cy = altura / 2;
-  
-  let somaCentro = 0;
-  let qtdCentro = 0;
-  for(let dy = -40; dy <= 40; dy += 20) {
-    for(let dx = -40; dx <= 40; dx += 20) {
-      somaCentro += luma(cx + dx, cy + dy);
-      qtdCentro++;
-    }
-  }
-  const lumaMediaPapel = somaCentro / qtdCentro;
-  
-  // O limite para considerar "mesa" é ser razoavelmente mais escuro que o centro do papel
-  // Tolera grandes sombras sem quebrar o algoritmo
-  const lumaMinimaPapel = Math.min(lumaMediaPapel - 35, 150); 
-  
-  if (lumaMediaPapel < 50) return null; // Foto muito escura, falha segura
-
-  // 2. Raycasting de Alta Definição com Tolerância a Textos
-  // Dispara 360 raios (1 por grau) para desenhar uma silhueta milimétrica da folha.
-  const pontosBorda: Ponto[] = [];
-  const raioPasso = Math.max(2, Math.round(largura / 150)); // Passos curtos para precisão
-  const limiteEscuridao = Math.max(6, Math.round(largura / 40)); // Exige ~25px de escuridão para confirmar mesa
-
-  for (let angulo = 0; angulo < 360; angulo += 1) { // 360 raios!
-    const rad = angulo * (Math.PI / 180);
-    const dx = Math.cos(rad);
-    const dy = Math.sin(rad);
-    
-    let x = cx;
-    let y = cy;
-    let bordaX = cx;
-    let bordaY = cy;
-    let escuridaoConsecutiva = 0;
-
-    // Avança do centro para fora
-    while (x >= 0 && x < largura && y >= 0 && y < altura) {
-      if (luma(x, y) < lumaMinimaPapel) {
-        escuridaoConsecutiva++;
-        if (escuridaoConsecutiva > limiteEscuridao) { 
-          // Realmente acabou o papel e começou a mesa
-          break; 
-        }
-      } else {
-        // Ainda é papel (ou era só um texto escuro e voltamos pro branco)
-        escuridaoConsecutiva = 0;
-        bordaX = x;
-        bordaY = y;
-      }
-      x += dx * raioPasso;
-      y += dy * raioPasso;
-    }
-    pontosBorda.push({ x: bordaX, y: bordaY });
-  }
-
-  // 2. Busca de Extremos (Quinas): Aplica a matemática de vértices OBLÍQUOS 
-  // APENAS no contorno da folha que acabamos de descobrir. 
-  // Isso ignora teclados, mouses brancos ou reflexos soltos na mesa!
-  let tl = { x: largura, y: altura, val: Infinity };
-  let tr = { x: 0, y: altura, val: -Infinity };
-  let br = { x: 0, y: 0, val: -Infinity };
-  let bl = { x: largura, y: 0, val: -Infinity };
-
-  for (const pt of pontosBorda) {
-    const { x, y } = pt;
-    if (x + y < tl.val) tl = { x, y, val: x + y };
-    if (x - y > tr.val) tr = { x, y, val: x - y };
-    if (x + y > br.val) br = { x, y, val: x + y };
-    if (y - x > bl.val) bl = { x, y, val: y - x };
-  }
-
-  // Sanity check: se as quinas formam um polígono muito pequeno, falhou
-  const dist = (p1: Ponto, p2: Ponto) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
-  if (dist(tl, tr) < largura * 0.3 || dist(tl, bl) < altura * 0.3) {
-    return null;
-  }
-
-  return [
-    { x: tl.x, y: tl.y },
-    { x: tr.x, y: tr.y },
-    { x: br.x, y: br.y },
-    { x: bl.x, y: bl.y },
-  ];
+  return detectarFolha(ctx.getImageData(0, 0, largura, altura));
 }
 
   /** Abre o passo de ajuste com recuo seguro nas bordas, ou com bordas detectadas automaticamente. */
@@ -437,6 +374,33 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     return reduzir(video, video.videoWidth, video.videoHeight);
   };
 
+  /*
+   * Procura a folha na prévia cerca de 4 vezes por segundo, numa cópia
+   * pequena do quadro (a detecção só precisa da forma). Para quando a tela
+   * de ajuste abre ou a câmera fecha.
+   */
+  useEffect(() => {
+    if (!open || !camera || !previaPronta || ajuste) { setFolhaAoVivo(null); folhaAoVivoRef.current = null; return; }
+    const quadro = document.createElement("canvas");
+    let parado = false;
+    const id = window.setInterval(() => {
+      const v = videoRef.current;
+      if (parado || !temQuadro(v)) return;
+      const escala = Math.min(1, 360 / Math.max(v!.videoWidth, v!.videoHeight));
+      quadro.width = Math.round(v!.videoWidth * escala);
+      quadro.height = Math.round(v!.videoHeight * escala);
+      const ctx = quadro.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+      ctx.drawImage(v!, 0, 0, quadro.width, quadro.height);
+      const achados = detectarFolha(ctx.getImageData(0, 0, quadro.width, quadro.height));
+      const noVideo = achados ? achados.map((p) => ({ x: p.x / escala, y: p.y / escala })) : null;
+      folhaAoVivoRef.current = noVideo;
+      setFolhaAoVivo(noVideo);
+      setTelaCamera({ l: v!.clientWidth, a: v!.clientHeight });
+    }, 250);
+    return () => { parado = true; window.clearInterval(id); };
+  }, [open, camera, previaPronta, ajuste]);
+
   const capturar = async () => {
     const video = videoRef.current;
     if (!temQuadro(video)) {
@@ -448,7 +412,17 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
       const url = canvas.toDataURL("image/jpeg", QUALIDADE_DA_BASE);
       
       // Tenta achar a folha A4 automaticamente com o algoritmo aprimorado
-      let cantosAuto = detectarCantos(canvas, largura, altura);
+      let cantosAuto = detectarCantosDaFolha(canvas, largura, altura);
+      /*
+       * Plano B: o contorno que estava verde na prévia. Só vale quando a
+       * foto tem o formato do vídeo — a foto de verdade (takePhoto) pode
+       * enquadrar mais que a prévia, e aí os pontos cairiam no lugar errado.
+       */
+      const vivo = folhaAoVivoRef.current;
+      if (!cantosAuto && vivo && video && Math.abs(largura / altura - video.videoWidth / video.videoHeight) < 0.02) {
+        const k = largura / video.videoWidth;
+        cantosAuto = vivo.map((p) => ({ x: p.x * k, y: p.y * k }));
+      }
       if (!cantosAuto) {
         // Fallback: recuo fixo se o algoritmo não achar a borda clara da folha
         const rx = largura * RECUO_INICIAL;
@@ -479,7 +453,10 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     img.onload = () => {
       try {
         const { canvas, largura, altura } = reduzir(img, img.naturalWidth, img.naturalHeight);
-        irParaAjuste(canvas.toDataURL("image/jpeg", QUALIDADE_DA_BASE), largura, altura);
+        /* A foto da galeria também tem a folha procurada — antes ia direto
+           para os cantos fixos de 6%, e o técnico arrastava os quatro. */
+        irParaAjuste(canvas.toDataURL("image/jpeg", QUALIDADE_DA_BASE), largura, altura,
+          detectarCantosDaFolha(canvas, largura, altura) || undefined);
       } catch { /* imagem ilegível */ }
       URL.revokeObjectURL(img.src);
     };
@@ -715,7 +692,10 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !gerando && !endireitando) onCancel(); }}>
       {/* Tela cheia no mobile, modal centrado em telas grandes */}
-      <DialogContent className="p-0 border-0 bg-black max-w-none w-screen h-[100dvh] sm:max-w-lg sm:h-auto sm:rounded-xl sm:max-h-[95vh] flex flex-col overflow-hidden">
+      {/* No computador a altura era `sm:h-auto`: a área da foto (flex-1, com
+          a imagem posicionada por cima) não tem altura própria e encolhia a
+          zero — a tela de ajuste aparecia só com os botões, sem a foto. */}
+      <DialogContent className="p-0 border-0 bg-black max-w-none w-screen h-[100dvh] sm:max-w-lg sm:h-[90vh] sm:rounded-xl sm:max-h-[95vh] flex flex-col overflow-hidden">
         {/* ── TELA DE AJUSTE DE CANTOS ── */}
         {emAjuste ? (
           <div className="flex flex-col h-full">
@@ -736,13 +716,22 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
 
             {/* Área da imagem com handles */}
             <div
-              ref={areaAjusteRef}
+              ref={areaExternaRef}
               className="relative flex-1 select-none touch-none bg-black"
               onPointerMove={moverCanto}
               onPointerUp={() => setArrastando(null)}
               onPointerCancel={() => setArrastando(null)}
             >
-              <img src={ajuste!.url} alt="Página capturada" className="absolute inset-0 w-full h-full object-contain" />
+              {(() => {
+                const caixa = encaixarNaArea(areaExterna.l, areaExterna.a, ajuste!.largura, ajuste!.altura);
+                return (
+              <div
+                ref={areaAjusteRef}
+                className="absolute"
+                style={{ left: caixa.esquerda, top: caixa.topo, width: caixa.largura, height: caixa.altura }}
+              >
+              {/* Sem object-contain: a caixa já tem o formato da foto. */}
+              <img src={ajuste!.url} alt="Página capturada" className="absolute inset-0 w-full h-full" />
               {/* Escurecimento fora do recorte */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none"
                 viewBox={`0 0 ${ajuste!.largura} ${ajuste!.altura}`} preserveAspectRatio="none">
@@ -780,6 +769,9 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
                   </svg>
                 </button>
               ))}
+              </div>
+                );
+              })()}
               {/* Lupa de precisão no canto oposto */}
               {arrastando !== null && (
                 <canvas
@@ -815,6 +807,24 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
             <div className="relative flex-1 bg-black overflow-hidden">
               <video ref={videoRef} playsInline muted onLoadedMetadata={anotarFormato} onResize={anotarFormato}
                 className="absolute inset-0 w-full h-full object-cover" />
+
+              {/* Contorno da folha ao vivo: verde quando achou. */}
+              {folhaAoVivo && videoRef.current && telaCamera.l > 0 && (() => {
+                const v = videoRef.current!;
+                const naTela = folhaAoVivo.map((p) => videoParaTela(p, v.videoWidth, v.videoHeight, telaCamera.l, telaCamera.a));
+                return (
+                  <>
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${telaCamera.l} ${telaCamera.a}`}>
+                      <polygon points={naTela.map((p) => `${p.x},${p.y}`).join(" ")}
+                        fill="rgba(34,197,94,0.15)" stroke="#22c55e" strokeWidth={3} strokeLinejoin="round" />
+                      {naTela.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={7} fill="#22c55e" stroke="white" strokeWidth={2} />)}
+                    </svg>
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-green-600/90 px-3 py-1 text-xs font-semibold text-white shadow pointer-events-none">
+                      Folha encontrada
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Estado de erro / carregando sobre a câmera */}
               {(!camera || !previaPronta) && (
