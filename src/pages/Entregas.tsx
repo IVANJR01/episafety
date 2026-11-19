@@ -1,3 +1,4 @@
+import { linhasDaFicha } from "@/lib/fichaEpiLinhas";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck, Camera, WifiOff, RotateCcw, Link } from "lucide-react";
@@ -1327,18 +1328,14 @@ export default function Entregas() {
 
     const now = new Date();
 
-    const entregasData = funcEntregas.map(e => {
+    /*
+     * A devolução vira a data na coluna "Devolução" da própria entrega,
+     * e não uma linha a mais sem assinatura (regra em fichaEpiLinhas.ts).
+     */
+    const linhas = linhasDaFicha(funcEntregas, (epiId) => epis.find(ep => ep.id === epiId)?.ca);
+    const entregasData = linhas.map(e => {
       const epiCa = epis.find(ep => ep.id === e.epi_id)?.ca || null;
-      let dataDevolucao: string | null = null;
-      if ((e.status === "substituido" || e.status === "devolvido") && epiCa) {
-        const newer = funcEntregas.find(other =>
-          other.id !== e.id &&
-          new Date(other.created_at) > new Date(e.created_at) &&
-          (other.tipo === "substituicao" || other.tipo === "devolucao") &&
-          epis.find(ep => ep.id === other.epi_id)?.ca === epiCa
-        );
-        dataDevolucao = newer?.data || e.data;
-      }
+      const dataDevolucao = e.data_devolucao;
       const epiObj = epis.find(ep => ep.id === e.epi_id);
       return {
         // O id entra no código de verificação da assinatura: sem ele, duas
