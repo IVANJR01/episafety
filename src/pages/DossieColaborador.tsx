@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PRAZOS, prazoDaData, vencimento } from "@/lib/prazoDoDocumento";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -680,58 +682,38 @@ export default function DossieColaborador() {
             <div>
                 <Label>{(envio?.tipo.validade_meses || envio?.tipo.validade_dias)
                   ? "Validade personalizada" : "Validade deste documento"}</Label>
-                <div className="flex flex-col gap-2 mt-1">
-                  <Input type="date" value={envioValidade} onChange={(e) => setEnvioValidade(e.target.value)} />
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      // 90 e 120 dias são os prazos de ASO que mais aparecem
-                      // fora do anual — dependem do risco e do tipo de exame,
-                      // e não de "N meses após a emissão".
-                      { l: "+30d", d: 30 }, { l: "+60d", d: 60 }, { l: "+90d", d: 90 },
-                      { l: "+120d", d: 120 }, { l: "+135d", d: 135 },
-                      { l: "+6 meses", m: 6 }, { l: "+1 ano", m: 12 }, { l: "+2 anos", m: 24 }
-                    ].map(a => (
-                      <button key={a.l} type="button" 
-                        className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors hover:bg-muted focus:outline-none"
-                        onClick={() => {
-                           if (!envioData) return;
-                           // Cria a data usando o timezone local para evitar fuso bugando o dia
-                           const [ano, mes, dia] = envioData.split("-").map(Number);
-                           const d = new Date(ano, mes - 1, dia);
-                           if (a.d) d.setDate(d.getDate() + a.d);
-                           if (a.m) d.setMonth(d.getMonth() + a.m);
-                           const outAno = d.getFullYear();
-                           const outMes = String(d.getMonth() + 1).padStart(2, '0');
-                           const outDia = String(d.getDate()).padStart(2, '0');
-                           setEnvioValidade(`${outAno}-${outMes}-${outDia}`);
-                        }}>
-                        {a.l}
-                      </button>
-                    ))}
-                    {envioValidade && (
-                      <button type="button" 
-                        className="inline-flex items-center rounded-full border border-destructive/30 px-2 py-0.5 text-[10px] font-medium text-destructive transition-colors hover:bg-destructive/10"
-                        onClick={() => setEnvioValidade("")}>Limpar</button>
-                    )}
-                  </div>
+                {/*
+                  * Uma lista de prazos ao lado da data, no lugar de 8
+                  * botõezinhos e um parágrafo embaixo (ficava poluído).
+                  * Escolher o prazo calcula a data a partir da emissão;
+                  * a data continua editável à mão.
+                  */}
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <Select
+                    value={envioValidade ? (prazoDaData(envioData, envioValidade) || "manual") : "nenhum"}
+                    onValueChange={(v) => {
+                      if (v === "nenhum") { setEnvioValidade(""); return; }
+                      const prazo = PRAZOS.find((x) => x.valor === v);
+                      const data = prazo ? vencimento(envioData, prazo) : null;
+                      if (data) setEnvioValidade(data);
+                    }}
+                  >
+                    <SelectTrigger aria-label="Prazo de validade"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhum">
+                        {(envio?.tipo.validade_meses || envio?.tipo.validade_dias) ? "Padrão do tipo" : "Não vence"}
+                      </SelectItem>
+                      {PRAZOS.map((x) => <SelectItem key={x.valor} value={x.valor}>{x.rotulo}</SelectItem>)}
+                      <SelectItem value="manual" disabled>Data escolhida</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input type="date" value={envioValidade} onChange={(e) => setEnvioValidade(e.target.value)}
+                    aria-label="Data de validade" />
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                  {(envio?.tipo.validade_meses || envio?.tipo.validade_dias) ? (
-                    <>
-                      Deixe vazio para o sistema usar o padrão do tipo{" "}
-                      <strong>
-                        ({envio!.tipo.validade_dias
-                          ? `${envio!.tipo.validade_dias} dias`
-                          : `${envio!.tipo.validade_meses} meses`})
-                      </strong>, ou defina uma data manualmente se este documento for exceção.
-                    </>
-                  ) : (
-                    <>
-                      Este tipo não tem prazo padrão. Deixe vazio se o documento não vence,
-                      ou informe a data se ele vencer — é o caso do ASO, cujo prazo depende
-                      do exame e do risco, e não do tipo.
-                    </>
-                  )}
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  {(envio?.tipo.validade_meses || envio?.tipo.validade_dias)
+                    ? `Vazio usa o padrão do tipo (${envio!.tipo.validade_dias ? `${envio!.tipo.validade_dias} dias` : `${envio!.tipo.validade_meses} meses`}).`
+                    : "Vazio = não vence. No ASO, o prazo depende do exame."}
                 </p>
               </div>
           </div>
