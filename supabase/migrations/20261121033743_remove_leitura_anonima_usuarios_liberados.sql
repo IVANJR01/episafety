@@ -1,0 +1,27 @@
+-- A política "Anon can check email" era SELECT para o papel `anon` com USING
+-- (true): qualquer pessoa com a chave pública do cliente podia listar a tabela
+-- inteira — e-mail, nome, modulos_permitidos, empresa_id e contrato_id de todos
+-- os usuários autorizados. Medido no papel anon: 13 de 13 linhas visíveis.
+-- São dados pessoais; sob a LGPD isso é vazamento.
+--
+-- O nome da política revela a intenção original: checar um e-mail ANTES do
+-- login. O código não faz isso. As três consultas a esta tabela em
+-- AuthContext.tsx (checkAuthorized, resolução de empresa e checkSuperAdmin)
+-- só rodam quando já existe `currentUser`, ou seja, com sessão autenticada, e
+-- todas filtram pelo e-mail do próprio usuário. Nenhuma página de login ou
+-- cadastro consulta a tabela.
+--
+-- Esse caminho já está coberto por uma política que continua intacta:
+--   "Users can read own email in usuarios_liberados"
+--   authenticated / SELECT / lower(email) = lower(auth.jwt() ->> 'email')
+--
+-- Verificado antes de aplicar que ninguém fica trancado para fora: 7 das 13
+-- linhas ainda não têm conta em auth.users (pessoas autorizadas que não se
+-- cadastraram). Elas continuam funcionando, porque a consulta roda depois do
+-- cadastro, quando o e-mail já está no JWT e a política acima casa.
+--
+-- Para reverter, se algum login quebrar:
+--   create policy "Anon can check email" on public.usuarios_liberados
+--     for select to anon using (true);
+
+drop policy if exists "Anon can check email" on public.usuarios_liberados;
