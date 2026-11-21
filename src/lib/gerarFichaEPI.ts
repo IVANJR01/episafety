@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import { encaixar } from "@/lib/assinaturaDeitada";
 import { dataHoraComSegundos } from "./codigoAssinatura";
 import { imagemSoNoServidor } from "./cacheOfflineLeve";
 
@@ -47,6 +48,12 @@ interface FichaData {
    * assíncrono, e montar o PDF é síncrono.
    */
   codigosAssinatura?: (string | null)[];
+  /**
+   * A imagem de cada assinatura já recortada e deitada, na ordem das
+   * entregas (src/lib/assinaturaDeitada.ts). Vem pronta de fora porque
+   * carregar imagem é assíncrono. Sem ela, usa a imagem gravada.
+   */
+  assinaturasDeitadas?: (string | null)[];
 }
 
 const MARGIN = 15;
@@ -516,7 +523,16 @@ export function gerarFichaEPI(data: FichaData) {
         doc.setTextColor(0);
       } else {
         try {
-          doc.addImage(entrega.assinatura_colaborador, "PNG", sigX + 2, y + 1, sigW - 4, ROW_H * 0.55);
+          /*
+           * Antes a imagem era esticada para ocupar a caixa inteira: uma
+           * assinatura feita com o celular em pé (alta) saía espremida e
+           * de lado. Agora entra deitada e com a proporção original.
+           */
+          const imagem = data.assinaturasDeitadas?.[idx] || entrega.assinatura_colaborador;
+          const props = doc.getImageProperties(imagem);
+          const caixaW = sigW - 4, caixaH = ROW_H * 0.55;
+          const e = encaixar(props.width, props.height, caixaW, caixaH);
+          doc.addImage(imagem, props.fileType, sigX + 2 + e.dx, y + 1 + e.dy, e.w, e.h);
         } catch (e) { /* ignore */ }
       }
     } else if (pendenteDeAssinatura(entrega)) {

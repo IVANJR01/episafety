@@ -1,4 +1,5 @@
 import { useRef, useEffect, forwardRef, useImperativeHandle, useState, useCallback } from "react";
+import { canvasDeitado } from "@/lib/assinaturaDeitada";
 import SignaturePad from "signature_pad";
 import { Button } from "@/components/ui/button";
 import { Eraser, RotateCcw } from "lucide-react";
@@ -139,8 +140,11 @@ const SignatureCanvas = forwardRef<SignatureCanvasRef, Props>(
     useImperativeHandle(ref, () => ({
       getDataURL: () => {
         if (padRef.current?.isEmpty()) return null;
-        // Use JPEG for smaller size and faster encoding
-        return padRef.current?.toDataURL("image/jpeg", 0.8) || null;
+        // Recortada no traço e deitada, se foi escrita de lado com o
+        // celular em pé (src/lib/assinaturaDeitada.ts). JPEG: menor e rápido.
+        const c = canvasRef.current;
+        const deitada = c ? canvasDeitado(c, c.width, c.height) : null;
+        return (deitada ?? c)?.toDataURL("image/jpeg", 0.8) || padRef.current?.toDataURL("image/jpeg", 0.8) || null;
       },
       isEmpty: () => padRef.current?.isEmpty() ?? true,
       clear: limpar,

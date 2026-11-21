@@ -1368,12 +1368,19 @@ export default function Entregas() {
     const { calcularCodigosDaFicha } = await import("@/lib/codigoAssinatura");
     const codigosAssinatura = await calcularCodigosDaFicha(entregasData);
 
+    // Assinaturas recortadas e deitadas para o papel — depois dos códigos,
+    // que valem sobre a imagem como foi gravada.
+    const { assinaturaDeitadaDataUrl } = await import("@/lib/assinaturaDeitada");
+    const assinaturasDeitadas = await Promise.all(entregasData.map((e) =>
+      e.assinatura_colaborador?.startsWith("data:image") ? assinaturaDeitadaDataUrl(e.assinatura_colaborador) : Promise.resolve(null)));
+
     const doc = gerarFichaEPI({
       empresa: { nome: emp.nome || "", cnpj: emp.cnpj || "", endereco: emp.endereco || "", logo_url: emp.logo_url || null },
       funcionario: { nome: func.nome, cargo: func.cargo, setor: func.setor, cpf: func.cpf, matricula: func.matricula, data_admissao: func.data_admissao },
       entregas: entregasData,
       fotosBase64,
       codigosAssinatura,
+      assinaturasDeitadas,
     });
 
     const nomeArquivo = `Ficha_EPI_${func.nome.replace(/\s+/g, "_")}_${now.toISOString().split("T")[0]}.pdf`;

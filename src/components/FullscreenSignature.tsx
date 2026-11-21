@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import SignaturePad from "signature_pad";
 import { Loader2 } from "lucide-react";
 import { paraCanvas, paraNormalizado } from "@/lib/tracosAssinatura";
+import { canvasDeitado } from "@/lib/assinaturaDeitada";
 
 /*
  * Assinatura em tela cheia.
@@ -238,7 +239,12 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
   };
 
   /** Downscale canvas to max 800px wide and export as JPEG 0.7 */
-  const exportScaledJpeg = (sourceCanvas: HTMLCanvasElement): string => {
+  const exportScaledJpeg = (canvasDaTela: HTMLCanvasElement): string => {
+    /*
+     * Com o celular em pé, a área é alta e muita gente assina de lado.
+     * Sai recortada no traço e deitada — é assim que ela vai para a ficha.
+     */
+    const sourceCanvas = canvasDeitado(canvasDaTela, canvasDaTela.width, canvasDaTela.height) ?? canvasDaTela;
     const maxW = 800;
     const srcW = sourceCanvas.width;
     const srcH = sourceCanvas.height;
