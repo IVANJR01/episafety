@@ -48,3 +48,36 @@ export const inventarioFicticio = [
   risco(7, "PRODUÇÃO", g2, "acidente", "Partes móveis de máquinas", 2, 5),
   risco(8, "PRODUÇÃO", g2, "acidente", "Queda do mesmo nível", 2, 4),
 ];
+
+/* ?tela=analise-epi — dados fictícios: 30 trabalhadores, 6 EPIs, ~6 meses de entregas. */
+export const analiseEpiFicticia = (() => {
+  const ghes = [{ id: "g1", codigo: "01", nome: "Montagem" }, { id: "g2", codigo: "02", nome: "Elétrica" }];
+  const funcionarios = Array.from({ length: 30 }, (_, i) => ({
+    id: `f${i}`, nome: `Trabalhador Fictício ${i + 1}`, ghe_id: i % 2 ? "g1" : "g2", setor: i % 3 ? "Produção" : "Manutenção",
+  }));
+  const epis = [
+    { id: "luva", nome: "Luva de vaqueta (fictícia)", estoque: 40, estoque_minimo: 20 },
+    { id: "oculos", nome: "Óculos de proteção incolor", estoque: 120, estoque_minimo: 10 },
+    { id: "protetor", nome: "Protetor auditivo plug", estoque: 8, estoque_minimo: 30 },
+    { id: "bota", nome: "Botina de segurança", estoque: 0, estoque_minimo: 5 },
+    { id: "capacete", nome: "Capacete aba frontal", estoque: 25, estoque_minimo: 5 },
+    { id: "mascara", nome: "Respirador PFF2", estoque: 300, estoque_minimo: 50 },
+  ];
+  const prazo: Record<string, number> = { luva: 15, oculos: 60, protetor: 10, bota: 120, capacete: 365, mascara: 7 };
+  const hoje = new Date();
+  const entregas: { funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string }[] = [];
+  let semente = 7;
+  const aleatorio = () => ((semente = (semente * 9301 + 49297) % 233280) / 233280);
+  for (const f of funcionarios) {
+    for (const e of epis) {
+      const p = f.id === "f3" && e.id === "luva" ? 4 : prazo[e.id];
+      for (let d = Math.floor(aleatorio() * p); d < 180; d += Math.max(1, Math.round(p * (0.8 + aleatorio() * 0.4)))) {
+        const dt = new Date(hoje.getTime() - (180 - d) * 86400000);
+        const hora = 7 + Math.floor(aleatorio() * aleatorio() * 10);
+        dt.setUTCHours(hora + 3, Math.floor(aleatorio() * 60));
+        entregas.push({ funcionario_id: f.id, epi_id: e.id, quantidade: 1, data: dt.toISOString().slice(0, 10), created_at: dt.toISOString(), tipo: "entrega" });
+      }
+    }
+  }
+  return { ghes, funcionarios, epis, entregas };
+})();

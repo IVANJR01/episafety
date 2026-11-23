@@ -15,6 +15,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { useIsMobile } from "@/hooks/use-mobile";
 import { EmptyState } from "@/components/ui/empty-state";
 import { resolveResponsavelName } from "@/lib/userResolver";
+import AnaliseEpi from "@/components/dashboard/AnaliseEpi";
 
 const MotionCard = motion.create(Card);
 
@@ -33,7 +34,7 @@ const staggerContainer = {
 };
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; empresa_id: string | null; tamanho?: string | null; }
-interface Funcionario { id: string; nome: string; empresa_id?: string | null; data_demissao?: string | null; }
+interface Funcionario { id: string; nome: string; empresa_id?: string | null; data_demissao?: string | null; ghe_id?: string | null; setor?: string | null; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; created_by?: string | null; empresa_id?: string | null; }
 interface Profile { id: string; user_id: string; nome: string; email: string | null; empresa_id?: string | null; }
 interface ContratoMovimentacao {
@@ -73,7 +74,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("overview");
 
   const { data: allEpis = [], loading: episLoading, error: episError } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id, tamanho");
-  const { data: allFuncionarios = [], loading: funcionariosLoading, error: funcionariosError } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome, empresa_id, data_demissao");
+  const { data: allFuncionarios = [], loading: funcionariosLoading, error: funcionariosError } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome, empresa_id, data_demissao, ghe_id, setor");
   const { data: allEntregas = [], loading: entregasLoading, error: entregasError } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by, empresa_id");
 
   const { data: allAsos = [], loading: asosLoading, error: asosError } = useSupabaseQuery<Aso>("asos", "created_at", undefined, "id, status, data_emissao, created_at, empresa_id");
@@ -1394,6 +1395,11 @@ export default function Dashboard() {
           </Card>
         </>
       )}
+      </motion.div>
+
+      {/* Previsão de estoque, tempo de uso real e quando se entrega mais. */}
+      <motion.div variants={fadeUp} custom={10}>
+        <AnaliseEpi epis={epis} entregas={entregas} funcionarios={funcionarios} />
       </motion.div>
     </motion.div>
   );
