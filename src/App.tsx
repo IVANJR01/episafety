@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+import { carregarPagina } from "@/lib/carregarPagina";
+import { Loader2 } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
 import AvisoErroGlobal from "@/components/AvisoErroGlobal";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -13,100 +15,105 @@ import AppLayout from "@/components/AppLayout";
 import OfflineBanner from "@/components/OfflineBanner";
 import UpdateBanner from "@/components/UpdateBanner";
 import InstallBanner from "@/components/InstallBanner";
-import Dashboard from "@/pages/Dashboard";
-import EPIs from "@/pages/EPIs";
-import ControleEstoqueContrato from "@/pages/ControleEstoqueContrato";
-import SolicitacoesMateriais from "@/pages/epis/SolicitacoesMateriais";
-import Funcionarios from "@/pages/Funcionarios";
-import DossieColaborador from "@/pages/DossieColaborador";
-import PainelVencimentos from "@/pages/PainelVencimentos";
-import DossieColaboradores from "@/pages/DossieColaboradores";
-import HistoricoVersoes from "@/pages/HistoricoVersoes";
-import ConfiguracaoTiposDocumento from "@/pages/ConfiguracaoTiposDocumento";
-import Entregas from "@/pages/Entregas";
-import Relatorios from "@/pages/Relatorios";
-import Empresas from "@/pages/Empresas";
-import UsuariosLiberados from "@/pages/UsuariosLiberados";
-import Auth from "@/pages/Auth";
-import VerificarFicha from "@/pages/VerificarFicha";
-import AdminEmissor from "@/pages/admin/AdminEmissor";
-import ResetPassword from "@/pages/ResetPassword";
-import AdminEmpresas from "@/pages/AdminEmpresas";
-import Install from "@/pages/Install";
-import Privacidade from "@/pages/Privacidade";
-import Planos from "@/pages/Planos";
-import Termos from "@/pages/Termos";
-import DDS from "@/pages/DDS";
-import InspecoesModule from "@/pages/InspecoesModule";
-import InspecoesDashboard from "@/pages/InspecoesDashboard";
-import Treinamentos from "@/pages/Treinamentos";
+const Dashboard = carregarPagina(() => import("@/pages/Dashboard"));
+const EPIs = carregarPagina(() => import("@/pages/EPIs"));
+const ControleEstoqueContrato = carregarPagina(() => import("@/pages/ControleEstoqueContrato"));
+const SolicitacoesMateriais = carregarPagina(() => import("@/pages/epis/SolicitacoesMateriais"));
+const Funcionarios = carregarPagina(() => import("@/pages/Funcionarios"));
+const DossieColaborador = carregarPagina(() => import("@/pages/DossieColaborador"));
+const PainelVencimentos = carregarPagina(() => import("@/pages/PainelVencimentos"));
+const DossieColaboradores = carregarPagina(() => import("@/pages/DossieColaboradores"));
+const HistoricoVersoes = carregarPagina(() => import("@/pages/HistoricoVersoes"));
+const ConfiguracaoTiposDocumento = carregarPagina(() => import("@/pages/ConfiguracaoTiposDocumento"));
+const Entregas = carregarPagina(() => import("@/pages/Entregas"));
+const Relatorios = carregarPagina(() => import("@/pages/Relatorios"));
+const Empresas = carregarPagina(() => import("@/pages/Empresas"));
+const UsuariosLiberados = carregarPagina(() => import("@/pages/UsuariosLiberados"));
+const Auth = carregarPagina(() => import("@/pages/Auth"));
+const VerificarFicha = carregarPagina(() => import("@/pages/VerificarFicha"));
+const AdminEmissor = carregarPagina(() => import("@/pages/admin/AdminEmissor"));
+const ResetPassword = carregarPagina(() => import("@/pages/ResetPassword"));
+const AdminEmpresas = carregarPagina(() => import("@/pages/AdminEmpresas"));
+const Install = carregarPagina(() => import("@/pages/Install"));
+const Privacidade = carregarPagina(() => import("@/pages/Privacidade"));
+const Planos = carregarPagina(() => import("@/pages/Planos"));
+const Termos = carregarPagina(() => import("@/pages/Termos"));
+const DDS = carregarPagina(() => import("@/pages/DDS"));
+const InspecoesModule = carregarPagina(() => import("@/pages/InspecoesModule"));
+const InspecoesDashboard = carregarPagina(() => import("@/pages/InspecoesDashboard"));
 
-import CadastroDashboard from "@/pages/CadastroDashboard";
-import EstruturaGhePage from "@/pages/cadastro/EstruturaGhePage";
-import LimpezaCadastros from "@/pages/cadastro/LimpezaCadastros";
-import CentralPPP from "@/pages/CentralPPP";
-import Backups from "@/pages/Backups";
-import VideoTreinamentos from "@/pages/VideoTreinamentos";
-import PortalTreinamentos from "@/pages/PortalTreinamentos";
-import PortalRH from "@/pages/rh/PortalRH";
+const CadastroDashboard = carregarPagina(() => import("@/pages/CadastroDashboard"));
+const EstruturaGhePage = carregarPagina(() => import("@/pages/cadastro/EstruturaGhePage"));
+const LimpezaCadastros = carregarPagina(() => import("@/pages/cadastro/LimpezaCadastros"));
+const CentralPPP = carregarPagina(() => import("@/pages/CentralPPP"));
+const Backups = carregarPagina(() => import("@/pages/Backups"));
+const VideoTreinamentos = carregarPagina(() => import("@/pages/VideoTreinamentos"));
+const PortalTreinamentos = carregarPagina(() => import("@/pages/PortalTreinamentos"));
+const PortalRH = carregarPagina(() => import("@/pages/rh/PortalRH"));
 
-import Faturas from "@/pages/Faturas";
-import AsoModule from "@/pages/aso/AsoModule";
-import VerificarAso from "@/pages/VerificarAso";
-import AprovacaoPublica from "@/pages/AprovacaoPublica";
-import PgrModule from "@/pages/pgr/PgrModule";
-import PgrNovo from "@/pages/pgr/PgrNovo";
-import PgrWizard from "@/pages/pgr/PgrWizard";
-import PgrEstruturaTecnica from "@/pages/pgr/PgrEstruturaTecnica";
-import PgrComparar from "@/pages/pgr/PgrComparar";
-import LevantamentoCampo from "@/pages/campo/LevantamentoCampo";
-import PcmsoDashboard from "@/pages/pcmso/PcmsoDashboard";
-import PcmsoElaboracao from "@/pages/pcmso/PcmsoElaboracao";
-import VistoriaDashboard from "@/pages/vistoria/VistoriaDashboard";
-import PgrValidar from "@/pages/pgr/PgrValidar";
-import PcmsoValidar from "@/pages/pcmso/PcmsoValidar";
-import PgrDashboard from "@/pages/pgr/PgrDashboard";
-import MatrizRiscoAdmin from "@/pages/cadastro/MatrizRiscoAdmin";
-import LtcatModule from "@/pages/ltcat/LtcatModule";
-import LtcatNovo from "@/pages/ltcat/LtcatNovo";
-import LtcatDetalhe from "@/pages/ltcat/LtcatDetalhe";
-import LtcatValidar from "@/pages/ltcat/LtcatValidar";
-import LtcatDashboard from "@/pages/ltcat/LtcatDashboard";
-import PppModule from "@/pages/ppp/PppModule";
-import PppNovo from "@/pages/ppp/PppNovo";
-import PppDetalhe from "@/pages/ppp/PppDetalhe";
-import PppValidar from "@/pages/ppp/PppValidar";
-import PppDashboard from "@/pages/ppp/PppDashboard";
-import S2240Mapeamentos from "@/pages/esocial/S2240Mapeamentos";
-import S2240Dashboard from "@/pages/esocial/S2240Dashboard";
-import ProgramasHome from "@/pages/programas/ProgramasHome";
-import OrdemServico from "@/pages/programas/OrdemServico";
-import OrdemServicoNovo from "@/pages/programas/OrdemServicoNovo";
-import OrdemServicoDetalhe from "@/pages/programas/OrdemServicoDetalhe";
-import GerarDocumentos from "@/pages/programas/GerarDocumentos";
-import LaudoInsalubridade from "@/pages/programas/LaudoInsalubridade";
-import LaudoPericulosidade from "@/pages/programas/LaudoPericulosidade";
+const Faturas = carregarPagina(() => import("@/pages/Faturas"));
+const AsoModule = carregarPagina(() => import("@/pages/aso/AsoModule"));
+const VerificarAso = carregarPagina(() => import("@/pages/VerificarAso"));
+const AprovacaoPublica = carregarPagina(() => import("@/pages/AprovacaoPublica"));
+const PgrModule = carregarPagina(() => import("@/pages/pgr/PgrModule"));
+const PgrNovo = carregarPagina(() => import("@/pages/pgr/PgrNovo"));
+const PgrWizard = carregarPagina(() => import("@/pages/pgr/PgrWizard"));
+const PgrEstruturaTecnica = carregarPagina(() => import("@/pages/pgr/PgrEstruturaTecnica"));
+const PgrComparar = carregarPagina(() => import("@/pages/pgr/PgrComparar"));
+const LevantamentoCampo = carregarPagina(() => import("@/pages/campo/LevantamentoCampo"));
+const PcmsoDashboard = carregarPagina(() => import("@/pages/pcmso/PcmsoDashboard"));
+const PcmsoElaboracao = carregarPagina(() => import("@/pages/pcmso/PcmsoElaboracao"));
+const PgrValidar = carregarPagina(() => import("@/pages/pgr/PgrValidar"));
+const PcmsoValidar = carregarPagina(() => import("@/pages/pcmso/PcmsoValidar"));
+const PgrDashboard = carregarPagina(() => import("@/pages/pgr/PgrDashboard"));
+const MatrizRiscoAdmin = carregarPagina(() => import("@/pages/cadastro/MatrizRiscoAdmin"));
+const LtcatModule = carregarPagina(() => import("@/pages/ltcat/LtcatModule"));
+const LtcatNovo = carregarPagina(() => import("@/pages/ltcat/LtcatNovo"));
+const LtcatDetalhe = carregarPagina(() => import("@/pages/ltcat/LtcatDetalhe"));
+const LtcatValidar = carregarPagina(() => import("@/pages/ltcat/LtcatValidar"));
+const LtcatDashboard = carregarPagina(() => import("@/pages/ltcat/LtcatDashboard"));
+const PppNovo = carregarPagina(() => import("@/pages/ppp/PppNovo"));
+const PppDetalhe = carregarPagina(() => import("@/pages/ppp/PppDetalhe"));
+const PppValidar = carregarPagina(() => import("@/pages/ppp/PppValidar"));
+const PppDashboard = carregarPagina(() => import("@/pages/ppp/PppDashboard"));
+const S2240Mapeamentos = carregarPagina(() => import("@/pages/esocial/S2240Mapeamentos"));
+const S2240Dashboard = carregarPagina(() => import("@/pages/esocial/S2240Dashboard"));
+const OrdemServico = carregarPagina(() => import("@/pages/programas/OrdemServico"));
+const OrdemServicoNovo = carregarPagina(() => import("@/pages/programas/OrdemServicoNovo"));
+const OrdemServicoDetalhe = carregarPagina(() => import("@/pages/programas/OrdemServicoDetalhe"));
+const GerarDocumentos = carregarPagina(() => import("@/pages/programas/GerarDocumentos"));
+const LaudoInsalubridade = carregarPagina(() => import("@/pages/programas/LaudoInsalubridade"));
+const LaudoPericulosidade = carregarPagina(() => import("@/pages/programas/LaudoPericulosidade"));
 
-import DocumentacaoSst from "@/pages/DocumentacaoSst";
-import EstruturaOcupacionalPage from "@/pages/cadastro/EstruturaOcupacionalPage";
-import ArquivoDigitalModule from "@/pages/arquivo-digital/ArquivoDigitalModule";
-import SstExpressDashboard from "@/pages/sst-express/SstExpressDashboard";
-import ExtintoresDashboard from "@/pages/extintores/ExtintoresDashboard";
-import ExtintorQrView from "@/pages/extintores/ExtintorQrView";
-import NotFound from "./pages/NotFound";
+const DocumentacaoSst = carregarPagina(() => import("@/pages/DocumentacaoSst"));
+const EstruturaOcupacionalPage = carregarPagina(() => import("@/pages/cadastro/EstruturaOcupacionalPage"));
+const ArquivoDigitalModule = carregarPagina(() => import("@/pages/arquivo-digital/ArquivoDigitalModule"));
+const SstExpressDashboard = carregarPagina(() => import("@/pages/sst-express/SstExpressDashboard"));
+const ExtintoresDashboard = carregarPagina(() => import("@/pages/extintores/ExtintoresDashboard"));
+const ExtintorQrView = carregarPagina(() => import("@/pages/extintores/ExtintorQrView"));
+const NotFound = carregarPagina(() => import("./pages/NotFound"));
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
 import AdminLayout from "@/components/AdminLayout";
-import AdminDashboard from "@/pages/admin/AdminDashboard";
-import AdminCloud from "@/pages/admin/AdminCloud";
+const AdminDashboard = carregarPagina(() => import("@/pages/admin/AdminDashboard"));
+const AdminCloud = carregarPagina(() => import("@/pages/admin/AdminCloud"));
 import EmpresaQuerySync from "@/components/EmpresaQuerySync";
-import SetupMfa from "@/pages/SetupMfa";
+const SetupMfa = carregarPagina(() => import("@/pages/SetupMfa"));
 import MfaBanner from "@/components/MfaBanner";
 import MfaGate from "@/components/MfaGate";
-import Fase3PortalRHTest from "@/pages/homolog/Fase3PortalRHTest";
-import Fase3AllTest from "@/pages/homolog/Fase3AllTest";
-import AssinaturaRemota from "@/pages/AssinaturaRemota";
+const Fase3PortalRHTest = carregarPagina(() => import("@/pages/homolog/Fase3PortalRHTest"));
+const Fase3AllTest = carregarPagina(() => import("@/pages/homolog/Fase3AllTest"));
+const AssinaturaRemota = carregarPagina(() => import("@/pages/AssinaturaRemota"));
 
 
+
+/** Enquanto o arquivo da página chega: só um indicador, sem tela branca. */
+function CarregandoPagina() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center" role="status" aria-label="Carregando">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 function QueryProvider({ children }: { children: ReactNode }) {
   if (!storagePersister) {
@@ -271,6 +278,7 @@ function ProtectedRoute() {
       <EmpresaQuerySync />
       <MfaBanner />
       <MfaGate>
+      <Suspense fallback={<CarregandoPagina />}>
       <Routes>
         <Route path="/" element={<NetworkErrorBoundary><DashboardGuard /></NetworkErrorBoundary>} />
         <Route path="/sst-express" element={<NetworkErrorBoundary><SstExpressDashboard /></NetworkErrorBoundary>} />
@@ -378,6 +386,7 @@ function ProtectedRoute() {
         <Route path="/funcionarios" element={<Navigate to="/cadastro/funcionarios" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
       </MfaGate>
     </AppLayout>
   );
@@ -417,6 +426,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <Suspense fallback={<CarregandoPagina />}>
           <Routes>
             <Route path="/login" element={<AuthPage />} />
             <Route path="/auth" element={<AuthPage />} />
@@ -460,6 +470,7 @@ const App = () => (
             <Route path="/admin/cloud" element={<AdminLayout><AdminCloud /></AdminLayout>} />
             <Route path="/*" element={<ProtectedRoute />} />
           </Routes>
+          </Suspense>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
