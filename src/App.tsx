@@ -164,6 +164,7 @@ function DashboardGuard() {
     { path: "/ltcat", key: "ltcat" },
     { path: "/ppp", key: "ppp" },
     { path: "/inspecoes-se", key: "inspecoes_se" },
+    { path: "/extintores", key: "extintores" },
     { path: "/treinamentos", key: "treinamentos" },
     { path: "/dds", key: "dds" },
     { path: "/video-treinamentos", key: "video_treinamentos" },

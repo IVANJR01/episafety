@@ -104,6 +104,12 @@ export const MODULOS = [
   { key: "cadastro_usuarios", label: "Cadastro → Usuários Liberados", path: "/cadastro/usuarios" },
   { key: "dds", label: "Lista de Presença", path: "/dds" },
   { key: "inspecoes_se", label: "Inspeções SE", path: "/inspecoes-se" },
+  /*
+   * Extintores existia no menu mas não aqui: só dava para liberar junto com
+   * Inspeções (o menu herda de inspecoes_se). Agora também pode ser dado
+   * sozinho — ex.: brigadista que só cuida dos extintores.
+   */
+  { key: "extintores", label: "Extintores (NR-23)", path: "/extintores" },
   { key: "treinamentos", label: "Gestão e Controle", path: "/treinamentos" },
   { key: "pgr", label: "PGR — Gerenciamento de Riscos", path: "/pgr" },
   { key: "ltcat", label: "LTCAT — Laudo Técnico Previdenciário", path: "/ltcat" },
@@ -137,7 +143,7 @@ export const GRUPOS_MODULOS: { titulo: string; modulos: string[] }[] = [
   { titulo: "Programas e laudos de SST", modulos: ["pgr", "ltcat", "ppp", "esocial", "arquivo_digital"] },
   { titulo: "Saúde ocupacional", modulos: ["aso", "exames", "portal_rh", "rh"] },
   { titulo: "Treinamentos e DDS", modulos: ["treinamentos", "video_treinamentos", "dds"] },
-  { titulo: "Inspeções", modulos: ["inspecoes_se"] },
+  { titulo: "Inspeções", modulos: ["inspecoes_se", "extintores"] },
 ];
 
 /**
@@ -168,7 +174,8 @@ export const NOME_NA_PERMISSAO: Record<string, string> = {
   treinamentos: "Treinamentos",
   video_treinamentos: "Treinamentos em vídeo",
   dds: "DDS / lista de presença",
-  inspecoes_se: "Inspeções e apontamentos",
+  inspecoes_se: "Inspeções e apontamentos (inclui extintores)",
+  extintores: "Extintores (NR-23)",
 };
 
 

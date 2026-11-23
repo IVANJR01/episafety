@@ -58,3 +58,14 @@ describe("conversão das caixinhas antigas de PGR/LTCAT/PPP/Portal RH", () => {
     }
   });
 });
+
+describe("todo item do menu pode ser liberado na tela de permissões", () => {
+  it("nenhuma chave de menu fica de fora", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const menu = fs.readFileSync(path.resolve(__dirname, "../components/AppLayout.tsx"), "utf8");
+    const chaves = [...new Set([...menu.matchAll(/moduleKey: "([^"]+)"/g)].map((m) => m[1]))];
+    const naTela = MODULOS.map((m) => m.key) as string[];
+    expect(chaves.filter((k) => !naTela.includes(k))).toEqual([]);
+  });
+});
