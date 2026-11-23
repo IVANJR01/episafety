@@ -25,3 +25,36 @@ describe("grupos de módulos", () => {
     expect(repetidos, `módulo em mais de um grupo: ${repetidos.join(", ")}`).toEqual([]);
   });
 });
+
+import { NOME_NA_PERMISSAO, normalizarPermissoes, hasPermission } from "./permissions";
+
+describe("nomes na tela de permissões", () => {
+  it("todo módulo tem nome claro", () => {
+    const sem = MODULOS.map((m) => m.key).filter((k) => !NOME_NA_PERMISSAO[k]);
+    expect(sem).toEqual([]);
+  });
+});
+
+describe("conversão das caixinhas antigas de PGR/LTCAT/PPP/Portal RH", () => {
+  it("Visualizar e Editar viram as colunas", () => {
+    expect(normalizarPermissoes(["pgr:visualizar", "pgr:editar"]).sort()).toEqual(["pgr:create", "pgr:edit", "pgr:view"]);
+  });
+  it("revisar/assinar/exportar continuam só dando leitura, como na prática davam", () => {
+    const r = normalizarPermissoes(["ltcat:assinar", "ltcat:exportar"]);
+    expect(r).toEqual(["ltcat:view"]);
+    expect(hasPermission(r, "ltcat", "edit")).toBe(false);
+  });
+  it("Portal RH vira acesso de leitura", () => {
+    expect(normalizarPermissoes(["portal_rh:aso:baixar", "portal_rh:visualizar"])).toEqual(["portal_rh:view"]);
+  });
+  it("não mexe no resto: eSocial, estoque, bloqueios, chave antiga de acesso total", () => {
+    const p = ["esocial:s2240:preparar", "epis:gestao_estoque", "entregas:sem:gerar_ficha", "pgr", "dds:view"];
+    expect(normalizarPermissoes(p).sort()).toEqual([...p].sort());
+  });
+  it("quem tinha acesso continua tendo o mesmo acesso de leitura", () => {
+    for (const antiga of ["pgr:visualizar", "pgr:revisar", "ppp:assinar", "portal_rh:aso:visualizar"]) {
+      const mod = antiga.split(":")[0];
+      expect(hasPermission(normalizarPermissoes([antiga]), mod, "view")).toBe(true);
+    }
+  });
+});

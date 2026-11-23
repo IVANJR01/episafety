@@ -11,7 +11,7 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ACOES, ACOES_ESPECIAIS, ACOES_FINAS, GRUPOS_MODULOS, MODULOS, chaveDeBloqueio, podeAcaoFina } from "@/lib/permissions";
+import { ACOES, ACOES_ESPECIAIS, ACOES_FINAS, GRUPOS_MODULOS, MODULOS, NOME_NA_PERMISSAO, chaveDeBloqueio, podeAcaoFina } from "@/lib/permissions";
 
 /** "Criar / Adicionar" não cabe no cabeçalho de 72px sem quebrar em três linhas. */
 const ROTULO_COLUNA: Record<string, string> = { create: "Criar" };
@@ -44,6 +44,9 @@ export function quantasNoModulo(perms: string[], modulo: string): number {
 
 
 interface Modulo { key: string; label: string; }
+
+/** O nome que diz o que a permissão libera (NOME_NA_PERMISSAO), com o do menu de reserva. */
+const nomeDoModulo = (m: Modulo) => NOME_NA_PERMISSAO[m.key] ?? m.label;
 
 /** Um módulo por linha, com as quatro ações e as permissões específicas dele. */
 function LinhaModulo({
@@ -97,9 +100,9 @@ function LinhaModulo({
         <Checkbox
           checked={todas ? true : marcadas > 0 ? "indeterminate" : false}
           onCheckedChange={() => onAlternarModulo(mod.key)}
-          aria-label={`Todas as permissões de ${mod.label}`}
+          aria-label={`Todas as permissões de ${nomeDoModulo(mod)}`}
         />
-        <span className="text-sm font-medium leading-tight">{mod.label}</span>
+        <span className="text-sm font-medium leading-tight">{nomeDoModulo(mod)}</span>
       </label>
 
       {/* Celular: cada caixa carrega o próprio rótulo, duas por linha. */}
@@ -121,62 +124,67 @@ function LinhaModulo({
           <Checkbox
             checked={temPermissao(perms, mod.key, acao.key)}
             onCheckedChange={() => onAlternar(`${mod.key}:${acao.key}`)}
-            aria-label={`${acao.label} em ${mod.label}`}
+            aria-label={`${acao.label} em ${nomeDoModulo(mod)}`}
           />
         </div>
       ))}
 
-      {especiais && !especiaisVisiveis && (
+      {/*
+        * Opções extras do módulo, num bloco só e no mesmo formato.
+        *
+        * Antes eram dois blocos com regras opostas lado a lado — umas vinham
+        * desmarcadas e precisavam ser dadas, outras vinham marcadas e eram
+        * para bloquear — e não havia como saber qual era qual olhando. Agora
+        * cada linha diz: as que vêm liberadas levam "(vem liberado)".
+        */}
+      {(especiais || finas) && !especiaisVisiveis && (
         <button
           type="button"
           onClick={() => setMostrarEspeciais(true)}
           className="mt-1.5 justify-self-start text-left text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground sm:col-span-full sm:ml-[26px]"
         >
-          + {especiais.length} permissões específicas
+          + {(especiais?.length ?? 0) + (finas?.length ?? 0)} opções extras
         </button>
       )}
 
-      {/*
-        * Ações finas: vêm marcadas (liberadas) e o administrador desmarca o
-        * que quer bloquear. Ficam apagadas enquanto falta a ação comum de
-        * que dependem — ex.: "Desfazer devolução" precisa de "Editar".
-        */}
-      {finas && marcadas > 0 && (
-        <div className="mt-2.5 space-y-1.5 border-l-2 border-primary/30 pl-3 sm:col-span-full sm:ml-[26px] sm:mt-1.5">
-          <p className="text-[11px] font-medium text-muted-foreground">Pode também (desmarque para bloquear):</p>
-          {finas.map((acao) => {
-            const temBase = temPermissao(perms, mod.key, acao.base);
-            return (
-              <label key={acao.key} className={`flex items-start gap-2 ${temBase ? "cursor-pointer" : "opacity-50"}`}>
+      {(especiais || finas) && especiaisVisiveis && (
+        <div className="mt-2.5 rounded-md bg-muted/40 px-3 py-2 sm:col-span-full sm:ml-[26px] sm:mt-1.5">
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Opções extras</p>
+          <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+            {(finas || []).map((acao) => {
+              const temBase = temPermissao(perms, mod.key, acao.base);
+              return (
+                <label key={acao.key} className={`flex items-start gap-2 ${temBase ? "cursor-pointer" : "opacity-50"}`}>
+                  <Checkbox
+                    checked={temBase && podeAcaoFina(perms, mod.key, acao.key)}
+                    disabled={!temBase}
+                    onCheckedChange={() => onAlternar(chaveDeBloqueio(mod.key, acao.key))}
+                    className="mt-[3px]"
+                    aria-label={`${acao.label} em ${nomeDoModulo(mod)}`}
+                  />
+                  <span className="text-xs leading-snug">
+                    {acao.label}
+                    <span className="text-muted-foreground">
+                      {!temBase
+                        ? ` (precisa de "${ACOES.find((a) => a.key === acao.base)?.label}")`
+                        : podeAcaoFina(perms, mod.key, acao.key) ? " (vem liberado)" : " (bloqueado)"}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+            {(especiais || []).map((acao) => (
+              <label key={acao.key} className="flex cursor-pointer items-start gap-2">
                 <Checkbox
-                  checked={temBase && podeAcaoFina(perms, mod.key, acao.key)}
-                  disabled={!temBase}
-                  onCheckedChange={() => onAlternar(chaveDeBloqueio(mod.key, acao.key))}
+                  checked={perms.includes(`${mod.key}:${acao.key}`)}
+                  onCheckedChange={() => onAlternar(`${mod.key}:${acao.key}`)}
                   className="mt-[3px]"
-                  aria-label={`${acao.label} em ${mod.label}`}
+                  aria-label={`${acao.label} em ${nomeDoModulo(mod)}`}
                 />
-                <span className="text-xs leading-snug text-muted-foreground">
-                  {acao.label}
-                  {!temBase && ` (precisa de "${ACOES.find((a) => a.key === acao.base)?.label}")`}
-                </span>
+                <span className="text-xs leading-snug">{acao.label}</span>
               </label>
-            );
-          })}
-        </div>
-      )}
-
-      {especiais && especiaisVisiveis && (
-        <div className="mt-2.5 space-y-1.5 border-l-2 border-muted pl-3 sm:col-span-full sm:ml-[26px] sm:mt-1.5">
-          {especiais.map((acao) => (
-            <label key={acao.key} className="flex cursor-pointer items-start gap-2">
-              <Checkbox
-                checked={perms.includes(`${mod.key}:${acao.key}`)}
-                onCheckedChange={() => onAlternar(`${mod.key}:${acao.key}`)}
-                className="mt-[3px]"
-              />
-              <span className="text-xs leading-snug text-muted-foreground">{acao.label}</span>
-            </label>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -228,8 +236,12 @@ export default function MatrizPermissoes({ perms, onAlternar, onAlternarModulo }
         const modulos = grupo.modulos
           .map((k) => porChave.get(k))
           .filter((m): m is Modulo => !!m);
-        const totalAcoes = modulos.length * ACOES.length;
-        const marcadas = modulos.reduce((n, m) => n + quantasNoModulo(perms, m.key), 0);
+        /*
+         * Contagem em módulos, não em caixinhas: "7 de 16" não dizia nada;
+         * "2 de 4 módulos" diz o que a pessoa acessa.
+         */
+        const totalModulos = modulos.length;
+        const liberados = modulos.filter((m) => quantasNoModulo(perms, m.key) > 0).length;
         const aberto = !!abertos[grupo.titulo];
 
         return (
@@ -251,10 +263,10 @@ export default function MatrizPermissoes({ perms, onAlternar, onAlternarModulo }
                */}
               <span
                 className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                  marcadas > 0 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                  liberados > 0 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                 }`}
               >
-                {marcadas} de {totalAcoes}
+                {liberados} de {totalModulos} {totalModulos === 1 ? "módulo" : "módulos"}
               </span>
             </button>
 

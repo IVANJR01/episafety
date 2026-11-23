@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { allPermissions, allActionsForModule } from "@/lib/permissions";
+import { allPermissions, allActionsForModule, normalizarPermissoes } from "@/lib/permissions";
 import MatrizPermissoes from "@/components/permissoes/MatrizPermissoes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -646,7 +646,16 @@ export default function UsuariosLiberados() {
                             variant="ghost"
                             size="sm"
                             className="h-7 text-xs gap-1"
-                            onClick={() => setPermsUserId(u.id)}
+                            onClick={() => {
+                              /*
+                               * Chaves das caixinhas antigas de PGR/LTCAT/PPP/
+                               * Portal RH viram as colunas na hora de abrir;
+                               * ao salvar, ficam gravadas já convertidas.
+                               */
+                              setUsuarios(prev => prev.map(x => x.id === u.id
+                                ? { ...x, modulos_permitidos: normalizarPermissoes(x.modulos_permitidos || []) } : x));
+                              setPermsUserId(u.id);
+                            }}
                           >
                             <Pencil className="w-3 h-3" />
                             Alterar

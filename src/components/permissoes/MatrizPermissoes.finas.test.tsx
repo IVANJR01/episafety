@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import MatrizPermissoes from "./MatrizPermissoes";
 
-const caixa = (nome: string) => screen.getByRole("checkbox", { name: `${nome} em Entregas` });
+const caixa = (nome: string) => screen.getByRole("checkbox", { name: `${nome} em Entregas de EPI` });
 
 describe("ações finas na matriz de permissões", () => {
   it("vêm marcadas para quem já tem o módulo, e desmarcar grava o bloqueio", () => {
@@ -24,7 +24,7 @@ describe("ações finas na matriz de permissões", () => {
 
   it("módulo sem nenhuma permissão não mostra as ações finas", () => {
     render(<MatrizPermissoes perms={[]} onAlternar={() => {}} onAlternarModulo={() => {}} />);
-    expect(screen.queryByRole("checkbox", { name: "Gerar a Ficha de EPI em Entregas" })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: "Gerar a Ficha de EPI em Entregas de EPI" })).toBeNull();
     cleanup();
   });
 });

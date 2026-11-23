@@ -10,45 +10,52 @@ export const ACOES = [
   { key: "delete", label: "Excluir" },
 ] as const;
 
-/** Special per-module actions (shown as extra checkboxes) */
+/**
+ * Permissões específicas: desligadas por padrão, precisam ser dadas.
+ *
+ * Só ficam aqui as que o sistema CONFERE de verdade. PGR, LTCAT, PPP e
+ * Portal RH tinham cinco caixinhas cada ("Editar PGR", "Assinar PGR"...)
+ * que nenhuma tela lia: quem liberava eram as colunas Visualizar/Criar/
+ * Editar/Excluir. Marcar "Editar PGR" não deixava editar. Saíram — e quem
+ * tinha essas chaves gravadas é convertido por `normalizarPermissoes`.
+ */
 export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> = {
-  epis: [{ key: "gestao_estoque", label: "Gestão de Estoque (todas unidades)" }],
-  portal_rh: [
-    { key: "visualizar", label: "Acessar Portal RH" },
-    { key: "aso:visualizar", label: "Consultar ASOs liberados" },
-    { key: "aso:baixar", label: "Baixar ASOs liberados" },
-    { key: "funcionarios:visualizar", label: "Visualizar funcionários vinculados" },
-  ],
+  epis: [{ key: "gestao_estoque", label: "Gestão de estoque de todas as unidades" }],
   esocial: [
-    { key: "s2240:visualizar", label: "S-2240 — Visualizar eventos e mapeamentos" },
-    { key: "s2240:preparar", label: "S-2240 — Preparar evento / editar mapeamento" },
-    { key: "s2240:validar", label: "S-2240 — Validar localmente (stub)" },
-    { key: "s2240:retificar", label: "S-2240 — Abrir retificação" },
-    { key: "s2240:excluir", label: "S-2240 — Excluir localmente" },
-  ],
-  pgr: [
-    { key: "visualizar", label: "Visualizar PGR" },
-    { key: "editar", label: "Editar PGR / Inventário / Ações" },
-    { key: "revisar", label: "Abrir revisão e publicar PGR" },
-    { key: "assinar", label: "Assinar PGR (assinatura visual + MFA)" },
-    { key: "exportar", label: "Exportar PDF técnico do PGR" },
-  ],
-  ltcat: [
-    { key: "visualizar", label: "Visualizar LTCAT" },
-    { key: "editar", label: "Editar LTCAT / Avaliações / Conclusões" },
-    { key: "revisar", label: "Abrir revisão e publicar LTCAT" },
-    { key: "assinar", label: "Assinar LTCAT (assinatura visual + MFA)" },
-    { key: "exportar", label: "Exportar PDF técnico do LTCAT" },
-  ],
-  ppp: [
-    { key: "visualizar", label: "Visualizar PPP" },
-    { key: "editar", label: "Editar PPP / Períodos / Exposições" },
-    { key: "revisar", label: "Abrir revisão e publicar PPP" },
-    { key: "assinar", label: "Assinar PPP (assinatura visual + MFA)" },
-    { key: "exportar", label: "Exportar PDF técnico do PPP" },
+    { key: "s2240:visualizar", label: "S-2240 — ver eventos e mapeamentos" },
+    { key: "s2240:preparar", label: "S-2240 — preparar evento / editar mapeamento" },
+    { key: "s2240:validar", label: "S-2240 — validar" },
+    { key: "s2240:retificar", label: "S-2240 — abrir retificação" },
+    { key: "s2240:excluir", label: "S-2240 — excluir" },
   ],
 };
 
+/**
+ * Converte as chaves antigas das caixinhas que saíram para as colunas.
+ *
+ * "pgr:visualizar" → Visualizar. "pgr:editar" → Criar e Editar (era o que
+ * o administrador quis dar). Revisar/assinar/exportar só davam acesso de
+ * leitura na prática, e continuam dando: viram Visualizar. Nada passa a
+ * valer mais do que a pessoa marcou.
+ */
+const CHAVES_ANTIGAS: Record<string, string[]> = {
+  visualizar: ["view"], editar: ["create", "edit"], revisar: ["view"], assinar: ["view"], exportar: ["view"],
+};
+export function normalizarPermissoes(perms: string[]): string[] {
+  const out = new Set<string>();
+  for (const p of perms) {
+    const [mod, ...resto] = p.split(":");
+    const acao = resto.join(":");
+    if (["pgr", "ltcat", "ppp"].includes(mod) && CHAVES_ANTIGAS[acao]) {
+      CHAVES_ANTIGAS[acao].forEach((a) => out.add(`${mod}:${a}`));
+    } else if (mod === "portal_rh" && acao && !["view", "create", "edit", "delete"].includes(acao) && !acao.startsWith("sem:")) {
+      out.add("portal_rh:view");
+    } else {
+      out.add(p);
+    }
+  }
+  return [...out];
+}
 
 export type Acao = typeof ACOES[number]["key"];
 
@@ -125,27 +132,45 @@ export const MODULOS = [
  */
 export const GRUPOS_MODULOS: { titulo: string; modulos: string[] }[] = [
   { titulo: "Visão geral", modulos: ["dashboard", "relatorios"] },
-  {
-    titulo: "Controle de EPI",
-    modulos: ["epis", "estoque_contrato", "solicitacoes_materiais", "entregas"],
-  },
-  {
-    titulo: "Cadastros",
-    modulos: ["cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"],
-  },
-  {
-    titulo: "Documentos e programas de SST",
-    modulos: ["pgr", "ltcat", "ppp", "esocial", "arquivo_digital"],
-  },
-  {
-    titulo: "Saúde ocupacional",
-    modulos: ["exames", "aso", "portal_rh", "rh"],
-  },
-  {
-    titulo: "Treinamentos e inspeções",
-    modulos: ["treinamentos", "dds", "video_treinamentos", "inspecoes_se"],
-  },
+  { titulo: "EPI", modulos: ["epis", "entregas", "estoque_contrato", "solicitacoes_materiais"] },
+  { titulo: "Pessoas e empresas", modulos: ["cadastro_funcionarios", "cadastro_empresas", "cadastro_usuarios"] },
+  { titulo: "Programas e laudos de SST", modulos: ["pgr", "ltcat", "ppp", "esocial", "arquivo_digital"] },
+  { titulo: "Saúde ocupacional", modulos: ["aso", "exames", "portal_rh", "rh"] },
+  { titulo: "Treinamentos e DDS", modulos: ["treinamentos", "video_treinamentos", "dds"] },
+  { titulo: "Inspeções", modulos: ["inspecoes_se"] },
 ];
+
+/**
+ * Nome de cada módulo NA TELA DE PERMISSÕES. O menu usa os nomes de
+ * MODULOS; aqui o nome precisa dizer o que a permissão libera — "Gestão e
+ * Controle" sozinho não dizia que era de treinamentos, e "Cadastro →"
+ * repetia o nome do grupo em toda linha.
+ */
+export const NOME_NA_PERMISSAO: Record<string, string> = {
+  dashboard: "Painel inicial",
+  relatorios: "Relatórios",
+  epis: "EPIs — cadastro e estoque",
+  entregas: "Entregas de EPI",
+  estoque_contrato: "Estoque por unidade",
+  solicitacoes_materiais: "Solicitação de materiais",
+  cadastro_funcionarios: "Funcionários",
+  cadastro_empresas: "Empresas",
+  cadastro_usuarios: "Usuários e permissões",
+  pgr: "PGR, PCMSO e estrutura de GES",
+  ltcat: "LTCAT",
+  ppp: "PPP",
+  esocial: "eSocial — S-2240",
+  arquivo_digital: "Dossiê e vencimento de documentos",
+  aso: "ASO — gestão e emissão",
+  exames: "Exames",
+  portal_rh: "Portal RH (consulta de ASO)",
+  rh: "Portal RH — versão antiga",
+  treinamentos: "Treinamentos",
+  video_treinamentos: "Treinamentos em vídeo",
+  dds: "DDS / lista de presença",
+  inspecoes_se: "Inspeções e apontamentos",
+};
+
 
 /**
  * Check if a user has a specific permission.
