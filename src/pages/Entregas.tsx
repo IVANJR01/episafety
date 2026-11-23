@@ -1746,13 +1746,12 @@ export default function Entregas() {
                     <TableHead className="text-right">Qtd</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Assinatura</TableHead>
-                    <TableHead>Obs</TableHead>
                     <TableHead className="w-24"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredEntregas.length === 0 ? (
-                    <TableRow><TableCell colSpan={9} className="p-0">
+                    <TableRow><TableCell colSpan={8} className="p-0">
                       <EmptyState
                         bare
                         icon={searchTerm ? Search : PackageOpen}
@@ -1761,7 +1760,9 @@ export default function Entregas() {
                       />
                     </TableCell></TableRow>
                   ) : filteredEntregas.map(e => (
-                    <TableRow key={e.id}>
+                    /* Sem coluna Obs: poluía a tabela. A observação aparece ao
+                       parar o mouse sobre a linha (e no cartão do celular). */
+                    <TableRow key={e.id} title={observacaoLegivel(e.observacao) || undefined}>
                       <TableCell className="font-mono text-[11.5px] whitespace-nowrap">{fmtData(e.data)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
@@ -1823,7 +1824,6 @@ export default function Entregas() {
                           </Button>
                         )}
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate">{e.observacao || "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
                           {e.tipo === "devolucao" && e.status === "devolvido" && podeDesfazerDevolucao && (
