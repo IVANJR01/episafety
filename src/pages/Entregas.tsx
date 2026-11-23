@@ -143,7 +143,15 @@ export default function Entregas() {
    */
   const loading = loadingEntregas || loadingFuncionarios || loadingEpis;
   const { toast } = useToast();
-  const { canEdit, canCreate, canDelete } = usePermissions("entregas");
+  const { canEdit, canCreate, canDelete, pode } = usePermissions("entregas");
+  /*
+   * Ações que o administrador pode bloquear uma a uma em Usuários →
+   * Permissões (ACOES_FINAS em src/lib/permissions.ts). Liberadas por padrão.
+   */
+  const podeFicha = pode("gerar_ficha");
+  const podeDevolver = pode("registrar_devolucao");
+  const podeDesfazerDevolucao = pode("desfazer_devolucao");
+  const podeLinkAssinatura = pode("link_assinatura");
   const { user, empresaId, contratoId } = useAuth();
 
 
@@ -944,7 +952,7 @@ export default function Entregas() {
   };
 
   const confirmDevolver = async () => {
-    if (!devolucaoTarget) return;
+    if (!devolucaoTarget || !podeDevolver) return;
     /*
      * A devolução é uma função do banco (grava a devolução e encerra a
      * entrega numa transação só) e ainda não entra na fila offline. Sem
@@ -1023,7 +1031,7 @@ export default function Entregas() {
   );
 
   const handleOpenEstorno = (devolucao: Entrega) => {
-    if (!canEdit) return;
+    if (!podeDesfazerDevolucao) return;
     setEstornoTarget(devolucao);
     setEstornoDialogOpen(true);
   };
@@ -1292,6 +1300,7 @@ export default function Entregas() {
   const epiPorId = useMemo(() => new Map(epis.map(e => [e.id, e])), [epis]);
 
   const openFicha = (funcId?: string) => {
+    if (!podeFicha) return;
     setFichaFuncId(funcId || "");
     setFichaSearch("");
     setFichaOpen(true);
@@ -1523,7 +1532,7 @@ export default function Entregas() {
                   : <><PenLine className="w-4 h-4 mr-1 sm:mr-2" />Assinar ({unsignedEntregas.length})</>}
               </Button>
             )}
-            {canEdit && (
+            {podeFicha && (
               <Button variant="outline" onClick={() => openFicha()} className="text-xs sm:text-sm">
                 <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
               </Button>
@@ -1681,7 +1690,7 @@ export default function Entregas() {
                       entrega assinada não tem nenhum dos três — antes sobrava
                       a linha divisória com espaço vazio embaixo. */}
                   {(() => {
-                    const podeEstornar = e.tipo === "devolucao" && e.status === "devolvido" && canEdit;
+                    const podeEstornar = e.tipo === "devolucao" && e.status === "devolvido" && podeDesfazerDevolucao;
                     const podeAssinar = !e.assinatura_colaborador && e.tipo !== "devolucao" && canEdit;
                     if (!podeEstornar && !podeAssinar && !podeExcluir(e)) return null;
                     return (
@@ -1802,7 +1811,7 @@ export default function Entregas() {
                       <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate">{e.observacao || "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
-                          {e.tipo === "devolucao" && e.status === "devolvido" && canEdit && (
+                          {e.tipo === "devolucao" && e.status === "devolvido" && podeDesfazerDevolucao && (
                             <Button size="icon" variant="ghost" title="Desfazer devolução" onClick={() => handleOpenEstorno(e)}>
                               <RotateCcw className="w-3.5 h-3.5 text-primary" />
                             </Button>
@@ -1901,7 +1910,7 @@ export default function Entregas() {
                   <SelectItem value="substituicao">🔄 Substituição</SelectItem>
                   <SelectItem value="perda">❌ Perda</SelectItem>
                   <SelectItem value="dano">⚠️ Dano</SelectItem>
-                  <SelectItem value="devolucao">↩️ Devolução</SelectItem>
+                  {podeDevolver && <SelectItem value="devolucao">↩️ Devolução</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
@@ -2245,12 +2254,14 @@ export default function Entregas() {
 
                   return (
                     <>
-                      <div className="flex justify-end mb-2">
-                        <Button variant="outline" size="sm" onClick={handleCopyLink} className="text-xs flex items-center gap-2">
-                          <Link className="w-3 h-3" />
-                          Copiar link p/ WhatsApp
-                        </Button>
-                      </div>
+                      {podeLinkAssinatura && (
+                        <div className="flex justify-end mb-2">
+                          <Button variant="outline" size="sm" onClick={handleCopyLink} className="text-xs flex items-center gap-2">
+                            <Link className="w-3 h-3" />
+                            Copiar link p/ WhatsApp
+                          </Button>
+                        </div>
+                      )}
                       <div className="border rounded-md max-h-48 overflow-y-auto divide-y">
                         {funcUnsigned.map(e => (
                           <label key={e.id} className="flex items-center gap-3 px-3 py-2 hover:bg-accent/50 cursor-pointer text-sm">

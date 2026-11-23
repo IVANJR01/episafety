@@ -11,7 +11,7 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ACOES, ACOES_ESPECIAIS, GRUPOS_MODULOS, MODULOS } from "@/lib/permissions";
+import { ACOES, ACOES_ESPECIAIS, ACOES_FINAS, GRUPOS_MODULOS, MODULOS, chaveDeBloqueio, podeAcaoFina } from "@/lib/permissions";
 
 /** "Criar / Adicionar" não cabe no cabeçalho de 72px sem quebrar em três linhas. */
 const ROTULO_COLUNA: Record<string, string> = { create: "Criar" };
@@ -57,6 +57,7 @@ function LinhaModulo({
   const marcadas = quantasNoModulo(perms, mod.key);
   const todas = marcadas === ACOES.length;
   const especiais = ACOES_ESPECIAIS[mod.key];
+  const finas = ACOES_FINAS[mod.key];
   const especiaisMarcadas = (especiais || []).filter((a) =>
     perms.includes(`${mod.key}:${a.key}`),
   ).length;
@@ -133,6 +134,35 @@ function LinhaModulo({
         >
           + {especiais.length} permissões específicas
         </button>
+      )}
+
+      {/*
+        * Ações finas: vêm marcadas (liberadas) e o administrador desmarca o
+        * que quer bloquear. Ficam apagadas enquanto falta a ação comum de
+        * que dependem — ex.: "Desfazer devolução" precisa de "Editar".
+        */}
+      {finas && marcadas > 0 && (
+        <div className="mt-2.5 space-y-1.5 border-l-2 border-primary/30 pl-3 sm:col-span-full sm:ml-[26px] sm:mt-1.5">
+          <p className="text-[11px] font-medium text-muted-foreground">Pode também (desmarque para bloquear):</p>
+          {finas.map((acao) => {
+            const temBase = temPermissao(perms, mod.key, acao.base);
+            return (
+              <label key={acao.key} className={`flex items-start gap-2 ${temBase ? "cursor-pointer" : "opacity-50"}`}>
+                <Checkbox
+                  checked={temBase && podeAcaoFina(perms, mod.key, acao.key)}
+                  disabled={!temBase}
+                  onCheckedChange={() => onAlternar(chaveDeBloqueio(mod.key, acao.key))}
+                  className="mt-[3px]"
+                  aria-label={`${acao.label} em ${mod.label}`}
+                />
+                <span className="text-xs leading-snug text-muted-foreground">
+                  {acao.label}
+                  {!temBase && ` (precisa de "${ACOES.find((a) => a.key === acao.base)?.label}")`}
+                </span>
+              </label>
+            );
+          })}
+        </div>
       )}
 
       {especiais && especiaisVisiveis && (

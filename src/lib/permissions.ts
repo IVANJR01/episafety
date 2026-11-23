@@ -52,6 +52,39 @@ export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> =
 
 export type Acao = typeof ACOES[number]["key"];
 
+/**
+ * Ações finas: liberadas por padrão, bloqueáveis uma a uma.
+ *
+ * As permissões específicas acima (ACOES_ESPECIAIS) começam desligadas e
+ * precisam ser dadas. Estas são o contrário: quem já pode usar o módulo já
+ * podia fazer tudo isto, e ninguém pode perder acesso no dia em que a
+ * opção aparece. Então elas valem enquanto não houver um bloqueio gravado
+ * — a chave "modulo:sem:acao" — e o administrador só desmarca o que quer
+ * proibir. Ex.: o almoxarife registra entregas, mas não desfaz devolução.
+ *
+ * `base` é a ação comum que a pessoa precisa ter antes: sem ela, a ação
+ * fina não vale, marcada ou não.
+ */
+export const ACOES_FINAS: Record<string, { key: string; label: string; base: Acao }[]> = {
+  entregas: [
+    { key: "gerar_ficha", label: "Gerar a Ficha de EPI", base: "edit" },
+    { key: "registrar_devolucao", label: "Registrar devolução", base: "create" },
+    { key: "desfazer_devolucao", label: "Desfazer devolução", base: "edit" },
+    { key: "link_assinatura", label: "Copiar link de assinatura (WhatsApp)", base: "edit" },
+  ],
+};
+
+/** A chave gravada quando o administrador bloqueia uma ação fina. */
+export const chaveDeBloqueio = (modulo: string, acao: string) => `${modulo}:sem:${acao}`;
+
+/** Pode fazer a ação fina? Precisa da ação base e de não ter o bloqueio. */
+export function podeAcaoFina(modulosPermitidos: string[], modulo: string, acao: string): boolean {
+  const fina = ACOES_FINAS[modulo]?.find((a) => a.key === acao);
+  if (!fina) return false;
+  return hasPermission(modulosPermitidos, modulo, fina.base) &&
+    !modulosPermitidos.includes(chaveDeBloqueio(modulo, acao));
+}
+
 export const MODULOS = [
   { key: "dashboard", label: "Dashboard", path: "/" },
   { key: "epis", label: "Controle de EPI", path: "/epis" },
@@ -141,7 +174,8 @@ export function hasPermission(
   // permitindo que o usuário acesse a rota e a UI faça o gating fino.
   if (action === "view") {
     const prefix = `${moduleKey}:`;
-    if (modulosPermitidos.some((p) => p.startsWith(prefix))) return true;
+    // Bloqueio ("modulo:sem:acao") tira poder, não dá: não conta como acesso.
+    if (modulosPermitidos.some((p) => p.startsWith(prefix) && !p.startsWith(`${prefix}sem:`))) return true;
   }
 
   return false;
