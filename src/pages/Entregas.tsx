@@ -1,4 +1,5 @@
 import { linhasDaFicha } from "@/lib/fichaEpiLinhas";
+import { COLUNAS_DA_LISTA_DE_ENTREGAS, completarImagens } from "@/lib/entregasLeves";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck, Camera, WifiOff, RotateCcw, Link } from "lucide-react";
@@ -127,7 +128,12 @@ const fmtData = (d?: string | null): string => {
 
 
 export default function Entregas() {
-  const { data: entregas, loading: loadingEntregas, verificado: assinaturasConferidas, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
+  /*
+   * A lista vem sem as imagens de assinatura e selfie (no lugar, a marca de
+   * "imagem no servidor"): eram 4,7 MB para 109 entregas. A Ficha busca as
+   * imagens daquele trabalhador na hora (src/lib/entregasLeves.ts).
+   */
+  const { data: entregas, loading: loadingEntregas, verificado: assinaturasConferidas, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at", undefined, COLUNAS_DA_LISTA_DE_ENTREGAS);
   const { data: funcionarios, loading: loadingFuncionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: epis, loading: loadingEpis, refetch: refetchEpis } = useSupabaseQuery<EPI>("epis");
 
@@ -1310,7 +1316,16 @@ export default function Entregas() {
     if (!fichaFuncId) { toast({ title: "Selecione um funcionário", variant: "destructive" }); return; }
     const func = funcionarios.find(f => f.id === fichaFuncId);
     if (!func) return;
-    const funcEntregas = entregas.filter(e => e.funcionario_id === fichaFuncId);
+    const doTrabalhador = entregas.filter(e => e.funcionario_id === fichaFuncId);
+    // As imagens de assinatura e selfie, só deste trabalhador, só agora.
+    const funcEntregas = isOnline()
+      ? await completarImagens(doTrabalhador, async (ids) => {
+          const { data, error } = await (supabase.from as any)("entregas")
+            .select("id, assinatura_colaborador, foto_reconhecimento").in("id", ids);
+          if (error) throw error;
+          return data || [];
+        })
+      : doTrabalhador;
     if (funcEntregas.length === 0) { toast({ title: "Nenhuma entrega encontrada para este funcionário", variant: "destructive" }); return; }
 
     // Fetch current unit, then resolve parent (empresa mãe) for header

@@ -71,7 +71,17 @@ function chaveDeCache(table: string, columns?: string): string {
     : table;
 }
 
-export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascending?: boolean, columns?: string) {
+export function useSupabaseQuery<T = any>(
+  table: string, orderBy?: string, ascending?: boolean, columns?: string,
+  /**
+   * Guardar a cópia local na gaveta de nome puro da tabela, mesmo com
+   * `columns`. Para quando as colunas pedidas dão a MESMA forma de linha que
+   * a tabela inteira — ex.: entregas com a imagem trocada pela marca de
+   * "imagem no servidor", que é como a cópia offline já guardava. As telas
+   * que gravam direto em getCachedData("entregas") continuam funcionando.
+   */
+  gavetaDaTabela = false,
+) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { empresaScopeIds } = useAuth();
@@ -88,7 +98,7 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
     return rows.filter((row: any) => row?.empresa_id && allowed.has(row.empresa_id));
   }, [applyEmpresaFilter, empresaScopeIds]);
 
-  const cacheKey = chaveDeCache(table, columns);
+  const cacheKey = gavetaDaTabela ? table : chaveDeCache(table, columns);
 
   /**
    * Retrato local que serve de `initialData` — ou nada, quando não serve.
@@ -270,16 +280,20 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
   };
 }
 
-export function useSupabaseCrud<T extends { id: string } = any>(table: string, orderBy?: string, ascending?: boolean) {
+export function useSupabaseCrud<T extends { id: string } = any>(
+  table: string, orderBy?: string, ascending?: boolean,
+  /** Colunas da lista, com a mesma forma de linha da tabela (ver useSupabaseQuery). */
+  columns?: string,
+) {
   // `refreshing` sinaliza a atualização em segundo plano que roda logo após a
   // tela abrir com o retrato guardado no aparelho. Sem repassá-lo, quem
   // consome este hook não tem como saber que o que está na tela ainda pode
   // estar velho — e acaba anunciando número como se fosse definitivo.
-  const { data, loading, refreshing, verificado, refetch } = useSupabaseQuery<T>(table, orderBy, ascending);
+  const { data, loading, refreshing, verificado, refetch } = useSupabaseQuery<T>(table, orderBy, ascending, columns, true);
   const { toast } = useToast();
   const { empresaId } = useAuth();
   const queryClient = useQueryClient();
-  const queryKey = useMemo(() => getSupabaseQueryKey(table, orderBy, ascending, undefined), [table, orderBy, ascending]);
+  const queryKey = useMemo(() => getSupabaseQueryKey(table, orderBy, ascending, columns), [table, orderBy, ascending, columns]);
 
   const syncLocalState = useCallback((nextData: T[]) => {
     setCachedData(table, nextData);

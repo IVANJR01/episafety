@@ -343,7 +343,7 @@ export async function urlToBase64(url: string): Promise<string | null> {
 export async function preloadFotosReconhecimento(entregas: EntregaItem[]): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   const promises = entregas
-    .filter(e => e.foto_reconhecimento && !e.foto_reconhecimento.startsWith("data:"))
+    .filter(e => e.foto_reconhecimento && !e.foto_reconhecimento.startsWith("data:") && !imagemSoNoServidor(e.foto_reconhecimento))
     .map(async (e) => {
       const b64 = await urlToBase64(e.foto_reconhecimento!);
       if (b64) map.set(e.foto_reconhecimento!, b64);

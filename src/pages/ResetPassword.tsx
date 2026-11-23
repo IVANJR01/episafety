@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, X } from "lucide-react";
-const logoEpiSafety = "/marca/8df588ff-740d-4376-9653-dc6f07556c80.png";
+const logoEpiSafety = "/marca/logo-256.webp";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";

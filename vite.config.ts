@@ -58,15 +58,12 @@ const FORA_DO_PACOTE = new Set([
   "/pwa-base-logo.png", // arte de origem, 700 KB, não usada em tela
 ]);
 /*
- * Passa do limite de tamanho, mas entra assim mesmo: é o logo do topo, que
- * aparece em toda tela. Sem ele o sistema abre sem internet com o cabeçalho
- * vazio — funciona, mas parece quebrado.
- *
- * (O arquivo tem 860 KB para ser exibido a 48 px. Reduzi-lo é ganho para
- * todo mundo, com ou sem internet, mas mexer na arte é outra conversa.)
+ * O logo do topo aparece em toda tela: sem ele o sistema abre sem internet
+ * com o cabeçalho vazio. Hoje é uma cópia de 24 KB (256 px, WebP) da arte
+ * original de 860 KB e 1920 px, que continua em /marca para quem precisar.
  */
 const SEMPRE_NO_PACOTE = new Set([
-  "/marca/8df588ff-740d-4376-9653-dc6f07556c80.png",
+  "/marca/logo-256.webp",
 ]);
 const EXTENSOES_GUARDAVEIS = new Set([
   ".html", ".js", ".css", ".json", ".png", ".jpg", ".jpeg", ".svg", ".webp",

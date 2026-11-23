@@ -3,6 +3,7 @@ import {
   textoParaCodigo, calcularCodigoDeAssinatura, calcularCodigosDaFicha,
   dataHoraComSegundos, TAMANHO_DO_CODIGO,
 } from "./codigoAssinatura";
+import { MARCA_IMAGEM_NO_SERVIDOR } from "./cacheOfflineLeve";
 
 const entrega = (over: Partial<Parameters<typeof calcularCodigoDeAssinatura>[0]> = {}) => ({
   id: "e1", created_at: "2026-05-26T09:33:48.000Z",
@@ -75,5 +76,12 @@ describe("dataHoraComSegundos", () => {
   it("data ausente ou inválida não quebra a ficha", () => {
     expect(dataHoraComSegundos(null)).toBe("—");
     expect(dataHoraComSegundos("nao-e-data")).toBe("—");
+  });
+});
+
+
+describe("assinatura que ficou no servidor", () => {
+  it("sem a imagem, não inventa código", async () => {
+    expect(await calcularCodigoDeAssinatura({ id: "x", created_at: "2026-11-18T10:00:00Z", assinatura_colaborador: MARCA_IMAGEM_NO_SERVIDOR })).toBeNull();
   });
 });

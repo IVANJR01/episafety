@@ -68,7 +68,7 @@ export default function Install() {
             <img
               alt="SafetySoluções"
               className="w-20 h-20 rounded-2xl object-contain shadow-lg border border-border mx-auto"
-              src="/marca/8df588ff-740d-4376-9653-dc6f07556c80.png"
+              src="/marca/logo-256.webp"
             />
             <div>
               <h1 className="text-xl font-bold">SafetySoluções</h1>

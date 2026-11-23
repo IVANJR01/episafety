@@ -17,6 +17,7 @@
  * isso. É um código de conferência, do mesmo tipo que o sistema já usa em PGR,
  * LTCAT e PPP.
  */
+import { imagemSoNoServidor } from "./cacheOfflineLeve";
 
 /**
  * O texto que vira código. Separado da parte criptográfica para poder ser
@@ -48,6 +49,9 @@ export async function calcularCodigoDeAssinatura(entrega: {
   assinatura_colaborador?: string | null;
 }): Promise<string | null> {
   if (!entrega.assinatura_colaborador) return null;
+  // Sem a imagem (ficou no servidor, sem internet), o código sairia de
+  // outra coisa e não bateria com a conferência. Melhor nenhum que um errado.
+  if (imagemSoNoServidor(entrega.assinatura_colaborador)) return null;
   try {
     const bytes = new TextEncoder().encode(textoParaCodigo(entrega));
     const resumo = await crypto.subtle.digest("SHA-256", bytes);
