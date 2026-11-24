@@ -11,12 +11,13 @@
  * recarregada uma vez, pegando a versão nova. A marca na sessão impede que
  * um erro de verdade (sem internet, por exemplo) vire recarga sem fim.
  */
-import { createElement, lazy, type ComponentType } from "react";
+import { lazy, type ComponentType } from "react";
+import { PaginaComFalha, PaginaSemConexao } from "@/components/CarregamentoDeTela";
 
 const MARCA = "episafety:recarregou-por-pagina-nova";
 export const ESPERA_PELA_RECARGA_MS = 8_000;
 /** Tela que não chegou neste tempo: em vez de girar para sempre, avisa e oferece tentar de novo. */
-export const LIMITE_PARA_CARREGAR_MS = 20_000;
+export const LIMITE_PARA_CARREGAR_MS = 30_000;
 
 export function ehFalhaDeArquivoDaVersaoAntiga(erro: unknown): boolean {
   const msg = String((erro as Error)?.message ?? erro);
@@ -58,32 +59,6 @@ export async function importarComRecarga<T>(
 }
 
 /**
- * Sem internet e com o arquivo da tela faltando no aparelho: em vez de tela
- * em branco (ou "erro inesperado"), diz o que aconteceu e o que fazer.
- */
-function TelaNaoGuardada() {
-  return createElement("div", { className: "mx-auto max-w-xl rounded-xl border bg-muted/40 p-6 text-sm", role: "alert" },
-    createElement("h2", { className: "mb-2 text-lg font-bold text-foreground" }, "Esta tela ainda não está guardada neste aparelho"),
-    createElement("p", { className: "text-muted-foreground" },
-      "Para usar sem internet, o aparelho precisa ter baixado esta tela antes. Quando tiver sinal, abra o sistema e espere cerca de 1 minuto: ele guarda todas as telas sozinho. As outras telas que já estão guardadas continuam funcionando."),
-  );
-}
-
-/** A tela não chegou: diz isso e deixa tentar de novo, em vez do círculo girando. */
-function TelaDemorou() {
-  return createElement("div", { className: "mx-auto max-w-xl rounded-xl border bg-muted/40 p-6 text-sm", role: "alert" },
-    createElement("h2", { className: "mb-2 text-lg font-bold text-foreground" }, "Esta tela está demorando para carregar"),
-    createElement("p", { className: "mb-4 text-muted-foreground" },
-      "A internet pode estar fraca. Entregas, EPIs e Funcionários continuam funcionando — use o menu de baixo."),
-    createElement("button", {
-      type: "button",
-      onClick: () => window.location.reload(),
-      className: "rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground",
-    }, "Tentar de novo"),
-  );
-}
-
-/**
  * O que mostrar quando o arquivo da tela não vem. Separado para ser testado:
  * sem internet → "ainda não está guardada"; demorou ou falhou → "tentar de
  * novo". Erro que não é de arquivo (defeito da tela) continua subindo.
@@ -98,16 +73,49 @@ export async function carregarComLimite<T>(
   const demorou = new Promise<"demorou">((ok) => { relogio = setTimeout(() => ok("demorou"), limite); });
   try {
     const r = await Promise.race([importarComRecarga(importar), demorou]);
-    if (r === "demorou") return { default: TelaDemorou as unknown as T };
+    if (r === "demorou") return { default: PaginaComFalha as unknown as T };
     return r;
   } catch (erro) {
     if (!ehFalhaDeArquivoDaVersaoAntiga(erro)) throw erro;
-    return { default: (online() ? TelaDemorou : TelaNaoGuardada) as unknown as T };
+    return { default: (online() ? PaginaComFalha : PaginaSemConexao) as unknown as T };
   } finally {
     clearTimeout(relogio);
   }
 }
 
+/** Todas as telas carregadas sob demanda, para o pré-carregamento. */
+const carregadores: (() => Promise<unknown>)[] = [];
+
 export function carregarPagina<T extends ComponentType<any>>(importar: () => Promise<{ default: T }>) {
+  carregadores.push(importar);
   return lazy(() => carregarComLimite(importar));
+}
+
+let preCarregou = false;
+
+/**
+ * Depois do login, carrega em segundo plano as telas que vêm à parte, poucas
+ * de cada vez e nos intervalos livres do aparelho. Quando a pessoa toca no
+ * menu, a tela já está pronta: abre na hora, sem esqueleto nem espera.
+ * Não roda em "economia de dados" do celular.
+ */
+export function preCarregarTelas(lista: (() => Promise<unknown>)[] = carregadores): Promise<void> {
+  if (preCarregou) return Promise.resolve();
+  preCarregou = true;
+  const conexao = (typeof navigator !== "undefined" ? (navigator as any).connection : null) as { saveData?: boolean } | null;
+  if (conexao?.saveData) return Promise.resolve();
+  const folga = () => new Promise<void>((ok) => {
+    const ric = (globalThis as any).requestIdleCallback as undefined | ((f: () => void, o?: object) => void);
+    if (ric) ric(() => ok(), { timeout: 300 }); else setTimeout(ok, 50);
+  });
+  const fila = [...lista];
+  // Três de cada vez: rápido o bastante para tudo estar pronto em poucos
+  // segundos, sem disputar a internet com os dados da tela aberta.
+  const trabalhador = async () => {
+    for (let carregar = fila.shift(); carregar; carregar = fila.shift()) {
+      await folga();
+      try { await carregar(); } catch { /* sem sinal ou versão trocada: a tela carrega quando abrir */ }
+    }
+  };
+  return Promise.all([trabalhador(), trabalhador(), trabalhador()]).then(() => undefined);
 }

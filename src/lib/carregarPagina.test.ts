@@ -53,12 +53,12 @@ describe("carregar página sob demanda", () => {
 import { carregarComLimite } from "./carregarPagina";
 
 describe("a tela nunca fica girando para sempre", () => {
-  it("arquivo que não chega em 20 s vira o aviso com 'Tentar de novo'", async () => {
+  it("arquivo que não chega no limite vira o aviso discreto com 'Recarregar'", async () => {
     vi.useFakeTimers();
     const p = carregarComLimite(() => new Promise(() => {}), { limiteMs: 20_000 });
     await vi.advanceTimersByTimeAsync(20_000);
     const r = await p;
-    expect((r.default as any).name).toBe("TelaDemorou");
+    expect((r.default as any).name).toBe("PaginaComFalha");
     vi.useRealTimers();
   });
   it("chegou a tempo: usa a tela de verdade", async () => {
@@ -69,13 +69,13 @@ describe("a tela nunca fica girando para sempre", () => {
   it("sem internet e sem o arquivo: aviso de tela não guardada", async () => {
     sessionStorage.setItem("episafety:recarregou-por-pagina-nova", "1");
     const r = await carregarComLimite(() => Promise.reject(new TypeError("Importing a module script failed.")), { online: () => false });
-    expect((r.default as any).name).toBe("TelaNaoGuardada");
+    expect((r.default as any).name).toBe("PaginaSemConexao");
     sessionStorage.clear();
   });
-  it("com internet, arquivo falhou mesmo depois de recarregar: 'Tentar de novo', não tela branca", async () => {
+  it("com internet, arquivo falhou mesmo depois de recarregar: 'Recarregar', não tela branca", async () => {
     sessionStorage.setItem("episafety:recarregou-por-pagina-nova", "1");
     const r = await carregarComLimite(() => Promise.reject(new TypeError("Failed to fetch dynamically imported module: x")), { online: () => true });
-    expect((r.default as any).name).toBe("TelaDemorou");
+    expect((r.default as any).name).toBe("PaginaComFalha");
     sessionStorage.clear();
   });
   it("defeito da tela (não é arquivo) continua aparecendo como erro", async () => {
@@ -90,5 +90,28 @@ describe("a tela nunca fica girando para sempre", () => {
     await verificado;
     expect(amb.recarregar).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
+  });
+});
+
+import { preCarregarTelas } from "./carregarPagina";
+
+describe("telas pré-carregadas depois do login", () => {
+  it("carrega todas, no máximo três ao mesmo tempo, e não para numa que falha", async () => {
+    const ordem: string[] = [];
+    let aoMesmoTempo = 0, maximo = 0;
+    const tela = (nome: string, falha = false) => async () => {
+      aoMesmoTempo++; maximo = Math.max(maximo, aoMesmoTempo);
+      await new Promise((r) => setTimeout(r, 5));
+      aoMesmoTempo--; ordem.push(nome);
+      if (falha) throw new Error("sem sinal");
+    };
+    await preCarregarTelas([tela("a"), tela("b", true), tela("c"), tela("d"), tela("e")]);
+    expect([...ordem].sort()).toEqual(["a", "b", "c", "d", "e"]);
+    expect(maximo).toBe(3);
+  });
+  it("roda uma vez só", async () => {
+    const carregar = vi.fn(async () => {});
+    await preCarregarTelas([carregar]);
+    expect(carregar).not.toHaveBeenCalled();
   });
 });

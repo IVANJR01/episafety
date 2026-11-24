@@ -1,5 +1,6 @@
-import { Suspense, type ReactNode } from "react";
-import { carregarPagina } from "@/lib/carregarPagina";
+import { Suspense, useEffect, type ReactNode } from "react";
+import { carregarPagina, preCarregarTelas } from "@/lib/carregarPagina";
+import { EsqueletoDePagina } from "@/components/CarregamentoDeTela";
 /*
  * Telas de EPI dentro do arquivo principal, de propósito.
  *
@@ -19,7 +20,6 @@ import Funcionarios from "@/pages/Funcionarios";
 import Entregas from "@/pages/Entregas";
 import Relatorios from "@/pages/Relatorios";
 import Auth from "@/pages/Auth";
-import { Loader2 } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
 import AvisoErroGlobal from "@/components/AvisoErroGlobal";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -117,13 +117,9 @@ const AssinaturaRemota = carregarPagina(() => import("@/pages/AssinaturaRemota")
 
 
 
-/** Enquanto o arquivo da página chega: só um indicador, sem tela branca. */
-function CarregandoPagina() {
-  return (
-    <div className="flex min-h-[40vh] items-center justify-center" role="status" aria-label="Carregando">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  );
+/** Páginas públicas (planos, termos...): fundo limpo enquanto o arquivo chega. */
+function CarregandoPaginaPublica() {
+  return <div className="min-h-screen bg-background" role="status" aria-label="Carregando" />;
 }
 
 function QueryProvider({ children }: { children: ReactNode }) {
@@ -201,6 +197,13 @@ function DashboardGuard() {
 
 function ProtectedRoute() {
   const { user, loading, authorized, signOut, modulosPermitidos, isSuperAdmin, isPrincipal } = useAuth();
+
+  // Logado: baixa as outras telas em segundo plano, para abrirem na hora.
+  useEffect(() => {
+    if (!user) return;
+    const t = setTimeout(() => void preCarregarTelas(), 2500);
+    return () => clearTimeout(t);
+  }, [user]);
 
   if (loading) {
     return (
@@ -290,7 +293,7 @@ function ProtectedRoute() {
       <EmpresaQuerySync />
       <MfaBanner />
       <MfaGate>
-      <Suspense fallback={<CarregandoPagina />}>
+      <Suspense fallback={<EsqueletoDePagina />}>
       <Routes>
         <Route path="/" element={<NetworkErrorBoundary><DashboardGuard /></NetworkErrorBoundary>} />
         <Route path="/sst-express" element={<NetworkErrorBoundary><SstExpressDashboard /></NetworkErrorBoundary>} />
@@ -438,7 +441,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Suspense fallback={<CarregandoPagina />}>
+          <Suspense fallback={<CarregandoPaginaPublica />}>
           <Routes>
             <Route path="/login" element={<AuthPage />} />
             <Route path="/auth" element={<AuthPage />} />
