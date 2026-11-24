@@ -33,6 +33,11 @@ describe("carregar página sob demanda", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(amb.recarregar).toHaveBeenCalledTimes(2);
   });
+  it("sem internet não recarrega: só faria a tela piscar", async () => {
+    const amb = { ...ambiente(), online: () => false };
+    await expect(importarComRecarga(falhaDeVersao, amb)).rejects.toThrow();
+    expect(amb.recarregar).not.toHaveBeenCalled();
+  });
   it("outro erro (bug na página) não recarrega", async () => {
     const amb = ambiente();
     await expect(importarComRecarga(() => Promise.reject(new Error("x is not defined")), amb)).rejects.toThrow("x is not defined");

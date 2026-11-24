@@ -11,7 +11,7 @@
  * recarregada uma vez, pegando a versão nova. A marca na sessão impede que
  * um erro de verdade (sem internet, por exemplo) vire recarga sem fim.
  */
-import { lazy, type ComponentType } from "react";
+import { createElement, lazy, type ComponentType } from "react";
 
 const MARCA = "episafety:recarregou-por-pagina-nova";
 
@@ -22,9 +22,15 @@ export function ehFalhaDeArquivoDaVersaoAntiga(erro: unknown): boolean {
 
 export async function importarComRecarga<T>(
   importar: () => Promise<T>,
-  ambiente: { sessao: Pick<Storage, "getItem" | "setItem" | "removeItem">; recarregar: () => void } = {
+  ambiente: {
+    sessao: Pick<Storage, "getItem" | "setItem" | "removeItem">;
+    recarregar: () => void;
+    /** Sem internet, recarregar não traz arquivo novo: só pisca a tela. */
+    online?: () => boolean;
+  } = {
     sessao: sessionStorage,
     recarregar: () => window.location.reload(),
+    online: () => navigator.onLine,
   },
 ): Promise<T> {
   try {
@@ -34,7 +40,8 @@ export async function importarComRecarga<T>(
   } catch (erro) {
     let jaRecarregou = false;
     try { jaRecarregou = ambiente.sessao.getItem(MARCA) === "1"; } catch { /* idem */ }
-    if (ehFalhaDeArquivoDaVersaoAntiga(erro) && !jaRecarregou) {
+    const online = ambiente.online ? ambiente.online() : true;
+    if (ehFalhaDeArquivoDaVersaoAntiga(erro) && !jaRecarregou && online) {
       try { ambiente.sessao.setItem(MARCA, "1"); } catch { /* idem */ }
       ambiente.recarregar();
       // A página vai recarregar; não resolve, para não piscar a tela de erro.
@@ -44,6 +51,23 @@ export async function importarComRecarga<T>(
   }
 }
 
+/**
+ * Sem internet e com o arquivo da tela faltando no aparelho: em vez de tela
+ * em branco (ou "erro inesperado"), diz o que aconteceu e o que fazer.
+ */
+function TelaNaoGuardada() {
+  return createElement("div", { className: "mx-auto max-w-xl rounded-xl border bg-muted/40 p-6 text-sm", role: "alert" },
+    createElement("h2", { className: "mb-2 text-lg font-bold text-foreground" }, "Esta tela ainda não está guardada neste aparelho"),
+    createElement("p", { className: "text-muted-foreground" },
+      "Para usar sem internet, o aparelho precisa ter baixado esta tela antes. Quando tiver sinal, abra o sistema e espere cerca de 1 minuto: ele guarda todas as telas sozinho. As outras telas que já estão guardadas continuam funcionando."),
+  );
+}
+
 export function carregarPagina<T extends ComponentType<any>>(importar: () => Promise<{ default: T }>) {
-  return lazy(() => importarComRecarga(importar));
+  return lazy(() => importarComRecarga(importar).catch((erro) => {
+    if (ehFalhaDeArquivoDaVersaoAntiga(erro) && typeof navigator !== "undefined" && !navigator.onLine) {
+      return { default: TelaNaoGuardada as unknown as T };
+    }
+    throw erro;
+  }));
 }

@@ -74,6 +74,17 @@ if (!isNativeApp && "serviceWorker" in navigator) {
       // Falhar aqui não impede o sistema de funcionar com internet.
       console.warn("[offline] não foi possível preparar o modo sem internet:", erro);
     });
+    /*
+     * Com internet, pede ao service worker para completar a cópia offline:
+     * cada tela é um arquivo à parte, e o que falhou na instalação (sinal
+     * fraco) seria uma tela em branco sem internet. Também ao voltar o sinal.
+     */
+    const completar = () => {
+      if (!navigator.onLine) return;
+      void navigator.serviceWorker.ready.then((r) => r.active?.postMessage({ type: "COMPLETAR_COPIA" }));
+    };
+    setTimeout(completar, 15_000);
+    window.addEventListener("online", completar);
   });
 }
 

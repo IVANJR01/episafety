@@ -106,35 +106,85 @@ async function redePrimeiro(evento) {
     ]);
     return await guardar(pedido, daRede);
   } catch (erro) {
-    const doCache = await caches.match(pedido);
+    const doCache = await caches.match(pedido, BUSCA);
     if (doCache) return doCache;
 
     // Navegação sem cópia exata: serve o index.html guardado. É o que permite
     // abrir qualquer rota do aplicativo sem sinal — as rotas são resolvidas
     // pelo próprio aplicativo depois que ele sobe.
     if (pedido.mode === "navigate") {
-      const raiz = await caches.match("/index.html") || await caches.match("/");
+      const raiz = await caches.match("/index.html", BUSCA) || await caches.match("/", BUSCA);
       if (raiz) return raiz;
     }
     throw erro;
   }
 }
 
+/*
+ * ignoreVary: o arquivo guardado na instalação foi pedido sem o cabeçalho
+ * Origin; a tela pede os pedaços do aplicativo (import dinâmico) COM ele. Se
+ * o servidor responder "Vary: Origin", o navegador considera os dois pedidos
+ * diferentes e não usa a cópia — a tela abria em branco sem internet. Arquivo
+ * com hash no nome tem um conteúdo só, então a cópia serve para qualquer um.
+ */
+const BUSCA = { ignoreVary: true };
+
 async function cachePrimeiro(evento) {
-  const doCache = await caches.match(evento.request);
+  const doCache = await caches.match(evento.request, BUSCA);
   if (doCache) return doCache;
   const daRede = await fetch(evento.request);
   return guardar(evento.request, daRede);
 }
 
+/**
+ * Arquivos da lista que ainda não estão na cópia desta versão.
+ *
+ * Desde que cada tela virou um arquivo à parte (carregado só quando abre),
+ * a tela que nunca foi aberta com internet SÓ existe no aparelho se veio
+ * nesta cópia. Antes, um arquivo que falhasse na instalação (sinal fraco)
+ * ficava faltando até a próxima publicação — e aquela tela abria em branco
+ * sem internet. Por isso: reaproveitar, tentar de novo e completar depois.
+ */
+async function faltando(cache) {
+  const tem = new Set((await cache.keys()).map((r) => new URL(r.url).pathname));
+  return ARQUIVOS.filter((a) => !tem.has(a));
+}
+
+/** Põe um arquivo na cópia: primeiro de uma cópia antiga (sem gastar internet), senão da rede, com 3 tentativas. */
+async function guardarArquivo(cache, caminho) {
+  // Arquivo com hash no nome que não mudou entre versões é idêntico: copia
+  // da cópia antiga em vez de baixar de novo.
+  if (caminho.startsWith("/assets/")) {
+    const antigo = await caches.match(caminho, BUSCA);
+    if (antigo) { await cache.put(caminho, antigo); return true; }
+  }
+  for (let tentativa = 1; tentativa <= 3; tentativa++) {
+    try {
+      const r = await fetch(caminho, { cache: "reload" });
+      if (r.ok) { await cache.put(caminho, r); return true; }
+    } catch { /* tenta de novo */ }
+    await new Promise((ok) => setTimeout(ok, 500 * tentativa));
+  }
+  return false;
+}
+
+async function completarCopia() {
+  const cache = await caches.open(NOME_CACHE);
+  const lista = await faltando(cache);
+  // De 6 em 6: rápido sem afogar o 4G.
+  for (let i = 0; i < lista.length; i += 6) {
+    await Promise.all(lista.slice(i, i + 6).map((a) => guardarArquivo(cache, a).catch(() => false)));
+  }
+  return (await faltando(cache)).length;
+}
+
+self.__faltando = faltando;
+self.__guardarArquivo = guardarArquivo;
+
 self.addEventListener("install", (evento) => {
   evento.waitUntil(
     (async () => {
-      const cache = await caches.open(NOME_CACHE);
-      // Um a um: se um arquivo falhar, os outros ainda entram. `addAll` aborta
-      // tudo por causa de um só, e aí o aplicativo fica sem cópia offline
-      // inteira por causa de um ícone.
-      await Promise.allSettled(ARQUIVOS.map((a) => cache.add(new Request(a, { cache: "reload" }))));
+      await completarCopia();
       await self.skipWaiting();
     })(),
   );
@@ -170,6 +220,13 @@ self.addEventListener("activate", (evento) => {
 
 self.addEventListener("message", (evento) => {
   if (evento.data && evento.data.type === "SKIP_WAITING") self.skipWaiting();
+  // O aplicativo pede isto ao abrir com internet e ao voltar o sinal: baixa
+  // o que tiver ficado faltando na instalação.
+  if (evento.data && evento.data.type === "COMPLETAR_COPIA") {
+    evento.waitUntil(completarCopia().then((resta) => {
+      if (evento.source) evento.source.postMessage({ type: "COPIA_OFFLINE", faltando: resta, total: ARQUIVOS.length });
+    }));
+  }
 });
 
 self.addEventListener("fetch", (evento) => {
