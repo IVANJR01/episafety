@@ -1,5 +1,24 @@
 import { Suspense, type ReactNode } from "react";
 import { carregarPagina } from "@/lib/carregarPagina";
+/*
+ * Telas de EPI dentro do arquivo principal, de propósito.
+ *
+ * As outras telas são arquivos à parte, baixados só ao abrir (o sistema
+ * abre 3x mais rápido assim). Mas uma tela à parte só funciona sem
+ * internet se o aparelho tiver conseguido baixá-la antes — e isso dependia
+ * de o sistema ficar aberto um tempo com sinal. Para o trabalho de campo
+ * isso não pode depender de nada: o arquivo principal é baixado sempre que
+ * o sistema abre (senão nada aparece), então tudo o que está nele funciona
+ * offline desde a primeira abertura.
+ */
+import Dashboard from "@/pages/Dashboard";
+import EPIs from "@/pages/EPIs";
+import ControleEstoqueContrato from "@/pages/ControleEstoqueContrato";
+import SolicitacoesMateriais from "@/pages/epis/SolicitacoesMateriais";
+import Funcionarios from "@/pages/Funcionarios";
+import Entregas from "@/pages/Entregas";
+import Relatorios from "@/pages/Relatorios";
+import Auth from "@/pages/Auth";
 import { Loader2 } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
 import AvisoErroGlobal from "@/components/AvisoErroGlobal";
@@ -15,21 +34,13 @@ import AppLayout from "@/components/AppLayout";
 import OfflineBanner from "@/components/OfflineBanner";
 import UpdateBanner from "@/components/UpdateBanner";
 import InstallBanner from "@/components/InstallBanner";
-const Dashboard = carregarPagina(() => import("@/pages/Dashboard"));
-const EPIs = carregarPagina(() => import("@/pages/EPIs"));
-const ControleEstoqueContrato = carregarPagina(() => import("@/pages/ControleEstoqueContrato"));
-const SolicitacoesMateriais = carregarPagina(() => import("@/pages/epis/SolicitacoesMateriais"));
-const Funcionarios = carregarPagina(() => import("@/pages/Funcionarios"));
 const DossieColaborador = carregarPagina(() => import("@/pages/DossieColaborador"));
 const PainelVencimentos = carregarPagina(() => import("@/pages/PainelVencimentos"));
 const DossieColaboradores = carregarPagina(() => import("@/pages/DossieColaboradores"));
 const HistoricoVersoes = carregarPagina(() => import("@/pages/HistoricoVersoes"));
 const ConfiguracaoTiposDocumento = carregarPagina(() => import("@/pages/ConfiguracaoTiposDocumento"));
-const Entregas = carregarPagina(() => import("@/pages/Entregas"));
-const Relatorios = carregarPagina(() => import("@/pages/Relatorios"));
 const Empresas = carregarPagina(() => import("@/pages/Empresas"));
 const UsuariosLiberados = carregarPagina(() => import("@/pages/UsuariosLiberados"));
-const Auth = carregarPagina(() => import("@/pages/Auth"));
 const VerificarFicha = carregarPagina(() => import("@/pages/VerificarFicha"));
 const AdminEmissor = carregarPagina(() => import("@/pages/admin/AdminEmissor"));
 const ResetPassword = carregarPagina(() => import("@/pages/ResetPassword"));

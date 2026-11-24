@@ -1,5 +1,9 @@
 const VIEW_CACHE_PREFIX = "offline_view_cache";
-const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+/*
+ * 90 dias, não 7: a cópia só serve quando falta internet, e obra sem sinal
+ * passa de uma semana. Com sinal a tela sempre busca o dado novo.
+ */
+const DEFAULT_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const DEFAULT_TIMEOUT_MS = 3000;
 
 interface CacheEnvelope<T> {
@@ -40,7 +44,17 @@ export function setOfflineViewCache<T>(key: string, data: T, ttlMs = DEFAULT_TTL
 }
 
 export function isNetworkFailure(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error ?? "");
+  /*
+   * O erro do Supabase não é um Error: é um objeto { message, details }.
+   * String(objeto) dava "[object Object]", e "sem internet" virava "Erro ao
+   * carregar estoque" na tela. Lê a mensagem de qualquer formato.
+   */
+  const bruto = error as { message?: unknown; details?: unknown } | null;
+  const message = error instanceof Error
+    ? error.message
+    : typeof bruto?.message === "string"
+      ? `${bruto.message} ${typeof bruto.details === "string" ? bruto.details : ""}`
+      : String(error ?? "");
   const normalized = message.toLowerCase();
 
   return (

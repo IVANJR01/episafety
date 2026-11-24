@@ -168,8 +168,25 @@ async function guardarArquivo(cache, caminho) {
   return false;
 }
 
+/**
+ * O essencial primeiro: a página e os arquivos que ela carrega ao abrir
+ * (o arquivo principal já traz todas as telas de EPI). Com isso guardado,
+ * o trabalho de EPI funciona sem internet mesmo que o resto da cópia não
+ * termine — a pessoa não precisa ficar esperando com o sistema aberto.
+ */
+async function essenciais(cache) {
+  // A página guardada é a DESTA versão: buscar de novo poderia trazer a de
+  // uma publicação mais nova, que aponta para arquivos que esta cópia não tem.
+  if (!(await cache.match("/index.html")) && !(await guardarArquivo(cache, "/index.html"))) return [];
+  const html = await (await cache.match("/index.html")).text();
+  return [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]);
+}
+
 async function completarCopia() {
   const cache = await caches.open(NOME_CACHE);
+  const primeiro = await essenciais(cache).catch(() => []);
+  const jaTem = new Set((await cache.keys()).map((r) => new URL(r.url).pathname));
+  await Promise.all(primeiro.filter((a) => !jaTem.has(a)).map((a) => guardarArquivo(cache, a).catch(() => false)));
   const lista = await faltando(cache);
   // De 6 em 6: rápido sem afogar o 4G.
   for (let i = 0; i < lista.length; i += 6) {

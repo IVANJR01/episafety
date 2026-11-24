@@ -1,4 +1,11 @@
 import { linhasDaFicha } from "@/lib/fichaEpiLinhas";
+/*
+ * Importações diretas, e não import() na hora: a Ficha de EPI precisa sair
+ * também sem internet, e o que vem por import() é um arquivo à parte que
+ * pode não estar no aparelho.
+ */
+import { calcularCodigosDaFicha } from "@/lib/codigoAssinatura";
+import { assinaturaDeitadaDataUrl } from "@/lib/assinaturaDeitada";
 import { COLUNAS_DA_LISTA_DE_ENTREGAS, completarImagens } from "@/lib/entregasLeves";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
@@ -50,7 +57,7 @@ import { useToast } from "@/hooks/use-toast";
 import SignatureCanvas, { type SignatureCanvasRef } from "@/components/SignatureCanvas";
 import FullscreenSignature from "@/components/FullscreenSignature";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
+import { gerarFichaEPI, preloadFotosReconhecimento, urlToBase64 } from "@/lib/gerarFichaEPI";
 import { avaliarValidade } from "@/lib/validadeCertificado";
 import { garantirDocumento, publicarVersao } from "@/lib/arquivoDigital";
 import CameraCapture from "@/components/CameraCapture";
@@ -1382,19 +1389,16 @@ export default function Entregas() {
     // Pre-load photos + logo as base64 for PDF embedding
     const fotosBase64 = await preloadFotosReconhecimento(entregasData);
     if (emp.logo_url && !emp.logo_url.startsWith("data:")) {
-      const { urlToBase64 } = await import("@/lib/gerarFichaEPI");
       const logoB64 = await urlToBase64(emp.logo_url);
       if (logoB64) fotosBase64.set(emp.logo_url, logoB64);
     }
 
     // Códigos de verificação das assinaturas. Calculados aqui porque usam
     // `crypto.subtle`, que é assíncrono, e montar o PDF é síncrono.
-    const { calcularCodigosDaFicha } = await import("@/lib/codigoAssinatura");
     const codigosAssinatura = await calcularCodigosDaFicha(entregasData);
 
     // Assinaturas recortadas e deitadas para o papel — depois dos códigos,
     // que valem sobre a imagem como foi gravada.
-    const { assinaturaDeitadaDataUrl } = await import("@/lib/assinaturaDeitada");
     const assinaturasDeitadas = await Promise.all(entregasData.map((e) =>
       e.assinatura_colaborador?.startsWith("data:image") ? assinaturaDeitadaDataUrl(e.assinatura_colaborador) : Promise.resolve(null)));
 
