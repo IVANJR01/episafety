@@ -7,6 +7,9 @@
  *    dias com mais de 30 dias, e depois a cópia dos arquivos;
  *  - "arquivos": só continua a cópia espelho dos arquivos (lote limitado
  *    por tempo e tamanho; o que sobrar vai na próxima execução);
+ *  - "drive": manda para o Google Drive do dono (se estiver conectado) o
+ *    backup de cada dia num arquivo só e o espelho dos arquivos; apaga do
+ *    Drive os dias com mais de 30 dias;
  *  - "links": para a tela de Backups — os dias guardados e, do dia pedido,
  *    os links de download (1 hora). O .zip é montado no navegador.
  *
@@ -22,6 +25,7 @@
  */
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { resolveCors } from "../_shared/cors.ts";
+import { NOME_DA_PASTA, apagar, enviarArquivo, garantirPasta, lerSegredos, tokenDeAcesso } from "../_shared/googleDrive.ts";
 
 const PASTA = "backups-sistema";
 const DIAS_GUARDADOS = 30;
@@ -185,6 +189,105 @@ async function copiarArquivos(admin: SupabaseClient, inicio: number) {
   return { copiados: copiadosAgora, pendentes: pendentes.length - copiadosAgora, bytes, erros: erros.slice(0, 20) };
 }
 
+/**
+ * Envia ao Google Drive o que ainda não está lá. Cada dia vira UM arquivo
+ * backup-AAAA-MM-DD.json, montado emendando os textos já guardados (sem
+ * interpretar nada — mesmo motivo do limite de processador). Os arquivos
+ * vão para arquivos/<pasta>/, com "/" do nome trocado por "__".
+ */
+async function enviarAoDrive(admin: SupabaseClient, inicio: number) {
+  const segredos = await lerSegredos(admin);
+  if (!segredos.refresh_token) return { conectado: false, dias: 0, arquivos: 0, pendentes: 0, erros: [] as string[] };
+  const token = await tokenDeAcesso(segredos);
+  const { data: cfg } = await admin.from("backup_drive_config").select("*").eq("id", true).single();
+  const raiz = cfg?.pasta_id || await garantirPasta(token, NOME_DA_PASTA);
+  const pastaDias = cfg?.pasta_diario_id || await garantirPasta(token, "diario", raiz);
+  const pastaArq = cfg?.pasta_arquivos_id || await garantirPasta(token, "arquivos", raiz);
+  if (!cfg?.pasta_id || !cfg?.pasta_diario_id || !cfg?.pasta_arquivos_id) {
+    await admin.from("backup_drive_config").update({ pasta_id: raiz, pasta_diario_id: pastaDias, pasta_arquivos_id: pastaArq }).eq("id", true);
+  }
+  const { data: enviadosRows } = await admin.from("backup_drive_enviados").select("*");
+  const enviados = new Map<string, { drive_id: string; atualizado_em: string }>(
+    (enviadosRows || []).map((r: any) => [r.caminho, r]),
+  );
+  const erros: string[] = [];
+  let dias = 0, arquivos = 0;
+  const marcar = (caminho: string, drive_id: string, atualizado_em: string) =>
+    admin.from("backup_drive_enviados").upsert({ caminho, drive_id, atualizado_em });
+
+  // Dias: o que falta, e o de hoje de novo se foi refeito depois do envio.
+  const { data: listaDias } = await admin.rpc("backup_pastas_diarias");
+  for (const d of ((listaDias as string[]) || []).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x)).sort()) {
+    if (Date.now() - inicio > TEMPO_MAX_MS) break;
+    const { data: raizDia } = await admin.storage.from(PASTA).list(`diario/${d}`, { limit: 100 });
+    const resumoObj = (raizDia || []).find((i) => i.name === "resumo.json");
+    if (!resumoObj) continue;
+    const feitoEm = resumoObj.updated_at || resumoObj.created_at || "";
+    const ja = enviados.get(`dia:${d}`);
+    if (ja && Date.parse(ja.atualizado_em) >= Date.parse(feitoEm)) continue;
+    try {
+      const texto = async (c: string) => {
+        const r = await admin.storage.from(PASTA).download(c);
+        if (r.error || !r.data) throw new Error(`${c}: ${r.error?.message}`);
+        return (await r.data.text()).trim();
+      };
+      const { data: tabs } = await admin.storage.from(PASTA).list(`diario/${d}/tabelas`, { limit: 1000 });
+      const partes: string[] = [];
+      for (const t of tabs || []) {
+        partes.push(`${JSON.stringify(t.name.replace(/\.json$/, ""))}:${await texto(`diario/${d}/tabelas/${t.name}`)}`);
+      }
+      let usuarios = "[]";
+      try { usuarios = await texto(`diario/${d}/usuarios.json`); } catch { /* dia sem usuários */ }
+      const corpo = `{"dia":${JSON.stringify(d)},"resumo":${await texto(`diario/${d}/resumo.json`)},` +
+        `"usuarios":${usuarios},"tabelas":{${partes.join(",")}}}`;
+      const id = await enviarArquivo(token, pastaDias, `backup-${d}.json`, enc.encode(corpo), "application/json", ja?.drive_id);
+      await marcar(`dia:${d}`, id, new Date().toISOString());
+      dias++;
+    } catch (e) {
+      erros.push(`dia ${d}: ${(e as Error).message}`);
+    }
+  }
+
+  // Dias com mais de DIAS_GUARDADOS saem do Drive também.
+  const limite = new Date(Date.now() - DIAS_GUARDADOS * 86400_000).toISOString().slice(0, 10);
+  for (const [caminho, r] of enviados) {
+    if (caminho.startsWith("dia:") && caminho.slice(4) < limite) {
+      await apagar(token, r.drive_id);
+      await admin.from("backup_drive_enviados").delete().eq("caminho", caminho);
+    }
+  }
+
+  // Arquivos: novos ou alterados desde o último envio.
+  const { data: origem } = await admin.rpc("backup_listar_arquivos");
+  const pendentes = ((origem as any[]) || []).filter((o) => {
+    const ja = enviados.get(`arq:${o.pasta}/${o.nome}`);
+    return !ja || Date.parse(ja.atualizado_em) < Date.parse(o.atualizado_em);
+  });
+  const subpastas = new Map<string, string>();
+  let bytes = 0;
+  for (const o of pendentes) {
+    if (Date.now() - inicio > TEMPO_MAX_MS || bytes > BYTES_MAX_POR_EXECUCAO) break;
+    try {
+      if (!subpastas.has(o.pasta)) subpastas.set(o.pasta, await garantirPasta(token, o.pasta, pastaArq));
+      const b = await admin.storage.from(o.pasta).download(o.nome);
+      if (b.error || !b.data) throw new Error(b.error?.message || "não baixou");
+      const conteudo = new Uint8Array(await b.data.arrayBuffer());
+      const ja = enviados.get(`arq:${o.pasta}/${o.nome}`);
+      const id = await enviarArquivo(token, subpastas.get(o.pasta)!, o.nome.replace(/\//g, "__"), conteudo,
+        b.data.type || "application/octet-stream", ja?.drive_id);
+      await marcar(`arq:${o.pasta}/${o.nome}`, id, o.atualizado_em);
+      arquivos++;
+      bytes += conteudo.length;
+    } catch (e) {
+      erros.push(`${o.pasta}/${o.nome}: ${(e as Error).message}`);
+    }
+  }
+  await admin.from("backup_drive_config").update({
+    ultimo_envio_em: new Date().toISOString(), ultimo_erro: erros[0] ?? null,
+  }).eq("id", true);
+  return { conectado: true, dias, arquivos, pendentes: pendentes.length - arquivos, bytes, erros: erros.slice(0, 20) };
+}
+
 /** Os dias guardados; com `dia`, os links de download de cada arquivo daquele dia. */
 async function links(admin: SupabaseClient, dia?: string) {
   const { data: dias } = await admin.rpc("backup_pastas_diarias");
@@ -220,6 +323,24 @@ Deno.serve(async (req) => {
   if (modo === "links") return json(cors, await links(admin, diaPedido));
 
   const inicio = Date.now();
+  if (modo === "drive") {
+    try {
+      const r = await enviarAoDrive(admin, inicio);
+      if (r.conectado && (r.dias || r.arquivos || r.erros.length)) {
+        await admin.from("backup_execucoes").insert({
+          modo: "drive", status: r.erros.length ? "parcial" : "ok", terminado_em: new Date().toISOString(),
+          arquivos_copiados: r.arquivos, arquivos_pendentes: r.pendentes, bytes_copiados: r.bytes ?? 0,
+          detalhes: { dias_enviados: r.dias, erros: r.erros },
+        });
+      }
+      return json(cors, { ok: true, ...r });
+    } catch (e) {
+      const erro = (e as Error).message;
+      await admin.from("backup_drive_config").update({ ultimo_erro: erro }).eq("id", true);
+      await admin.from("backup_execucoes").insert({ modo: "drive", status: "erro", terminado_em: new Date().toISOString(), erro });
+      return json(cors, { ok: false, erro }, 500);
+    }
+  }
   const { data: exec } = await admin.from("backup_execucoes").insert({ modo }).select("id").single();
   const registrar = (campos: Record<string, unknown>) =>
     exec?.id ? admin.from("backup_execucoes").update(campos).eq("id", exec.id) : Promise.resolve();
