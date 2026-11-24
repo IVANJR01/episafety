@@ -1,848 +1,207 @@
-import { useState, useEffect, useCallback } from "react";
+/*
+ * Backups — só para super admin.
+ *
+ * A tela antiga dependia do Google Drive (funções que ficaram no projeto
+ * anterior, então nada funcionava) e tinha um botão "Limpar Storage
+ * Supabase" que apagava os arquivos do sistema; o próprio "Gerar backup"
+ * chamava essa limpeza no fim, sem ter copiado os arquivos antes.
+ *
+ * Agora: o backup roda sozinho todo dia às 03:00 (função backup-diario,
+ * ver supabase/migrations/20261124120000_backup_diario.sql). Esta tela
+ * mostra se ele está em dia, deixa rodar na hora e baixar qualquer dia
+ * guardado como .zip — montado aqui no navegador, porque no servidor
+ * gratuito não há processador para compactar.
+ */
+import { useCallback, useEffect, useState } from "react";
+import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Download, RefreshCw, HardDrive, Trash2, FileJson, FileSpreadsheet, Clock, CheckCircle2, AlertCircle, Loader2, CloudUpload, DatabaseZap, Cloud, ShieldCheck, ArrowRightLeft } from "lucide-react";
-import * as XLSX from "xlsx";
+import { AlertTriangle, CheckCircle2, Download, Loader2, PlayCircle, RefreshCw, ShieldAlert } from "lucide-react";
+import { situacaoDoBackup, type Execucao } from "@/lib/situacaoDoBackup";
 
-const TABLES = [
-  "funcionarios", "epis", "entregas", "fichas_entrega",
-  "dds", "dds_participantes", "inspecoes", "inspecao_itens",
-  "inspecoes_subestacao", "treinamentos", "treinamento_participantes",
-  "controle_treinamentos", "cursos_documentos", "exames", "medicos",
-  "ordens_servico", "conformidades", "empresa_config",
-];
+interface ExecucaoCompleta extends Execucao {
+  id: string;
+  tabelas: number | null;
+  linhas: number | null;
+  arquivos_copiados: number | null;
+  arquivos_pendentes: number | null;
+}
 
-const TABLE_LABELS: Record<string, string> = {
-  funcionarios: "Funcionários", epis: "EPIs", entregas: "Entregas",
-  fichas_entrega: "Fichas de Entrega", dds: "DDS",
-  dds_participantes: "DDS Participantes", inspecoes: "Inspeções",
-  inspecao_itens: "Itens de Inspeção", inspecoes_subestacao: "Inspeções Subestação",
-  treinamentos: "Treinamentos", treinamento_participantes: "Participantes Treinamento",
-  controle_treinamentos: "Controle Treinamentos", cursos_documentos: "Cursos/Documentos",
-  exames: "Exames", medicos: "Médicos", ordens_servico: "Ordens de Serviço",
-  conformidades: "Conformidades", empresa_config: "Empresa",
+const COR = {
+  ok: "border-emerald-500/40 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100",
+  atencao: "border-amber-500/40 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100",
+  problema: "border-red-500/40 bg-red-50 text-red-900 dark:bg-red-950/40 dark:text-red-100",
 };
 
-interface DriveBackupFile {
-  id: string;
-  name: string;
-  createdTime: string;
-  size?: string;
-  webViewLink?: string;
-}
-
-function formatBytes(bytes: number) {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleString("pt-BR", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
-}
-
-/** Get Drive token + folder ID from lightweight edge function */
-async function getDriveAccess(folder: string) {
-  const { data, error } = await supabase.functions.invoke("gdrive-token", {
-    body: { folder },
-  });
-  if (error) throw new Error(error.message || "Failed to get Drive token");
-  if (data?.error) throw new Error(data.error);
-  return data as { accessToken: string; folderId: string; empresaNome: string };
-}
-
-/** Find or create a subfolder directly from the browser */
-async function findOrCreateFolder(token: string, parentId: string, name: string): Promise<string> {
-  const q = encodeURIComponent(
-    `'${parentId}' in parents and name='${name.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
-  );
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  const data = await res.json();
-  if (data?.files?.length) return data.files[0].id;
-
-  const createRes = await fetch("https://www.googleapis.com/drive/v3/files", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [parentId] }),
-  });
-  const created = await createRes.json();
-  if (!createRes.ok || !created?.id) throw new Error("Failed to create folder");
-  return created.id;
-}
-
-/** Upload a JSON string directly to Google Drive from the browser */
-async function uploadJsonToDrive(token: string, folderId: string, fileName: string, jsonContent: string) {
-  const metadata = { name: fileName, parents: [folderId] };
-  const formData = new FormData();
-  formData.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-  formData.append("file", new Blob([jsonContent], { type: "application/json" }));
-
-  const res = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,createdTime,size,webViewLink",
-    { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData }
-  );
-  const data = await res.json();
-  if (!res.ok) throw new Error(`Upload failed: ${data?.error?.message || JSON.stringify(data)}`);
-  return data;
-}
-
-/** List files in a Drive folder directly from the browser */
-async function listDriveFolder(token: string, folderId: string): Promise<DriveBackupFile[]> {
-  const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,createdTime,size,webViewLink)&orderBy=createdTime desc&pageSize=20`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  const data = await res.json();
-  if (!res.ok) throw new Error("Failed to list Drive files");
-  return data.files || [];
-}
-
-/** Download a file from Drive directly in browser */
-async function downloadDriveFile(token: string, fileId: string): Promise<Blob> {
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  if (!res.ok) throw new Error("Failed to download file from Drive");
-  return res.blob();
-}
-
-/** Delete a file from Drive directly */
-async function deleteDriveFile(token: string, fileId: string) {
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}`,
-    { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
-  );
-  if (!res.ok && res.status !== 404) throw new Error("Failed to delete file from Drive");
-}
+const dataBr = (iso: string) =>
+  new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const diaBr = (dia: string) => dia.split("-").reverse().join("/");
 
 export default function Backups() {
-  const { empresaId } = useAuth();
   const { toast } = useToast();
-  const [backups, setBackups] = useState<DriveBackupFile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [progressLabel, setProgressLabel] = useState("");
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const [driveAccess, setDriveAccess] = useState<{ accessToken: string; folderId: string } | null>(null);
-  const [cleaningStorage, setCleaningStorage] = useState(false);
-  const [validating, setValidating] = useState(false);
-  const [validationResult, setValidationResult] = useState<any>(null);
-  const [migrating, setMigrating] = useState(false);
-  const [migrationResult, setMigrationResult] = useState<any>(null);
-  const [sanityTesting, setSanityTesting] = useState(false);
-  const [sanityResult, setSanityResult] = useState<any>(null);
-  const [runningScheduled, setRunningScheduled] = useState(false);
-  const [scheduledResult, setScheduledResult] = useState<any>(null);
+  const [execucoes, setExecucoes] = useState<ExecucaoCompleta[]>([]);
+  const [dias, setDias] = useState<string[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [rodando, setRodando] = useState(false);
+  const [baixando, setBaixando] = useState<string | null>(null);
 
-  const triggerScheduledBackup = async () => {
-    setRunningScheduled(true);
-    setScheduledResult(null);
+  const carregar = useCallback(async () => {
+    setCarregando(true);
     try {
-      const { data, error } = await supabase.functions.invoke("scheduled-backup");
+      const [ex, lk] = await Promise.all([
+        (supabase.from as any)("backup_execucoes").select("*").order("iniciado_em", { ascending: false }).limit(30),
+        supabase.functions.invoke("backup-diario", { body: { modo: "links" } }),
+      ]);
+      setExecucoes((ex.data as ExecucaoCompleta[]) || []);
+      setDias((lk.data as any)?.dias || []);
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+
+  useEffect(() => { void carregar(); }, [carregar]);
+
+  const rodarAgora = async () => {
+    setRodando(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("backup-diario", { body: { modo: "completo" } });
+      if (error || !(data as any)?.ok) throw new Error((data as any)?.erro || error?.message || "falhou");
+      toast({ title: "Backup feito", description: `${(data as any).tabelas} tabelas, ${(data as any).linhas} registros.` });
+    } catch (e: any) {
+      toast({ title: "O backup falhou", description: e.message, variant: "destructive" });
+    } finally {
+      setRodando(false);
+      void carregar();
+    }
+  };
+
+  /** Busca os arquivos daquele dia e junta num .zip aqui no navegador. */
+  const baixar = async (dia: string) => {
+    setBaixando(dia);
+    try {
+      const { data, error } = await supabase.functions.invoke("backup-diario", { body: { modo: "links", dia } });
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setScheduledResult(data);
-      toast({
-        title: "✅ Backup automático executado!",
-        description: `${data.totalRecords} registros salvos em ${data.elapsed}`,
-      });
-    } catch (err: any) {
-      setScheduledResult({ success: false, error: err.message });
-      toast({ title: "Erro no backup automático", description: err.message, variant: "destructive" });
-    } finally {
-      setRunningScheduled(false);
-    }
-  };
-
-  const validateDriveConnection = async () => {
-    setValidating(true);
-    setValidationResult(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("migrate-to-drive", {
-        headers: { "x-action": "validate" },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setValidationResult(data);
-      toast({ title: "✅ Conexão com Google Drive ativa!", description: `Pasta raiz: SafetySoluções` });
-    } catch (err: any) {
-      setValidationResult({ success: false, error: err.message });
-      toast({ title: "Erro na validação", description: err.message, variant: "destructive" });
-    } finally {
-      setValidating(false);
-    }
-  };
-
-  const runMigration = async () => {
-    if (!confirm("Isso vai mover TODOS os arquivos do Storage interno para o Google Drive e deletar os originais. Deseja continuar?")) return;
-    setMigrating(true);
-    setMigrationResult(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("migrate-to-drive");
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setMigrationResult(data);
-      toast({
-        title: "✅ Migração concluída!",
-        description: data.summary || `${data.totalMigrated} arquivos migrados`,
-      });
-    } catch (err: any) {
-      setMigrationResult({ success: false, error: err.message });
-      toast({ title: "Erro na migração", description: err.message, variant: "destructive" });
-    } finally {
-      setMigrating(false);
-    }
-  };
-
-  const runSanityTest = async () => {
-    setSanityTesting(true);
-    setSanityResult(null);
-    const log: string[] = [];
-    try {
-      log.push("⏳ Obtendo token de acesso ao Google Drive...");
-      setSanityResult({ inProgress: true, log: [...log] });
-
-      const access = await getDriveAccess("teste-homologacao");
-      log.push(`✅ Token obtido. Empresa: ${access.empresaNome}`);
-      log.push(`📁 Pasta criada/encontrada: SafetySoluções > ${access.empresaNome} > teste-homologacao`);
-      setSanityResult({ inProgress: true, log: [...log] });
-
-      // Create a small test PDF (minimal valid PDF)
-      const testContent = `%PDF-1.4
-1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
-2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
-3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<</Font<</F1 4 0 R>>>>>>endobj
-4 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj
-xref
-0 5
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000240 00000 n 
-trailer<</Size 5/Root 1 0 R>>
-startxref
-315
-%%EOF`;
-      const testFileName = `teste_homologacao_${Date.now()}.pdf`;
-      const testBlob = new Blob([testContent], { type: "application/pdf" });
-
-      log.push(`⏳ Enviando arquivo de teste: ${testFileName} (${testBlob.size} bytes)...`);
-      setSanityResult({ inProgress: true, log: [...log] });
-
-      const metadata = { name: testFileName, parents: [access.folderId] };
-      const formData = new FormData();
-      formData.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-      formData.append("file", testBlob);
-
-      const uploadRes = await fetch(
-        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,size",
-        { method: "POST", headers: { Authorization: `Bearer ${access.accessToken}` }, body: formData }
-      );
-      const uploadData = await uploadRes.json();
-
-      if (!uploadRes.ok) {
-        throw new Error(`Upload falhou (${uploadRes.status}): ${uploadData?.error?.message || JSON.stringify(uploadData)}`);
+      const arquivos: { nome: string; url: string }[] = (data as any)?.arquivos || [];
+      if (!arquivos.length) throw new Error("Nenhum arquivo neste dia.");
+      const zip = new JSZip();
+      for (const a of arquivos) {
+        const r = await fetch(a.url);
+        if (!r.ok) throw new Error(`Não baixou ${a.nome}`);
+        zip.file(a.nome, await r.blob());
       }
-
-      log.push(`✅ Upload concluído! File ID: ${uploadData.id}`);
-
-      // Set public permission
-      await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${access.accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "reader", type: "anyone" }),
-      });
-      log.push("🔓 Permissão pública aplicada");
-
-      const viewLink = uploadData.webViewLink || `https://drive.google.com/file/d/${uploadData.id}/view`;
-      const previewLink = `https://drive.google.com/file/d/${uploadData.id}/preview`;
-
-      log.push(`🔗 Link: ${viewLink}`);
-      log.push("✅ TESTE PASSOU — Arquivo visível no Google Drive!");
-
-      // Cleanup: delete test file after verification
-      await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${access.accessToken}` },
-      });
-      log.push("🧹 Arquivo de teste removido do Drive (cleanup automático)");
-
-      setSanityResult({
-        success: true,
-        log,
-        fileId: uploadData.id,
-        viewLink,
-        previewLink,
-        empresaNome: access.empresaNome,
-      });
-
-      toast({ title: "✅ Teste de homologação passou!", description: `Pasta SafetySoluções > ${access.empresaNome} validada com sucesso.` });
-    } catch (err: any) {
-      const errorCode = err.message.includes("401") ? "401 (Token expirado)" :
-                        err.message.includes("403") ? "403 (Permissão negada)" :
-                        err.message.includes("404") ? "404 (Pasta não encontrada)" : err.message;
-      log.push(`❌ FALHA: ${errorCode}`);
-      setSanityResult({ success: false, log, error: errorCode });
-      toast({ title: "Teste falhou", description: errorCode, variant: "destructive" });
+      const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `backup-safetysolucoes-${dia}.zip`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
+    } catch (e: any) {
+      toast({ title: "Não foi possível baixar", description: e.message, variant: "destructive" });
     } finally {
-      setSanityTesting(false);
+      setBaixando(null);
     }
   };
 
-  const cleanupSupabaseStorage = async () => {
-    setCleaningStorage(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("cleanup-storage");
-      if (error) throw error;
-      toast({
-        title: "✅ Storage limpo!",
-        description: data?.message || "Todos os arquivos do storage foram removidos.",
-      });
-    } catch (err: any) {
-      toast({ title: "Erro ao limpar storage", description: err.message, variant: "destructive" });
-    } finally {
-      setCleaningStorage(false);
-    }
-  };
-
-  const ensureDriveAccess = useCallback(async () => {
-    if (driveAccess) return driveAccess;
-    const access = await getDriveAccess("backups");
-    setDriveAccess(access);
-    return access;
-  }, [driveAccess]);
-
-  const loadBackups = useCallback(async () => {
-    if (!empresaId) return;
-    setLoading(true);
-    try {
-      const access = await ensureDriveAccess();
-      const files = await listDriveFolder(access.accessToken, access.folderId);
-      setBackups(files);
-    } catch {
-      toast({ title: "Erro ao carregar backups", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  }, [empresaId, toast, ensureDriveAccess]);
-
-  useEffect(() => {
-    loadBackups();
-  }, [loadBackups]);
-
-  const generateAndSendBackup = async () => {
-    if (!empresaId) return;
-    setGenerating(true);
-    setProgress(5);
-    setProgressLabel("Conectando ao Google Drive...");
-    try {
-      const access = await ensureDriveAccess();
-      setProgress(10);
-
-      // Step 1: Fetch all companies in user's tree
-      setProgressLabel("Identificando empresas...");
-      const { data: mainEmpresa } = await supabase
-        .from("empresa_config")
-        .select("id, nome")
-        .eq("id", empresaId)
-        .single();
-
-      const { data: filiais } = await supabase
-        .from("empresa_config")
-        .select("id, nome")
-        .eq("empresa_pai_id", empresaId);
-
-      const allEmpresas = [
-        ...(mainEmpresa ? [mainEmpresa] : []),
-        ...(filiais || []),
-      ];
-
-      if (allEmpresas.length === 0) {
-        throw new Error("Nenhuma empresa encontrada");
-      }
-
-      setProgress(15);
-
-      // Step 2: Create timestamped root folder
-      const now = new Date();
-      const dateStr = now.toISOString().slice(0, 10);
-      const timeStr = now.toISOString().slice(11, 19).replace(/:/g, "-");
-      const backupFolderName = `backup_${dateStr}_${timeStr}`;
-      const backupRootId = await findOrCreateFolder(access.accessToken, access.folderId, backupFolderName);
-      setProgress(20);
-
-      // Step 3: For each empresa, create folder and export data
-      const totalSteps = allEmpresas.length * TABLES.length;
-      let stepsDone = 0;
-      const summaryLog: Record<string, { tables: number; records: number }> = {};
-
-      for (const empresa of allEmpresas) {
-        const empresaFolderName = empresa.nome || empresa.id;
-        setProgressLabel(`Criando pasta: ${empresaFolderName}...`);
-        const empresaFolderId = await findOrCreateFolder(access.accessToken, backupRootId, empresaFolderName);
-
-        const backup: Record<string, unknown[]> = {};
-        let totalRecords = 0;
-
-        for (const table of TABLES) {
-          setProgressLabel(`${empresaFolderName} → ${TABLE_LABELS[table] || table}...`);
-          let query = (supabase.from as any)(table).select("*");
-          if (table === "empresa_config") {
-            query = query.eq("id", empresa.id);
-          } else {
-            query = query.eq("empresa_id", empresa.id);
-          }
-          const { data } = await query;
-          backup[table] = data || [];
-          totalRecords += (data || []).length;
-          stepsDone++;
-          setProgress(20 + Math.round((stepsDone / totalSteps) * 50));
-        }
-
-        // Upload individual table JSONs
-        let uploaded = 0;
-        for (const [table, rows] of Object.entries(backup)) {
-          const fileName = `${TABLE_LABELS[table] || table}.json`;
-          await uploadJsonToDrive(access.accessToken, empresaFolderId, fileName, JSON.stringify(rows, null, 2));
-          uploaded++;
-          setProgressLabel(`${empresaFolderName} → Enviando ${uploaded}/${Object.keys(backup).length}...`);
-        }
-
-        // Upload consolidated per company
-        await uploadJsonToDrive(access.accessToken, empresaFolderId, "backup_completo.json", JSON.stringify({
-          generated_at: now.toISOString(),
-          empresa_id: empresa.id,
-          empresa_nome: empresa.nome,
-          tables: backup,
-          table_labels: TABLE_LABELS,
-        }, null, 2));
-
-        summaryLog[empresaFolderName] = { tables: uploaded, records: totalRecords };
-      }
-
-      setProgress(90);
-
-      // Step 4: Upload summary log at root level
-      setProgressLabel("Finalizando...");
-      await uploadJsonToDrive(access.accessToken, backupRootId, "log_backup.json", JSON.stringify({
-        generated_at: now.toISOString(),
-        empresas: summaryLog,
-        total_empresas: allEmpresas.length,
-      }, null, 2));
-
-      setProgress(95);
-      setProgressLabel("Limpando storage antigo...");
-
-      try {
-        await supabase.functions.invoke("cleanup-storage");
-      } catch { /* non-critical */ }
-
-      setProgress(100);
-      toast({
-        title: "✅ Backup enviado!",
-        description: `${allEmpresas.length} empresa(s) exportadas em pastas separadas para "${backupFolderName}".`,
-      });
-
-      setDriveAccess(null);
-      await loadBackups();
-    } catch (err: any) {
-      toast({ title: "Erro ao gerar backup", description: err.message, variant: "destructive" });
-    } finally {
-      setTimeout(() => {
-        setGenerating(false);
-        setProgress(0);
-        setProgressLabel("");
-      }, 600);
-    }
-  };
-
-  const downloadAsJson = async (file: DriveBackupFile) => {
-    setDownloadingId(file.id);
-    try {
-      const access = await ensureDriveAccess();
-      const blob = await downloadDriveFile(access.accessToken, file.id);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.name;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      toast({ title: "Erro ao baixar backup", variant: "destructive" });
-    } finally {
-      setDownloadingId(null);
-    }
-  };
-
-  const downloadAsExcel = async (file: DriveBackupFile) => {
-    setDownloadingId(file.id + "_xlsx");
-    try {
-      const access = await ensureDriveAccess();
-      const blob = await downloadDriveFile(access.accessToken, file.id);
-      const text = await blob.text();
-      const backupData = JSON.parse(text);
-      const wb = XLSX.utils.book_new();
-
-      const tables = backupData.tables || backupData;
-      const labels = backupData.table_labels || TABLE_LABELS;
-
-      for (const [table, rows] of Object.entries(tables)) {
-        if (!Array.isArray(rows) || rows.length === 0) continue;
-        const ws = XLSX.utils.json_to_sheet(rows);
-        const sheetName = (labels[table] || table).slice(0, 31);
-        XLSX.utils.book_append_sheet(wb, ws, sheetName);
-      }
-
-      XLSX.writeFile(wb, file.name.replace(".json", ".xlsx"));
-    } catch {
-      toast({ title: "Erro ao converter para Excel", variant: "destructive" });
-    } finally {
-      setDownloadingId(null);
-    }
-  };
-
-  const deleteBackup = async (file: DriveBackupFile) => {
-    try {
-      const access = await ensureDriveAccess();
-      await deleteDriveFile(access.accessToken, file.id);
-      toast({ title: "Backup excluído" });
-      setBackups((prev) => prev.filter((b) => b.id !== file.id));
-    } catch {
-      toast({ title: "Erro ao excluir backup", variant: "destructive" });
-    }
-  };
+  const situacao = situacaoDoBackup(execucoes);
+  const ultimoArquivos = execucoes.find((e) => e.status !== "rodando" && e.arquivos_pendentes !== null);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Backups</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Backups salvos diretamente no Google Drive — sem uso de rede do servidor
+          <p className="mt-1 text-sm text-muted-foreground">
+            Cópia automática de tudo — tabelas, usuários e arquivos — todo dia às 03:00. Guarda 30 dias.
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => { setDriveAccess(null); loadBackups(); }} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            Atualizar
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => void carregar()} disabled={carregando}>
+            <RefreshCw className={`mr-1.5 h-4 w-4 ${carregando ? "animate-spin" : ""}`} /> Atualizar
           </Button>
-          <Button variant="outline" size="sm" onClick={cleanupSupabaseStorage} disabled={cleaningStorage} className="text-destructive border-destructive/30 hover:bg-destructive/10">
-            {cleaningStorage ? <Loader2 className="w-4 h-4 animate-spin" /> : <DatabaseZap className="w-4 h-4" />}
-            Limpar Storage Supabase
-          </Button>
-          <Button onClick={generateAndSendBackup} disabled={generating} size="sm">
-            {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />}
-            Gerar Backup → Google Drive
+          <Button size="sm" onClick={() => void rodarAgora()} disabled={rodando}>
+            {rodando ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <PlayCircle className="mr-1.5 h-4 w-4" />}
+            Fazer backup agora
           </Button>
         </div>
       </div>
 
-      {/* Migration & Validation Panel */}
-      <Card className="border-primary/30 bg-primary/5">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Cloud className="w-5 h-5 text-primary" />
-            Migração para Google Drive
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Migre todos os arquivos do Storage interno para o Google Drive e libere espaço na plataforma.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={runSanityTest} disabled={sanityTesting}>
-              {sanityTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
-              Testar Nuvem Própria
-            </Button>
-            <Button variant="outline" size="sm" onClick={validateDriveConnection} disabled={validating}>
-              {validating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-              Validar Armazenamento Externo
-            </Button>
-            <Button size="sm" onClick={runMigration} disabled={migrating} variant="default">
-              {migrating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
-              {migrating ? "Migrando..." : "Migrar Arquivos → Google Drive"}
-            </Button>
-          </div>
-
-          {sanityResult && (
-            <div className={`p-4 rounded-lg border text-sm ${sanityResult.success ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" : sanityResult.inProgress ? "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800" : "bg-destructive/10 border-destructive/30"}`}>
-              <div className="space-y-2">
-                {sanityResult.success && (
-                  <p className="font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" /> Teste de Homologação Passou!
-                  </p>
-                )}
-                {sanityResult.inProgress && (
-                  <p className="font-medium text-blue-700 dark:text-blue-400 flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Executando teste...
-                  </p>
-                )}
-                {sanityResult.success === false && (
-                  <p className="font-medium text-destructive flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4" /> Teste Falhou
-                  </p>
-                )}
-                <div className="font-mono text-xs space-y-0.5 bg-background/50 p-3 rounded border max-h-48 overflow-y-auto">
-                  {sanityResult.log?.map((line: string, i: number) => (
-                    <p key={i} className={line.startsWith("❌") ? "text-destructive" : line.startsWith("✅") ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
-                      {line}
-                    </p>
-                  ))}
-                </div>
-                {sanityResult.success && sanityResult.empresaNome && (
-                  <p className="text-xs text-muted-foreground">
-                    Hierarquia validada: <strong>SafetySoluções &gt; {sanityResult.empresaNome} &gt; teste-homologacao</strong>
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {validationResult && (
-            <div className={`p-3 rounded-lg border text-sm ${validationResult.success ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" : "bg-destructive/10 border-destructive/30"}`}>
-              {validationResult.success ? (
-                <div className="space-y-1">
-                  <p className="font-medium flex items-center gap-2 text-green-700 dark:text-green-400">
-                    <CheckCircle2 className="w-4 h-4" /> Conexão ativa com Google Drive
-                  </p>
-                  {validationResult.storageQuota && (
-                    <p className="text-xs text-muted-foreground">
-                      Espaço usado: {(parseInt(validationResult.storageQuota.usage || "0") / 1024 / 1024 / 1024).toFixed(2)} GB
-                      {" / "}
-                      {(parseInt(validationResult.storageQuota.limit || "0") / 1024 / 1024 / 1024).toFixed(0)} GB
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-destructive font-medium">❌ Erro: {validationResult.error}</p>
-              )}
-            </div>
-          )}
-
-          {migrationResult && (
-            <div className={`p-4 rounded-lg border text-sm ${migrationResult.success ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" : "bg-destructive/10 border-destructive/30"}`}>
-              {migrationResult.success ? (
-                <div className="space-y-2">
-                  <p className="font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" /> Migração Concluída!
-                  </p>
-                  <p className="text-foreground font-semibold">{migrationResult.summary}</p>
-                  {migrationResult.errors?.length > 0 && (
-                    <div className="text-xs text-destructive mt-2">
-                      <p className="font-medium">Erros ({migrationResult.errors.length}):</p>
-                      <ul className="list-disc ml-4 mt-1 space-y-0.5">
-                        {migrationResult.errors.slice(0, 5).map((e: string, i: number) => (
-                          <li key={i}>{e}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {migrationResult.results?.length > 0 && (
-                    <details className="text-xs mt-2">
-                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                        Ver {migrationResult.results.length} arquivo(s) detalhados
-                      </summary>
-                      <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
-                        {migrationResult.results.map((r: any, i: number) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <Badge variant={r.status === "migrated" ? "default" : "destructive"} className="text-[10px]">
-                              {r.status === "migrated" ? "✓" : "✗"}
-                            </Badge>
-                            <span className="truncate">{r.bucket}/{r.file}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  )}
-                </div>
-              ) : (
-                <p className="text-destructive font-medium">❌ Erro: {migrationResult.error}</p>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Scheduled Backup Panel */}
-      <Card className="border-accent/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Clock className="w-5 h-5 text-primary" />
-            Backup Automático Semanal (Disaster Recovery)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Cron job configurado para executar todo <strong>domingo às 03h</strong>. 
-            Exporta todas as tabelas de todas as empresas para a pasta <strong>SafetySoluções_SYSTEM_BACKUPS</strong> no Google Drive.
-            Mantém os 8 backups mais recentes automaticamente.
-          </p>
-          <Button variant="outline" size="sm" onClick={triggerScheduledBackup} disabled={runningScheduled}>
-            {runningScheduled ? <Loader2 className="w-4 h-4 animate-spin" /> : <DatabaseZap className="w-4 h-4" />}
-            Executar Backup Agora (Manual)
-          </Button>
-          {scheduledResult && (
-            <div className={`p-4 rounded-lg border text-sm ${scheduledResult.success ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" : "bg-destructive/10 border-destructive/30"}`}>
-              {scheduledResult.success ? (
-                <div className="space-y-2">
-                  <p className="font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" /> Backup concluído!
-                  </p>
-                  <p className="text-foreground">{scheduledResult.totalRecords} registros • {scheduledResult.empresas} empresa(s) • {scheduledResult.elapsed}</p>
-                  <p className="text-xs text-muted-foreground">Arquivo: {scheduledResult.fileName}</p>
-                  {scheduledResult.log?.length > 0 && (
-                    <details className="text-xs mt-2">
-                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Ver log</summary>
-                      <div className="font-mono mt-2 space-y-0.5 bg-background/50 p-3 rounded border max-h-48 overflow-y-auto">
-                        {scheduledResult.log.map((line: string, i: number) => (
-                          <p key={i} className={line.startsWith("❌") ? "text-destructive" : line.startsWith("✅") ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
-                            {line}
-                          </p>
-                        ))}
-                      </div>
-                    </details>
-                  )}
-                </div>
-              ) : (
-                <p className="text-destructive font-medium">❌ Erro: {scheduledResult.error}</p>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {generating && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3 mb-3">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              <span className="text-sm font-medium">{progressLabel || "Gerando backup..."}</span>
-            </div>
-            <Progress value={progress} className="h-2" />
-            <p className="text-xs text-muted-foreground mt-2">
-              Os dados vão direto do navegador para o Google Drive. Zero uso de rede do servidor.
+      <div className={`flex items-start gap-3 rounded-lg border p-4 ${COR[situacao.nivel]}`}>
+        {situacao.nivel === "ok"
+          ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+          : <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />}
+        <div className="text-sm">
+          <p className="font-semibold">{situacao.texto}</p>
+          {ultimoArquivos && (ultimoArquivos.arquivos_pendentes ?? 0) > 0 && (
+            <p className="mt-1 opacity-80">
+              Cópia dos arquivos em andamento: faltam {ultimoArquivos.arquivos_pendentes}. Continua sozinha a cada 2 horas.
             </p>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </div>
+      </div>
 
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Clock className="w-5 h-5 text-primary" />
-            Backups no Google Drive
-          </CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Dias guardados</CardTitle></CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : backups.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <HardDrive className="w-12 h-12 mx-auto mb-3 opacity-40" />
-              <p className="text-sm font-medium">Nenhum backup encontrado</p>
-              <p className="text-xs mt-1">Clique em "Gerar Backup → Google Drive" para criar o primeiro.</p>
-            </div>
+          {dias.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{carregando ? "Carregando…" : "Nenhum backup guardado ainda."}</p>
           ) : (
-            <div className="space-y-3">
-              {backups.map((file, idx) => (
-                <div
-                  key={file.id}
-                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-lg border bg-card hover:bg-accent/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-full bg-primary/10">
-                      <CheckCircle2 className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{file.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-muted-foreground">{formatDate(file.createdTime)}</span>
-                        {file.size && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                            {formatBytes(parseInt(file.size))}
-                          </Badge>
-                        )}
-                        {idx === 0 && (
-                          <Badge className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-0">
-                            Mais recente
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                    {file.name.endsWith(".json") && (
-                      <>
-                        <Button
-                          variant="outline" size="sm" className="flex-1 sm:flex-none text-xs"
-                          onClick={() => downloadAsJson(file)}
-                          disabled={downloadingId === file.id}
-                        >
-                          {downloadingId === file.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileJson className="w-3.5 h-3.5" />}
-                          JSON
-                        </Button>
-                        {file.name === "backup_completo.json" && (
-                          <Button
-                            variant="outline" size="sm" className="flex-1 sm:flex-none text-xs"
-                            onClick={() => downloadAsExcel(file)}
-                            disabled={downloadingId === file.id + "_xlsx"}
-                          >
-                            {downloadingId === file.id + "_xlsx" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
-                            Excel
-                          </Button>
-                        )}
-                      </>
-                    )}
-                    <Button
-                      variant="ghost" size="sm"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => deleteBackup(file)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
+            <ul className="divide-y">
+              {dias.map((d) => (
+                <li key={d} className="flex items-center justify-between py-2.5">
+                  <span className="text-sm font-medium">{diaBr(d)}</span>
+                  <Button variant="outline" size="sm" onClick={() => void baixar(d)} disabled={baixando !== null}>
+                    {baixando === d ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Download className="mr-1.5 h-4 w-4" />}
+                    Baixar (.zip)
+                  </Button>
+                </li>
               ))}
-            </div>
+            </ul>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            O .zip traz uma lista de registros por tabela, as contas de usuário (sem senha) e um resumo.
+            Os arquivos (PDFs e fotos) ficam copiados numa pasta privada separada.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Últimas execuções</CardTitle></CardHeader>
+        <CardContent className="overflow-x-auto">
+          {execucoes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma execução registrada.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs text-muted-foreground">
+                <tr><th className="py-1.5 pr-3">Quando</th><th className="pr-3">Tipo</th><th className="pr-3">Resultado</th><th className="pr-3 text-right">Registros</th><th className="text-right">Arquivos</th></tr>
+              </thead>
+              <tbody className="divide-y">
+                {execucoes.slice(0, 15).map((e) => (
+                  <tr key={e.id}>
+                    <td className="whitespace-nowrap py-1.5 pr-3">{dataBr(e.iniciado_em)}</td>
+                    <td className="pr-3">{e.modo === "completo" ? "Completo" : "Arquivos"}</td>
+                    <td className="pr-3" title={e.erro || undefined}>
+                      {{ ok: "Deu certo", parcial: "Parcial", erro: "Falhou", rodando: "Rodando…" }[e.status] || e.status}
+                    </td>
+                    <td className="pr-3 text-right tabular-nums">{e.linhas ?? "—"}</td>
+                    <td className="text-right tabular-nums">{e.arquivos_copiados ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p className="font-medium text-foreground">Informações sobre o Backup</p>
-              <ul className="list-disc ml-4 space-y-0.5 text-xs">
-                <li>Os backups são enviados <strong>direto do navegador para o Google Drive</strong> — zero uso de rede do servidor.</li>
-                <li>Todos os módulos são incluídos: Funcionários, EPIs, Entregas, DDS, Inspeções, Treinamentos, Exames, Conformidades e mais.</li>
-                <li>Baixe em <strong>JSON</strong> (restauração técnica) ou <strong>Excel</strong> (consulta/planilha).</li>
-                <li>Os dados são isolados por empresa e protegidos por autenticação.</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-start gap-3 rounded-lg border p-4 text-sm text-muted-foreground">
+        <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
+        <p>
+          Esta cópia fica num espaço privado separado, dentro da mesma Supabase: protege contra apagar por engano e
+          dado estragado. Para se proteger também de perder a conta inteira, baixe um .zip de vez em quando e guarde
+          no seu computador ou Google Drive — ou peça para ligar a cópia automática para o Google Drive.
+        </p>
+      </div>
     </div>
   );
 }
