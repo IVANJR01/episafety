@@ -49,3 +49,46 @@ describe("carregar página sob demanda", () => {
     expect(ehFalhaDeArquivoDaVersaoAntiga(new Error("Failed to fetch dynamically imported module: x"))).toBe(true); // Chrome
   });
 });
+
+import { carregarComLimite } from "./carregarPagina";
+
+describe("a tela nunca fica girando para sempre", () => {
+  it("arquivo que não chega em 20 s vira o aviso com 'Tentar de novo'", async () => {
+    vi.useFakeTimers();
+    const p = carregarComLimite(() => new Promise(() => {}), { limiteMs: 20_000 });
+    await vi.advanceTimersByTimeAsync(20_000);
+    const r = await p;
+    expect((r.default as any).name).toBe("TelaDemorou");
+    vi.useRealTimers();
+  });
+  it("chegou a tempo: usa a tela de verdade", async () => {
+    const Tela = () => null;
+    const r = await carregarComLimite(() => Promise.resolve({ default: Tela }), { limiteMs: 1000 });
+    expect(r.default).toBe(Tela);
+  });
+  it("sem internet e sem o arquivo: aviso de tela não guardada", async () => {
+    sessionStorage.setItem("episafety:recarregou-por-pagina-nova", "1");
+    const r = await carregarComLimite(() => Promise.reject(new TypeError("Importing a module script failed.")), { online: () => false });
+    expect((r.default as any).name).toBe("TelaNaoGuardada");
+    sessionStorage.clear();
+  });
+  it("com internet, arquivo falhou mesmo depois de recarregar: 'Tentar de novo', não tela branca", async () => {
+    sessionStorage.setItem("episafety:recarregou-por-pagina-nova", "1");
+    const r = await carregarComLimite(() => Promise.reject(new TypeError("Failed to fetch dynamically imported module: x")), { online: () => true });
+    expect((r.default as any).name).toBe("TelaDemorou");
+    sessionStorage.clear();
+  });
+  it("defeito da tela (não é arquivo) continua aparecendo como erro", async () => {
+    await expect(carregarComLimite(() => Promise.reject(new Error("x is not defined")))).rejects.toThrow("x is not defined");
+  });
+  it("pediu recarga e o celular não recarregou: desiste em 8 s em vez de esperar para sempre", async () => {
+    vi.useFakeTimers();
+    const amb = { sessao: { getItem: () => null, setItem: () => {}, removeItem: () => {} }, recarregar: vi.fn(), online: () => true };
+    const p = importarComRecarga(() => Promise.reject(new TypeError("Importing a module script failed.")), amb);
+    const verificado = expect(p).rejects.toThrow();
+    await vi.advanceTimersByTimeAsync(8_000);
+    await verificado;
+    expect(amb.recarregar).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+});
