@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { cachedQuery } from "@/lib/offlineStorage";
+import { buscarSolicitacoes } from "@/lib/copiaOfflineEpi";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -112,12 +112,7 @@ export default function SolicitacoesMateriais() {
      * Com cópia no aparelho: sem internet mostra a última lista vista, em vez
      * de "Erro ao carregar solicitações — Failed to fetch".
      */
-    const { data, error, offline } = await cachedQuery<Solicitacao>(`solicitacoes_materiais:${empresaId}`, () =>
-      supabase
-        .from("solicitacoes_materiais")
-        .select("*")
-        .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false }) as any);
+    const { data, error, offline } = await buscarSolicitacoes(empresaId);
     if (error && !offline) {
       toast.error("Erro ao carregar solicitações", { description: error.message });
     }

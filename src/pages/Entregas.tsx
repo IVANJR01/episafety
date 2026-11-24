@@ -52,7 +52,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
-import { PackageOpen } from "lucide-react";
+import { CloudOff, PackageOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import SignatureCanvas, { type SignatureCanvasRef } from "@/components/SignatureCanvas";
 import FullscreenSignature from "@/components/FullscreenSignature";
@@ -134,13 +134,24 @@ const fmtData = (d?: string | null): string => {
 
 
 
+const TEXTO_SEM_COPIA = {
+  titulo: "Entregas ainda não guardadas neste aparelho",
+  descricao: "Sem internet agora. Assim que conectar, o sistema guarda as entregas desta empresa para consultar offline. Novas entregas podem ser registradas normalmente.",
+};
+
 export default function Entregas() {
   /*
    * A lista vem sem as imagens de assinatura e selfie (no lugar, a marca de
    * "imagem no servidor"): eram 4,7 MB para 109 entregas. A Ficha busca as
    * imagens daquele trabalhador na hora (src/lib/entregasLeves.ts).
    */
-  const { data: entregas, loading: loadingEntregas, verificado: assinaturasConferidas, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at", undefined, COLUNAS_DA_LISTA_DE_ENTREGAS);
+  const { data: entregas, loading: loadingEntregas, verificado, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at", undefined, COLUNAS_DA_LISTA_DE_ENTREGAS);
+  /*
+   * Sem internet não há servidor para conferir: "Conferindo assinaturas…"
+   * ficava girando para sempre. Offline vale a última cópia guardada (que
+   * já traz a marca de quem assinou) — volta a conferir quando o sinal voltar.
+   */
+  const assinaturasConferidas = verificado || !isOnline();
   const { data: funcionarios, loading: loadingFuncionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: epis, loading: loadingEpis, refetch: refetchEpis } = useSupabaseQuery<EPI>("epis");
 
@@ -155,6 +166,11 @@ export default function Entregas() {
    * cadastro", como se os dados tivessem sumido.
    */
   const loading = loadingEntregas || loadingFuncionarios || loadingEpis;
+  /*
+   * Sem internet e sem nada guardado: "Nenhuma entrega registrada" dava a
+   * entender que as entregas tinham sumido. Diz a verdade.
+   */
+  const semCopiaOffline = !isOnline() && (entregas?.length ?? 0) === 0;
   const { toast } = useToast();
   const { canEdit, canCreate, canDelete, pode } = usePermissions("entregas");
   /*
@@ -1585,9 +1601,9 @@ export default function Entregas() {
                 <EmptyState icon={Search} title="Nenhum resultado encontrado" description="Tente ajustar o termo de busca." />
               ) : (
                 <EmptyState
-                  icon={PackageOpen}
-                  title="Nenhuma entrega registrada"
-                  description="Registre a primeira entrega de EPI para iniciar o controle do colaborador."
+                  icon={semCopiaOffline ? CloudOff : PackageOpen}
+                  title={semCopiaOffline ? TEXTO_SEM_COPIA.titulo : "Nenhuma entrega registrada"}
+                  description={semCopiaOffline ? TEXTO_SEM_COPIA.descricao : "Registre a primeira entrega de EPI para iniciar o controle do colaborador."}
                   action={canCreate ? (
                     <Button onClick={() => { refetchEpis(); setOpen(true); }}>
                       <Plus className="w-4 h-4 mr-2" />Nova Entrega
@@ -1758,9 +1774,9 @@ export default function Entregas() {
                     <TableRow><TableCell colSpan={8} className="p-0">
                       <EmptyState
                         bare
-                        icon={searchTerm ? Search : PackageOpen}
-                        title={searchTerm ? "Nenhum resultado encontrado" : "Nenhuma entrega registrada"}
-                        description={searchTerm ? "Tente ajustar o termo de busca." : "Registre a primeira entrega de EPI para iniciar o controle do colaborador."}
+                        icon={searchTerm ? Search : semCopiaOffline ? CloudOff : PackageOpen}
+                        title={searchTerm ? "Nenhum resultado encontrado" : semCopiaOffline ? TEXTO_SEM_COPIA.titulo : "Nenhuma entrega registrada"}
+                        description={searchTerm ? "Tente ajustar o termo de busca." : semCopiaOffline ? TEXTO_SEM_COPIA.descricao : "Registre a primeira entrega de EPI para iniciar o controle do colaborador."}
                       />
                     </TableCell></TableRow>
                   ) : filteredEntregas.map(e => (

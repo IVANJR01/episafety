@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { setCacheUserScope, setCacheEmpresaScope, clearAllCachedData } from "@/lib/offlineStorage";
@@ -178,6 +178,18 @@ async function checkSuperAdmin(userId: string, email?: string): Promise<boolean>
   return false;
 }
 
+const ESCOPO_SALVO_PREFIX = "empresa_escopo:";
+function lerEscopoSalvo(empresaId: string): string[] | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(ESCOPO_SALVO_PREFIX + empresaId) || "null");
+    return Array.isArray(v) && v.length > 0 && v.every((x) => typeof x === "string") ? v : null;
+  } catch { return null; }
+}
+function salvarEscopo(empresaId: string, escopo: string[]) {
+  try { localStorage.setItem(ESCOPO_SALVO_PREFIX + empresaId, JSON.stringify(escopo)); } catch { /* sem espaço */ }
+}
+const mesmoEscopo = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -198,7 +210,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveActiveEmpresaId(id);
     setEmpresaId(id);
     try { purgeQueryCache(); } catch {}
-    try { clearAllCachedData(); } catch {}
+    // A cópia no aparelho NÃO é apagada: cada empresa tem a sua gaveta
+    // (setCacheEmpresaScope). Apagar tudo aqui deixava o celular sem nada
+    // offline depois de uma simples troca de empresa.
     // Os canais de Realtime são por tabela e não sabem de empresa. Trocando de
     // empresa eles seriam reabertos pelas telas novas de qualquer jeito;
     // fechá-los aqui evita o aviso da empresa antiga chegar no meio da troca.
@@ -212,31 +226,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * anterior na mesma chave. Precisa ser aplicado ANTES de qualquer leitura,
    * senão a tela lê a gaveta errada no primeiro render.
    */
-  useEffect(() => {
-    setCacheEmpresaScope(empresaScopeIds);
-  }, [empresaScopeIds]);
+  //
+  // Aplicado durante a renderização, e não num useEffect: os efeitos das
+  // telas (filhas) rodam ANTES do efeito deste provedor, e elas liam a
+  // gaveta da empresa anterior — ou nenhuma — no primeiro momento.
+  useMemo(() => setCacheEmpresaScope(empresaScopeIds), [empresaScopeIds]);
 
   // Resolve empresa scope (matriz + todas as filiais da mesma árvore) para isolamento estrito por empresa.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!empresaId) { setEmpresaScopeIds([]); return; }
+      /*
+       * O escopo (matriz + filiais) também é o nome da gaveta da cópia
+       * offline. Sem internet a busca abaixo falha e o escopo virava só
+       * [empresaId] — outra gaveta, vazia: "Nenhuma entrega registrada"
+       * com as entregas guardadas no aparelho. Agora o último escopo visto
+       * com internet fica salvo e vale enquanto o servidor não responde.
+       */
+      const salvo = lerEscopoSalvo(empresaId);
+      if (salvo) setEmpresaScopeIds(salvo);
       try {
-        const { data: current } = await (supabase.from as any)("empresa_config")
+        const { data: current, error: e1 } = await (supabase.from as any)("empresa_config")
           .select("id, empresa_pai_id")
           .eq("id", empresaId)
           .limit(1);
         if (cancelled) return;
+        if (e1) throw e1;
         const rootId = current?.[0]?.empresa_pai_id || empresaId;
 
-        const { data: tree } = await (supabase.from as any)("empresa_config")
+        const { data: tree, error: e2 } = await (supabase.from as any)("empresa_config")
           .select("id")
           .or(`id.eq.${rootId},empresa_pai_id.eq.${rootId}`);
         if (cancelled) return;
+        if (e2) throw e2;
         const scope = (tree || []).map((f: any) => f.id as string);
-        setEmpresaScopeIds(scope.length > 0 ? Array.from(new Set([empresaId, rootId, ...scope])) : [empresaId]);
+        const escopo = scope.length > 0 ? Array.from(new Set([empresaId, rootId, ...scope])) : [empresaId];
+        salvarEscopo(empresaId, escopo);
+        setEmpresaScopeIds((atual) => (mesmoEscopo(atual, escopo) ? atual : escopo));
       } catch {
-        if (!cancelled) setEmpresaScopeIds([empresaId]);
+        if (!cancelled && !salvo) setEmpresaScopeIds([empresaId]);
       }
     })();
     return () => { cancelled = true; };

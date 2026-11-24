@@ -71,6 +71,35 @@ function chaveDeCache(table: string, columns?: string): string {
     : table;
 }
 
+/**
+ * Busca a tabela no servidor, já no escopo da empresa, e guarda a cópia no
+ * aparelho — na MESMA gaveta que a tela usa ao abrir sem internet.
+ *
+ * É o que a consulta de cada tela faz; fica aqui fora para que a cópia
+ * automática (src/lib/copiaOfflineEpi.ts) grave exatamente igual, sem a
+ * pessoa precisar abrir tela por tela com internet.
+ */
+export async function buscarTabelaEGuardar<T = any>(opcoes: {
+  table: string;
+  columns?: string;
+  orderBy?: string;
+  ascending?: boolean;
+  escopoEmpresas: string[];
+  gavetaDaTabela?: boolean;
+}): Promise<T[]> {
+  const { table, columns, orderBy, ascending, escopoEmpresas, gavetaDaTabela } = opcoes;
+  const filtrar = escopoEmpresas.length > 0 && !TABLES_WITHOUT_EMPRESA_ID.has(table);
+  let consulta = (supabase.from as any)(table).select(columns || "*");
+  if (filtrar) consulta = consulta.in("empresa_id", escopoEmpresas);
+  if (orderBy) consulta = consulta.order(orderBy, { ascending: ascending ?? false });
+  const { data: rows, error } = await withTimeout(consulta) as any;
+  if (error) throw error;
+  const permitidas = new Set(escopoEmpresas);
+  const resultado = ((rows as T[]) || []).filter((row: any) => !filtrar || (row?.empresa_id && permitidas.has(row.empresa_id)));
+  setCachedData(gavetaDaTabela ? table : chaveDeCache(table, columns), resultado);
+  return resultado;
+}
+
 export function useSupabaseQuery<T = any>(
   table: string, orderBy?: string, ascending?: boolean, columns?: string,
   /**
@@ -184,18 +213,10 @@ export function useSupabaseQuery<T = any>(
       }
 
       try {
-        let queryBuilder = (supabase.from as any)(table).select(columns || "*");
-        if (applyEmpresaFilter) {
-          queryBuilder = queryBuilder.in("empresa_id", empresaScopeIds);
-        }
-        if (orderBy) queryBuilder = queryBuilder.order(orderBy, { ascending: ascending ?? false });
-
-        const { data: rows, error } = await withTimeout(queryBuilder) as any;
-        if (error) throw error;
-
-        const result = filterByEmpresaScope((rows as T[]) || []) || [];
-        setCachedData(cacheKey, result);
-        return result;
+        return await buscarTabelaEGuardar<T>({
+          table, columns, orderBy, ascending, gavetaDaTabela,
+          escopoEmpresas: applyEmpresaFilter ? empresaScopeIds : [],
+        });
       } catch (error) {
         if (cached && isNetworkFailure(error)) {
           return cached;

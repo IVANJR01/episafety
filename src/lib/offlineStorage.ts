@@ -151,7 +151,12 @@ export function getCachedData<T>(key: string): T[] | null {
   }
 }
 
-export function setCachedData<T>(key: string, data: T[], ttlMs = 7 * 24 * 60 * 60 * 1000) {
+/**
+ * 90 dias de validade (antes eram 7): quem passava uma semana sem abrir uma
+ * tela com internet ficava sem a cópia dela offline. O conteúdo é renovado
+ * sempre que há internet — a validade só limita cópia esquecida.
+ */
+export function setCachedData<T>(key: string, data: T[], ttlMs = 90 * 24 * 60 * 60 * 1000) {
   // Refuse to write tenant data without a user scope — prevents leaking unscoped cache to another user.
   if (!getScope()) return;
   try {

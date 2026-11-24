@@ -1,6 +1,7 @@
 import { Suspense, useEffect, type ReactNode } from "react";
 import { carregarPagina, preCarregarTelas } from "@/lib/carregarPagina";
 import { EsqueletoDePagina } from "@/components/CarregamentoDeTela";
+import { guardarCopiaOfflineEpi } from "@/lib/copiaOfflineEpi";
 /*
  * Telas de EPI dentro do arquivo principal, de propósito.
  *
@@ -196,7 +197,21 @@ function DashboardGuard() {
 }
 
 function ProtectedRoute() {
-  const { user, loading, authorized, signOut, modulosPermitidos, isSuperAdmin, isPrincipal } = useAuth();
+  const { user, loading, authorized, signOut, modulosPermitidos, isSuperAdmin, isPrincipal, empresaScopeIds, empresaId } = useAuth();
+
+  // Com internet, guarda sozinho os dados da Gestão de EPIs para usar
+  // offline: ao entrar, ao trocar de empresa, ao voltar o sinal e a cada
+  // 10 minutos com o sistema aberto (src/lib/copiaOfflineEpi.ts).
+  const escopoTexto = empresaScopeIds.join(",");
+  useEffect(() => {
+    if (!user || !escopoTexto) return;
+    const escopo = escopoTexto.split(",");
+    const guardar = () => { if (document.visibilityState === "visible") void guardarCopiaOfflineEpi(escopo, empresaId); };
+    const primeira = setTimeout(guardar, 4000);
+    const repetir = setInterval(guardar, 10 * 60 * 1000);
+    window.addEventListener("online", guardar);
+    return () => { clearTimeout(primeira); clearInterval(repetir); window.removeEventListener("online", guardar); };
+  }, [user, escopoTexto, empresaId]);
 
   // Logado: baixa as outras telas em segundo plano, para abrirem na hora.
   useEffect(() => {
